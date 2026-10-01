@@ -840,7 +840,7 @@ export class App {
       item.breakpoint && item.breakpoint !== current
         ? h('div', { class: 'notice', text: `Logged at ${item.breakpoint} (${item.context?.viewport_w ?? '?'}px). You are on ${current} (${window.innerWidth}px).` })
         : null;
-    const orphan = s?.placement === 'orphan' ? h('div', { class: 'notice', text: 'The element this was pinned to can’t be found on the page anymore. Re-anchor it.' }) : null;
+    const orphan = s?.placement === 'orphan' ? h('div', { class: 'notice', text: 'The element this was pinned to can’t be found on the page anymore. Use “Pin again” in the list to place it.' }) : null;
 
     const card = h(
       'div',
@@ -901,9 +901,6 @@ export class App {
       h(
         'div',
         { class: 'actions' },
-        item.anchor || s?.placement === 'note'
-          ? h('button', { class: 'btn link left', type: 'button', text: 'Re-anchor', onclick: () => this.reanchor(item.id) })
-          : null,
         h('a', { class: 'btn link', href: `${this.cfg.adminUrl}&item=${item.id}`, target: '_blank', rel: 'noopener', text: 'Admin' }),
         item.can_delete ? h('button', { class: 'btn danger', type: 'button', text: 'Delete', onclick: () => void this.deleteItem(item.id) }) : null,
         h('button', {
@@ -937,7 +934,7 @@ export class App {
           const s = this.states.get(id);
           if (s) s.el = el;
           this.refresh();
-          this.toast(`Re-anchored #${id}`);
+          this.toast(`Pinned #${id} again`);
         } catch (err) {
           this.toast((err as Error).message, true);
         }
@@ -1428,7 +1425,7 @@ export class App {
           ? h('span', {
               class: 'btn link reanchor',
               role: 'button',
-              text: 'Re-anchor',
+              text: 'Pin again',
               onclick: (e: Event) => {
                 e.stopPropagation();
                 this.reanchor(s.item.id);

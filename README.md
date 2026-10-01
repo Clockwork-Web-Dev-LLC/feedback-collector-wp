@@ -16,10 +16,10 @@ Internal QA for **staging** WordPress sites. A teammate turns on Feedback mode, 
   - **Alt+right-click** always opens the normal browser menu.
 - **+ Add** pins with a normal click instead, for trackpads and touch screens. **Page note** creates feedback for the whole page.
 - **Pins** are colored by type and turn into a green ✓ when resolved. **✓ Resolved** shows or hides resolved pins.
-  - Click a pin to change its status, priority or assignee, reply, re-anchor or delete.
+  - Click a pin to change its status, priority or assignee, reply or delete.
 - **List** opens the sidebar: this page or all pages, filtered by type, status or "assigned to me".
   - Items whose element is hidden at the current breakpoint are listed separately.
-  - Items whose element can't be found anymore are listed as **Orphaned**, with a Re-anchor button.
+  - Items whose element can't be found anymore are listed as **Orphaned**, with a “Pin again” link to place them on a new element.
 - **Feedback** in wp-admin holds the full list: filters, search, sorting, bulk status changes, a detail screen with all captured context, and **View on page**, which opens the page with the pin open.
 
 ## Branding (white-label)
