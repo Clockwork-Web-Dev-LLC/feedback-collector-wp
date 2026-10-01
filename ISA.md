@@ -4,7 +4,7 @@ project: feedback-collector-wp
 effort: E4
 effort_source: classifier
 phase: verify
-progress: 62/155
+progress: 88/155
 mode: interactive
 started: 2026-09-30T00:00:00-07:00
 updated: 2026-10-01T03:30:04.547Z
@@ -79,22 +79,22 @@ Deliver a deactivatable WordPress plugin, "Feedback Collector". Reviewers with t
 - [x] ISC-18: Anti: any `feedback-collector/v1` route returns 2xx to a user without `fbc_review`
 - [x] ISC-19: Anti: plugin adds cookies or cache-control headers to logged-out responses
 - [x] ISC-20: Overlay bundle ≤ 60 KB gzipped, excluding the optional screenshot library
-- [DEFERRED-VERIFY] ISC-21: Overlay UI mounts inside a Shadow DOM root
+- [x] ISC-21: Overlay UI mounts inside a Shadow DOM root
 - [DEFERRED-VERIFY] ISC-22: Anti: a hostile theme rule (`* { all: unset }`) changes overlay computed styles
 
 ### Feedback mode and capture UX
-- [DEFERRED-VERIFY] ISC-23: Admin bar toggle switches Feedback mode on/off
-- [DEFERRED-VERIFY] ISC-24: Feedback mode state persists per browser across page loads
+- [x] ISC-23: Admin bar toggle switches Feedback mode on/off
+- [x] ISC-24: Feedback mode state persists per browser across page loads
 - [DEFERRED-VERIFY] ISC-25: `Alt+Shift+F` toggles Feedback mode
 - [DEFERRED-VERIFY] ISC-26: Anti: the shortcut fires while focus is in an input, textarea or contenteditable
-- [DEFERRED-VERIFY] ISC-27: In Feedback mode, right-click on an element opens a menu with Bug, Tweak, Change Request, Comment
+- [x] ISC-27: In Feedback mode, right-click on an element opens a menu with Bug, Tweak, Change Request, Comment
 - [DEFERRED-VERIFY] ISC-28: Anti: with Feedback mode off, right-click shows a custom menu
 - [DEFERRED-VERIFY] ISC-29: Alt+right-click in Feedback mode shows the native browser menu
 - [DEFERRED-VERIFY] ISC-30: Hover in Feedback mode outlines the target element
 - [DEFERRED-VERIFY] ISC-31: Toolbar "+ Add" button enters click-to-pin mode (trackpad/touch path)
-- [DEFERRED-VERIFY] ISC-32: "Page note" option creates an item with no element anchor
-- [DEFERRED-VERIFY] ISC-33: Choosing a type opens a composer positioned next to the element
-- [DEFERRED-VERIFY] ISC-34: Composer has Title (required) and Description fields
+- [x] ISC-32: "Page note" option creates an item with no element anchor
+- [x] ISC-33: Choosing a type opens a composer positioned next to the element
+- [x] ISC-34: Composer has Title (required) and Description fields
 - [DEFERRED-VERIFY] ISC-35: Composer has Priority (Low/Medium/High/Critical, default Medium)
 - [DEFERRED-VERIFY] ISC-36: Composer has optional Assignee picker
 - [DEFERRED-VERIFY] ISC-37: Empty title is blocked in the UI
@@ -106,59 +106,59 @@ Deliver a deactivatable WordPress plugin, "Feedback Collector". Reviewers with t
 - [DEFERRED-VERIFY] ISC-41: Page path relative to `home_url()`
 - [DEFERRED-VERIFY] ISC-42: Query string
 - [DEFERRED-VERIFY] ISC-43: Page title
-- [DEFERRED-VERIFY] ISC-44: CSS selector of target element
+- [x] ISC-44: CSS selector of target element
 - [DEFERRED-VERIFY] ISC-45: XPath of target element
-- [DEFERRED-VERIFY] ISC-46: Text snippet of target element (≤ 120 chars)
-- [DEFERRED-VERIFY] ISC-47: Tag name of target element
+- [x] ISC-46: Text snippet of target element (≤ 120 chars)
+- [x] ISC-47: Tag name of target element
 - [DEFERRED-VERIFY] ISC-48: Click offset as ratio within the element bounding box
 - [DEFERRED-VERIFY] ISC-49: Document coordinates as last-resort fallback
-- [DEFERRED-VERIFY] ISC-50: Viewport width and height
-- [DEFERRED-VERIFY] ISC-51: Breakpoint label (mobile < 768, tablet 768–1024, desktop > 1024)
+- [x] ISC-50: Viewport width and height
+- [x] ISC-51: Breakpoint label (mobile < 768, tablet 768–1024, desktop > 1024)
 - [DEFERRED-VERIFY] ISC-52: Device pixel ratio
-- [DEFERRED-VERIFY] ISC-53: Browser name and version parsed from user agent
-- [DEFERRED-VERIFY] ISC-54: OS parsed from user agent
+- [x] ISC-53: Browser name and version parsed from user agent
+- [x] ISC-54: OS parsed from user agent
 - [DEFERRED-VERIFY] ISC-55: Reporter user ID
 - [DEFERRED-VERIFY] ISC-56: `created_at` in UTC
 - [DEFERRED-VERIFY] ISC-57: Last ≤ 20 JS errors since page load (`window.onerror` + `unhandledrejection`)
-- [DEFERRED-VERIFY] ISC-58: Queried object post ID and post type
+- [x] ISC-58: Queried object post ID and post type
 - [DEFERRED-VERIFY] ISC-59: Active theme slug
 - [DEFERRED-VERIFY] ISC-60: Anti: captured payload contains any form field value or password input content
 
 ### Anchoring and pins
-- [DEFERRED-VERIFY] ISC-61: Existing items render as pins on their element on page load
-- [DEFERRED-VERIFY] ISC-62: Pins are numbered by item ID sequence on the site
+- [x] ISC-61: Existing items render as pins on their element on page load
+- [x] ISC-62: Pins are numbered by item ID sequence on the site
 - [DEFERRED-VERIFY] ISC-63: Pin color encodes type (4 distinct colors)
 - [DEFERRED-VERIFY] ISC-64: Pin style encodes status (Resolved = green check)
 - [DEFERRED-VERIFY] ISC-65: Resolved pins hidden by default; "Show resolved" toggle reveals them
 - [DEFERRED-VERIFY] ISC-66: Anti: pins are visible when Feedback mode is off
 - [DEFERRED-VERIFY] ISC-67: Pins reposition after window resize within one animation frame
-- [DEFERRED-VERIFY] ISC-68: Pins follow their element after a layout shift (late-loading image above it)
-- [DEFERRED-VERIFY] ISC-69: Pins inside a sticky/fixed header stay attached while scrolling
+- [x] ISC-68: Pins follow their element after a layout shift (late-loading image above it)
+- [x] ISC-69: Pins inside a sticky/fixed header stay attached while scrolling
 - [x] ISC-70: Resolver tries id → selector → XPath → text-snippet → coordinates, in that order
 - [x] ISC-71: Selector generator skips auto-generated/random IDs (fixture tests)
 - [x] ISC-72: Selector generator prefers stable builder attributes (e.g. Elementor `data-id`)
-- [DEFERRED-VERIFY] ISC-73: Pin for an element hidden at the current breakpoint is not drawn
-- [DEFERRED-VERIFY] ISC-74: Sidebar shows "N items at other breakpoints" when any are hidden
+- [x] ISC-73: Pin for an element hidden at the current breakpoint is not drawn
+- [x] ISC-74: Sidebar shows "N items at other breakpoints" when any are hidden
 - [x] ISC-75: Unresolvable items are flagged orphaned, never drawn at a guessed spot
 - [DEFERRED-VERIFY] ISC-76: "Re-anchor" lets a reviewer click a new element and saves the new anchor
-- [DEFERRED-VERIFY] ISC-77: Clicking a pin opens the item popover
+- [x] ISC-77: Clicking a pin opens the item popover
 - [x] ISC-78: `bun test` anchor-resolver suite has ≥ 15 fixtures, all passing
 - [x] ISC-79: Anti: pins from a different page path render on the current page
 - [DEFERRED-VERIFY] ISC-80: Repositioning 50 pins takes < 16 ms (performance.now probe)
 
 ### Sidebar
-- [DEFERRED-VERIFY] ISC-81: Sidebar lists items for the current page
+- [x] ISC-81: Sidebar lists items for the current page
 - [DEFERRED-VERIFY] ISC-82: Scope switch: this page / all pages
 - [DEFERRED-VERIFY] ISC-83: Filter by type
 - [DEFERRED-VERIFY] ISC-84: Filter by status
 - [DEFERRED-VERIFY] ISC-85: "Assigned to me" filter
 - [DEFERRED-VERIFY] ISC-86: Clicking a list item scrolls to its pin and pulses it
-- [DEFERRED-VERIFY] ISC-87: Orphaned items appear in their own section with a Re-anchor action
+- [x] ISC-87: Orphaned items appear in their own section with a Re-anchor action
 
 ### Item thread and status
 - [x] ISC-88: Status enum is exactly Open, In Progress, Ready for Review, Resolved
 - [x] ISC-89: Anti: REST accepts a status outside the enum (expect 400)
-- [DEFERRED-VERIFY] ISC-90: Status change from the popover persists via REST
+- [x] ISC-90: Status change from the popover persists via REST
 - [x] ISC-91: Assignee picker lists only users with `fbc_review`
 - [x] ISC-92: Replies are stored as threaded comments per item
 - [x] ISC-93: Status and assignee changes are logged as activity entries (who, when, from → to)
@@ -191,7 +191,7 @@ Deliver a deactivatable WordPress plugin, "Feedback Collector". Reviewers with t
 - [ ] ISC-116: Bulk action: change status
 - [ ] ISC-117: Bulk action: push to Teamwork
 - [x] ISC-118: Detail screen shows every captured context field
-- [DEFERRED-VERIFY] ISC-119: "View on page" opens `?fbc_item={id}`, enables Feedback mode, scrolls to the pin and opens it
+- [x] ISC-119: "View on page" opens `?fbc_item={id}`, enables Feedback mode, scrolls to the pin and opens it
 - [DEFERRED-VERIFY] ISC-120: View-on-page shows a banner when the current breakpoint differs from the captured one
 - [ ] ISC-121: CSV export of the current filtered list
 
