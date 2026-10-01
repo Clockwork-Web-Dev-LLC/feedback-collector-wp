@@ -24,14 +24,9 @@ Internal QA for **staging** WordPress sites. A teammate turns on Feedback mode, 
 
 ## Teamwork
 
-Recommended setup: create a dedicated Teamwork user (e.g. "QA Bot"), add it only to the projects it needs, and put its API key in `wp-config.php`:
+Create a dedicated Teamwork user (e.g. "QA Bot") and add it only to the projects it needs. Log in to Teamwork as that user, click the profile icon, then **Edit My Details** → **API & Mobile** → **Show your Token**, and copy the key.
 
-```php
-define( 'FBC_TEAMWORK_API_KEY', 'tkn.v1_…' );
-define( 'FBC_TEAMWORK_SITE', 'https://yourcompany.teamwork.com' ); // optional; can also be set in Settings
-```
-
-Saving the key in Settings instead stores it encrypted with the site's auth salt. If the salts change, re-enter it.
+In **Feedback → Settings**, paste the Teamwork site URL and the key. The key is stored **encrypted in the database** and is never shown again or sent to the browser. If the site's security salts change (e.g. after a migration), Settings asks you to paste it again. Advanced, optional: `FBC_TEAMWORK_API_KEY` / `FBC_TEAMWORK_SITE` constants in `wp-config.php` override the stored values.
 
 Then, in **Feedback → Settings**:
 

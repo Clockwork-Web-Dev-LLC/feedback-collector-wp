@@ -4,7 +4,7 @@ project: feedback-collector-wp
 effort: E4
 effort_source: classifier
 phase: verify
-progress: 88/155
+progress: 89/155
 mode: interactive
 started: 2026-09-30T00:00:00-07:00
 updated: 2026-10-01T03:30:04.547Z
@@ -198,7 +198,7 @@ Deliver a deactivatable WordPress plugin, "Feedback Collector". Reviewers with t
 ### Teamwork integration
 - [x] ISC-122: Settings fields: Teamwork site URL and API key
 - [ ] ISC-123: "Test connection" calls `GET /projects/api/v3/me.json` and shows the user name on success
-- [ ] ISC-124: API key read from `FBC_TEAMWORK_API_KEY` in wp-config when defined (preferred); otherwise an encrypted DB option is the fallback
+- [x] ISC-124: API key saved from Settings, stored encrypted in the DB (libsodium); `FBC_TEAMWORK_API_KEY` in wp-config is an optional override
 - [x] ISC-125: Anti: the API key appears in any front-end HTML, JS or REST response
 - [ ] ISC-126: Project dropdown lists all active projects (v3, loops while `meta.page.hasMore`)
 - [ ] ISC-127: Selected project ID persists in site options
@@ -300,6 +300,7 @@ Build order: F1 → (F2 ∥ F3 ∥ F4) → F5 → (F6 ∥ F7) → F8 → F9 → 
 - 2026-09-30: **Teamwork key hygiene** (advisor). Encrypting with `AUTH_KEY` gives little protection, because anyone with server access can read both values, and it breaks when salts differ or rotate. Prefer a wp-config constant. Recommend a dedicated low-privilege Teamwork "QA bot" user added only to the relevant projects, not a personal admin key.
 - 2026-09-30: **refined:** Scope additions not requested by Aaron (cron sync-back, CSV export, auto-push, JS error capture) are marked pending approval rather than committed to v1.
 - 2026-09-30: **Aaron's decisions.** (1) Sync-back is approved: completing a task in Teamwork marks the WP item Resolved (ISC-142–144, plus a "Sync now" button, ISC-155). M3 is in scope. (2) Use a dedicated QA bot Teamwork user, with the key set as `FBC_TEAMWORK_API_KEY` in wp-config. (3) The plugin runs on staging only and is removed before go-live, so ISC-145 (domain migration) is dropped. ISC-156 adds a warning before removal while unpushed items remain.
+- 2026-10-01: **refined:** Aaron wants the API key entered in the WordPress admin and stored in the DB, with no SSH or wp-config editing. The DB path (encrypted with libsodium, keyed from the auth salt) is now the primary flow, and the wp-config constant is an optional override. Settings detects an undecryptable key after a salt change and asks for it again.
 - 2026-09-30: **Delegation floor met:** two background research agents (Atarim features, Teamwork API). Forge is deferred to BUILD, where it auto-includes for E4 coding.
 
 ## Changelog

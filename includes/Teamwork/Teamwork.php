@@ -615,11 +615,15 @@ final class Teamwork {
 		if ( self::key_from_constant() ) {
 			echo '<span class="dashicons dashicons-yes-alt" style="color:#00a32a"></span> ' . esc_html__( 'Using FBC_TEAMWORK_API_KEY from wp-config.php', 'feedback-collector' );
 		} else {
-			$has = '' !== self::decrypt( (string) $s['key_enc'] );
-			printf( '<input type="password" id="fbc-tw-key" name="tw_key" class="regular-text" autocomplete="new-password" placeholder="%s" />', esc_attr( $has ? __( '•••••••• saved — leave blank to keep', 'feedback-collector' ) : '' ) );
+			$stored = (string) $s['key_enc'];
+			$has    = '' !== self::decrypt( $stored );
+			if ( '' !== $stored && ! $has ) {
+				echo '<div class="notice inline notice-warning"><p>' . esc_html__( 'The saved key can no longer be read (this site’s security salts changed, e.g. after a migration). Paste the key again.', 'feedback-collector' ) . '</p></div>';
+			}
+			printf( '<input type="password" id="fbc-tw-key" name="tw_key" class="regular-text" autocomplete="new-password" placeholder="%s" />', esc_attr( $has ? __( '•••••••• saved — leave blank to keep', 'feedback-collector' ) : __( 'Paste the Teamwork API key', 'feedback-collector' ) ) );
 			echo '<p class="description">' . wp_kses(
-				__( 'Recommended: use a dedicated Teamwork “QA bot” user that is only on the projects it needs, and put its key in <code>wp-config.php</code> as <code>define( \'FBC_TEAMWORK_API_KEY\', \'…\' );</code> instead of saving it here.', 'feedback-collector' ),
-				array( 'code' => array() )
+				__( 'Stored encrypted in the database and never shown again or sent to the browser. In Teamwork: profile icon → <strong>Edit My Details</strong> → <strong>API &amp; Mobile</strong> → <strong>Show your Token</strong>. Use a dedicated “QA Bot” user that is only on the projects it needs.', 'feedback-collector' ),
+				array( 'strong' => array() )
 			) . '</p>';
 		}
 		echo '</td></tr>';
