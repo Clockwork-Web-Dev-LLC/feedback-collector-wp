@@ -337,7 +337,7 @@ final class Rest {
 	public static function present( array $item ): array {
 		$reporter = get_userdata( $item['reporter_id'] );
 		$assignee = $item['assignee_id'] ? get_userdata( $item['assignee_id'] ) : false;
-		return array(
+		$out      = array(
 			'id'            => $item['id'],
 			'type'          => $item['type'],
 			'status'        => $item['status'],
@@ -361,6 +361,7 @@ final class Rest {
 			'updated_at'    => mysql_to_rfc3339( $item['updated_at'] ),
 			'can_delete'    => self::can_delete( $item ),
 		);
+		return (array) apply_filters( 'fbc_present_item', $out, $item );
 	}
 
 	/**

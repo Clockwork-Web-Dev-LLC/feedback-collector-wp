@@ -223,7 +223,7 @@ final class Items {
 			return false;
 		}
 
-		$allowed = array( 'title', 'description', 'status', 'priority', 'assignee_id', 'type', 'anchor', 'tw_task_id', 'tw_sync_state', 'tw_sync_error' );
+		$allowed = array( 'title', 'description', 'status', 'priority', 'assignee_id', 'type', 'anchor', 'tw_task_id', 'tw_project_id', 'tw_sync_state', 'tw_sync_error' );
 		$row     = array_intersect_key( $changes, array_flip( $allowed ) );
 		if ( array_key_exists( 'anchor', $row ) ) {
 			$row['anchor'] = null === $row['anchor'] ? null : wp_json_encode( $row['anchor'] );
@@ -248,7 +248,7 @@ final class Items {
 						$labels['status'][ $row['status'] ] ?? $row['status']
 					),
 					'activity',
-					(int) ( $changes['_actor_id'] ?? get_current_user_id() )
+					array_key_exists( '_actor_id', $changes ) ? (int) $changes['_actor_id'] : null
 				);
 			}
 			if ( isset( $row['assignee_id'] ) && (int) $row['assignee_id'] !== (int) $before['assignee_id'] ) {
@@ -286,16 +286,16 @@ final class Items {
 	 * @param int    $item_id Item ID.
 	 * @param string $body    Comment body (already sanitized).
 	 * @param string $kind    'comment' or 'activity'.
-	 * @param int    $user_id Author; defaults to current user.
+	 * @param int|null $user_id Author; null means the current user, 0 means Teamwork sync.
 	 */
-	public static function add_comment( int $item_id, string $body, string $kind = 'comment', int $user_id = 0 ): int {
+	public static function add_comment( int $item_id, string $body, string $kind = 'comment', ?int $user_id = null ): int {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		$ok = $wpdb->insert(
 			self::comments_table(),
 			array(
 				'item_id'    => $item_id,
-				'user_id'    => $user_id ?: get_current_user_id(),
+				'user_id'    => $user_id ?? get_current_user_id(),
 				'kind'       => 'activity' === $kind ? 'activity' : 'comment',
 				'body'       => $body,
 				'created_at' => current_time( 'mysql', true ),
@@ -322,7 +322,7 @@ final class Items {
 					'kind'       => $row['kind'],
 					'body'       => $row['body'],
 					'user_id'    => (int) $row['user_id'],
-					'user_name'  => $user ? $user->display_name : __( 'Unknown', 'feedback-collector' ),
+					'user_name'  => $user ? $user->display_name : ( 0 === (int) $row['user_id'] ? 'Teamwork' : __( 'Unknown', 'feedback-collector' ) ),
 					'created_at' => mysql_to_rfc3339( $row['created_at'] ),
 				);
 			},
@@ -337,7 +337,7 @@ final class Items {
 	 * @return array<string, mixed>
 	 */
 	public static function hydrate( array $row ): array {
-		foreach ( array( 'id', 'reporter_id', 'assignee_id', 'tw_task_id' ) as $int_field ) {
+		foreach ( array( 'id', 'reporter_id', 'assignee_id', 'tw_task_id', 'tw_project_id' ) as $int_field ) {
 			$row[ $int_field ] = (int) $row[ $int_field ];
 		}
 		$row['anchor']  = $row['anchor'] ? json_decode( (string) $row['anchor'], true ) : null;

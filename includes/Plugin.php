@@ -21,6 +21,7 @@ final class Plugin {
 		Install::maybe_upgrade();
 		Rest::register();
 		Frontend::register();
+		Teamwork\Teamwork::register();
 		if ( is_admin() ) {
 			Admin\Admin::register();
 		}

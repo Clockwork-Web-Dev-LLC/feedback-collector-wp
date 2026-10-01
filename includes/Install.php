@@ -74,6 +74,7 @@ final class Install {
 				reporter_id bigint(20) unsigned NOT NULL DEFAULT 0,
 				assignee_id bigint(20) unsigned NOT NULL DEFAULT 0,
 				tw_task_id bigint(20) unsigned NOT NULL DEFAULT 0,
+				tw_project_id bigint(20) unsigned NOT NULL DEFAULT 0,
 				tw_sync_state varchar(20) NOT NULL DEFAULT '',
 				tw_sync_error text NULL,
 				created_at datetime NOT NULL DEFAULT '0000-00-00 00:00:00',

@@ -587,7 +587,10 @@ export class App {
       { class: 'card popover', role: 'dialog', 'aria-label': `Feedback #${item.id}` },
       h('div', { class: 'head' }, h('span', { class: 'chip' }, h('span', { class: `dot ${item.type}` }), `${labels.type[item.type]} #${item.id}`), h('button', { class: 'x', type: 'button', 'aria-label': 'Close', text: '×', onclick: () => this.closeCard() })),
       h('div', { class: 't', style: 'font-weight:700;font-size:15px;margin-bottom:4px', text: item.title }),
-      h('div', { class: 'meta', text: `${item.reporter_name} · ${relativeTime(item.created_at)}${item.breakpoint ? ` · ${item.breakpoint}` : ''}${item.tw_task_id ? ' · in Teamwork' : ''}` }),
+      h('div', { class: 'meta', text: `${item.reporter_name} · ${relativeTime(item.created_at)}${item.breakpoint ? ` · ${item.breakpoint}` : ''}` }),
+      item.tw_task_url
+        ? h('div', { class: 'meta' }, h('a', { href: item.tw_task_url, target: '_blank', rel: 'noopener', text: `Teamwork task #${item.tw_task_id} ↗` }), item.status === 'resolved' ? ' · completed' : ' · status syncs from Teamwork')
+        : null,
       mismatch,
       orphan,
       item.description ? h('p', { class: 'desc', text: item.description }) : null,

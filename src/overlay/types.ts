@@ -47,6 +47,7 @@ export interface Item {
   assignee_id: number;
   assignee_name: string;
   tw_task_id: number;
+  tw_task_url: string;
   tw_sync_state: string;
   created_at: string;
   updated_at: string;
