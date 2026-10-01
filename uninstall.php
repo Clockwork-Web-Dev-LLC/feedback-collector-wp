@@ -17,7 +17,7 @@ $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}fbc_comments" );
 $wpdb->query( "DROP TABLE IF EXISTS {$wpdb->prefix}fbc_items" );
 // phpcs:enable
 
-foreach ( array( 'fbc_db_version', 'fbc_delete_on_uninstall', 'fbc_review_roles', 'fbc_teamwork' ) as $option ) {
+foreach ( array( 'fbc_db_version', 'fbc_delete_on_uninstall', 'fbc_review_roles', 'fbc_teamwork', 'fbc_tw_state', 'fbc_branding', 'fbc_assignee_source' ) as $option ) {
 	delete_option( $option );
 }
 

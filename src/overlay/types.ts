@@ -46,6 +46,7 @@ export interface Item {
   reporter_name: string;
   assignee_id: number;
   assignee_name: string;
+  assignee_locked?: boolean;
   tw_task_id: number;
   tw_task_url: string;
   tw_sync_state: string;
@@ -79,7 +80,7 @@ export interface Config {
   pagePath?: string;
   adminUrl: string;
   user: { id: number; name: string; isAdmin: boolean };
-  reviewers: Reviewer[];
+  assignees: { source: 'teamwork' | 'wordpress'; people: Reviewer[]; error: string; me: number };
   labels: {
     type: Record<ItemType, string>;
     status: Record<ItemStatus, string>;

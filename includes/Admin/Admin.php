@@ -7,6 +7,7 @@
 
 namespace FeedbackCollector\Admin;
 
+use FeedbackCollector\Assignees;
 use FeedbackCollector\Branding;
 use FeedbackCollector\Items;
 use FeedbackCollector\Rest;
@@ -254,18 +255,30 @@ final class Admin {
 				printf( '<form method="post" action="%s">', esc_url( admin_url( 'admin-post.php' ) ) );
 				wp_nonce_field( 'fbc_update_' . $item['id'] );
 				printf( '<input type="hidden" name="action" value="fbc_update" /><input type="hidden" name="id" value="%d" />', (int) $item['id'] );
-				$people = array( '0' => __( 'Unassigned', 'feedback-collector' ) );
-				foreach ( Rest::reviewer_list() as $r ) {
-					$people[ (string) $r['id'] ] = $r['name'];
-				}
 				foreach ( array(
-					'status'      => array( __( 'Status', 'feedback-collector' ), $labels['status'], $item['status'] ),
-					'priority'    => array( __( 'Priority', 'feedback-collector' ), $labels['priority'], $item['priority'] ),
-					'type'        => array( __( 'Type', 'feedback-collector' ), $labels['type'], $item['type'] ),
-					'assignee_id' => array( __( 'Assignee', 'feedback-collector' ), $people, (string) $item['assignee_id'] ),
+					'status'   => array( __( 'Status', 'feedback-collector' ), $labels['status'], $item['status'] ),
+					'priority' => array( __( 'Priority', 'feedback-collector' ), $labels['priority'], $item['priority'] ),
+					'type'     => array( __( 'Type', 'feedback-collector' ), $labels['type'], $item['type'] ),
 				) as $field => $def ) {
 					echo '<p><label><strong>' . esc_html( $def[0] ) . '</strong><br />' . self::select( $field, $def[1], (string) $def[2] ) . '</label></p>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- select() escapes.
 				}
+				$assignees = Assignees::options();
+				$source    = 'teamwork' === $assignees['source'] ? __( 'Teamwork', 'feedback-collector' ) : __( 'WordPress', 'feedback-collector' );
+				echo '<p><strong>' . esc_html__( 'Assignee', 'feedback-collector' ) . '</strong> <span class="fbc-bp">' . esc_html( $source ) . '</span><br />';
+				if ( Assignees::locked( $item ) ) {
+					$name = Assignees::name( $item );
+					echo esc_html( '' !== $name ? $name : __( 'Unassigned', 'feedback-collector' ) ) . '<br /><span class="description">' . esc_html__( 'In Teamwork now: change the assignee there.', 'feedback-collector' ) . '</span>';
+				} else {
+					$people = array( '0' => __( 'Unassigned', 'feedback-collector' ) );
+					foreach ( $assignees['people'] as $r ) {
+						$people[ (string) $r['id'] ] = $r['name'];
+					}
+					echo self::select( 'assignee_id', $people, (string) Assignees::selected( $item ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- select() escapes.
+					if ( '' !== $assignees['error'] ) {
+						echo '<br /><span class="description">' . esc_html( $assignees['error'] ) . '</span>';
+					}
+				}
+				echo '</p>';
 				submit_button( __( 'Save', 'feedback-collector' ), 'primary', 'submit', false );
 				echo '</form>';
 				Layout::card_close();
@@ -312,10 +325,14 @@ final class Admin {
 				$changes[ $field ] = $value;
 			}
 		}
-		if ( isset( $_POST['assignee_id'] ) ) {
-			$assignee = absint( $_POST['assignee_id'] );
-			if ( 0 === $assignee || user_can( $assignee, CAP ) ) {
-				$changes['assignee_id'] = $assignee;
+		$item = Items::get( $id );
+		if ( $item && isset( $_POST['assignee_id'] ) && ! Assignees::locked( $item ) ) {
+			$wanted = absint( $_POST['assignee_id'] );
+			if ( Assignees::selected( $item ) !== $wanted ) {
+				$assignee = Assignees::resolve( $wanted );
+				if ( ! is_wp_error( $assignee ) ) {
+					$changes = array_merge( $changes, $assignee );
+				}
 			}
 		}
 		Items::update( $id, $changes );
@@ -375,6 +392,20 @@ final class Admin {
 					);
 				}
 				echo '<p class="description">' . esc_html__( 'Reviewers see the Feedback toggle in the admin bar and can be assigned items.', 'feedback-collector' ) . '</p></fieldset></td></tr>';
+				$pref    = Assignees::preference();
+				$tw_note = 'teamwork' === $pref && 'wordpress' === Assignees::source()
+					? '<p class="description">' . esc_html__( 'Teamwork isn’t connected with a project yet, so WordPress users are used until it is.', 'feedback-collector' ) . '</p>'
+					: '';
+				printf(
+					'<tr><th scope="row">%1$s</th><td><fieldset><label><input type="radio" name="assignee_source" value="teamwork"%2$s /> %3$s</label><br /><label><input type="radio" name="assignee_source" value="wordpress"%4$s /> %5$s</label><p class="description">%6$s</p>%7$s</fieldset></td></tr>',
+					esc_html__( 'Assign feedback to', 'feedback-collector' ),
+					checked( $pref, 'teamwork', false ),
+					esc_html__( 'Teamwork project members (recommended)', 'feedback-collector' ),
+					checked( $pref, 'wordpress', false ),
+					esc_html__( 'WordPress users on this site', 'feedback-collector' ),
+					esc_html__( 'Who appears in the Assignee dropdowns. With Teamwork, the person you pick is assigned on the Teamwork task directly; once pushed, change the assignee in Teamwork.', 'feedback-collector' ),
+					$tw_note // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped above.
+				);
 				printf(
 					'<tr><th scope="row">%1$s</th><td><label><input type="checkbox" name="delete_on_uninstall" value="1"%2$s /> %3$s</label></td></tr>',
 					esc_html__( 'Uninstall', 'feedback-collector' ),
@@ -418,6 +449,7 @@ final class Admin {
 		}
 		update_option( 'fbc_review_roles', $roles, false );
 		update_option( 'fbc_delete_on_uninstall', ! empty( $_POST['delete_on_uninstall'] ), false );
+		update_option( Assignees::OPTION, isset( $_POST['assignee_source'] ) && 'wordpress' === $_POST['assignee_source'] ? 'wordpress' : 'teamwork', false );
 
 		do_action( 'fbc_save_settings' );
 

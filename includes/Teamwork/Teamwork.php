@@ -332,7 +332,10 @@ final class Teamwork {
 			$task['tagIds'] = array( $tag_id );
 		}
 
-		if ( $item['assignee_id'] ) {
+		if ( $item['tw_assignee_id'] ) {
+			// Picked from the Teamwork project directly: no email matching needed.
+			$task['assignees'] = array( 'userIds' => array( (int) $item['tw_assignee_id'] ) );
+		} elseif ( $item['assignee_id'] ) {
 			$person = self::person_for_user( (int) $item['assignee_id'], $client, (int) $s['project_id'] );
 			if ( $person ) {
 				$task['assignees'] = array( 'userIds' => array( $person ) );

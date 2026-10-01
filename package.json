@@ -7,6 +7,7 @@
     "build": "bun build src/overlay/main.ts --outfile dist/overlay.js --minify --target browser --format iife",
     "watch": "bun build src/overlay/main.ts --outfile dist/overlay.js --target browser --format iife --watch",
     "test": "bun test",
+    "test:wp": "sh tests/wp/run.sh",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

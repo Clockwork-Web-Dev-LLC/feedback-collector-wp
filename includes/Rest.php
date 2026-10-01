@@ -127,7 +127,8 @@ final class Rest {
 			}
 		}
 		if ( null !== $request->get_param( 'assignee_id' ) ) {
-			$args['assignee_id'] = absint( $request->get_param( 'assignee_id' ) );
+			$field          = 'teamwork' === Assignees::source() ? 'tw_assignee_id' : 'assignee_id';
+			$args[ $field ] = absint( $request->get_param( 'assignee_id' ) );
 		}
 
 		$result = Items::query( $args );
@@ -174,16 +175,16 @@ final class Rest {
 		if ( ! in_array( $priority, Items::PRIORITIES, true ) ) {
 			return self::invalid( 'priority', __( 'Unknown priority.', 'feedback-collector' ) );
 		}
-		$assignee = absint( $p['assignee_id'] ?? 0 );
-		if ( $assignee && ! user_can( $assignee, CAP ) ) {
-			return self::invalid( 'assignee_id', __( 'That user cannot be assigned feedback.', 'feedback-collector' ) );
+		$assignee = Assignees::resolve( absint( $p['assignee_id'] ?? 0 ) );
+		if ( is_wp_error( $assignee ) ) {
+			return self::invalid( 'assignee_id', $assignee->get_error_message() );
 		}
 
 		$context    = self::sanitize_context( is_array( $p['context'] ?? null ) ? $p['context'] : array() );
 		$breakpoint = $context['breakpoint'] ?? '';
 
 		$id = Items::create(
-			array(
+			$assignee + array(
 				'type'        => $type,
 				'priority'    => $priority,
 				'title'       => mb_substr( $title, 0, 255 ),
@@ -194,7 +195,6 @@ final class Rest {
 				'anchor'      => is_array( $p['anchor'] ?? null ) ? self::sanitize_anchor( $p['anchor'] ) : null,
 				'context'     => $context,
 				'breakpoint'  => $breakpoint,
-				'assignee_id' => $assignee,
 			)
 		);
 		if ( ! $id ) {
@@ -247,11 +247,17 @@ final class Rest {
 			}
 		}
 		if ( array_key_exists( 'assignee_id', $p ) ) {
-			$assignee = absint( $p['assignee_id'] );
-			if ( $assignee && ! user_can( $assignee, CAP ) ) {
-				return self::invalid( 'assignee_id', __( 'That user cannot be assigned feedback.', 'feedback-collector' ) );
+			$wanted = absint( $p['assignee_id'] );
+			if ( Assignees::selected( $item ) !== $wanted ) {
+				if ( Assignees::locked( $item ) ) {
+					return self::invalid( 'assignee_id', __( 'This item is in Teamwork now; change the assignee there.', 'feedback-collector' ) );
+				}
+				$assignee = Assignees::resolve( $wanted );
+				if ( is_wp_error( $assignee ) ) {
+					return self::invalid( 'assignee_id', $assignee->get_error_message() );
+				}
+				$changes = array_merge( $changes, $assignee );
 			}
-			$changes['assignee_id'] = $assignee;
 		}
 		if ( array_key_exists( 'anchor', $p ) ) {
 			$changes['anchor'] = is_array( $p['anchor'] ) ? self::sanitize_anchor( $p['anchor'] ) : null;
@@ -312,7 +318,7 @@ final class Rest {
 	 * GET /reviewers — users who can be assigned.
 	 */
 	public static function reviewers(): WP_REST_Response {
-		return new WP_REST_Response( self::reviewer_list() );
+		return new WP_REST_Response( Assignees::options() );
 	}
 
 	/**
@@ -345,30 +351,30 @@ final class Rest {
 	 */
 	public static function present( array $item ): array {
 		$reporter = get_userdata( $item['reporter_id'] );
-		$assignee = $item['assignee_id'] ? get_userdata( $item['assignee_id'] ) : false;
 		$out      = array(
-			'id'            => $item['id'],
-			'type'          => $item['type'],
-			'status'        => $item['status'],
-			'priority'      => $item['priority'],
-			'title'         => $item['title'],
-			'description'   => $item['description'],
-			'page_path'     => $item['page_path'],
-			'page_query'    => $item['page_query'],
-			'page_title'    => $item['page_title'],
-			'page_url'      => Items::page_url( $item ),
-			'anchor'        => $item['anchor'],
-			'context'       => $item['context'],
-			'breakpoint'    => $item['breakpoint'],
-			'reporter_id'   => $item['reporter_id'],
-			'reporter_name' => $reporter ? $reporter->display_name : '',
-			'assignee_id'   => $item['assignee_id'],
-			'assignee_name' => $assignee ? $assignee->display_name : '',
-			'tw_task_id'    => $item['tw_task_id'],
-			'tw_sync_state' => $item['tw_sync_state'],
-			'created_at'    => mysql_to_rfc3339( $item['created_at'] ),
-			'updated_at'    => mysql_to_rfc3339( $item['updated_at'] ),
-			'can_delete'    => self::can_delete( $item ),
+			'id'              => $item['id'],
+			'type'            => $item['type'],
+			'status'          => $item['status'],
+			'priority'        => $item['priority'],
+			'title'           => $item['title'],
+			'description'     => $item['description'],
+			'page_path'       => $item['page_path'],
+			'page_query'      => $item['page_query'],
+			'page_title'      => $item['page_title'],
+			'page_url'        => Items::page_url( $item ),
+			'anchor'          => $item['anchor'],
+			'context'         => $item['context'],
+			'breakpoint'      => $item['breakpoint'],
+			'reporter_id'     => $item['reporter_id'],
+			'reporter_name'   => $reporter ? $reporter->display_name : '',
+			'assignee_id'     => Assignees::selected( $item ),
+			'assignee_name'   => Assignees::name( $item ),
+			'assignee_locked' => Assignees::locked( $item ),
+			'tw_task_id'      => $item['tw_task_id'],
+			'tw_sync_state'   => $item['tw_sync_state'],
+			'created_at'      => mysql_to_rfc3339( $item['created_at'] ),
+			'updated_at'      => mysql_to_rfc3339( $item['updated_at'] ),
+			'can_delete'      => self::can_delete( $item ),
 		);
 		return (array) apply_filters( 'fbc_present_item', $out, $item );
 	}

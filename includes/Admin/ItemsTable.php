@@ -7,6 +7,7 @@
 
 namespace FeedbackCollector\Admin;
 
+use FeedbackCollector\Assignees;
 use FeedbackCollector\Items;
 use FeedbackCollector\Rest;
 
@@ -108,9 +109,15 @@ final class ItemsTable extends \WP_List_Table {
 		// phpcs:enable
 
 		$per_page = 20;
-		$result   = Items::query(
+		$filters  = array_filter( self::filters(), static fn( $v ) => '' !== $v );
+		// The assignee filter holds an ID from the active source (Teamwork person or WP user).
+		if ( isset( $filters['assignee_id'] ) && 'teamwork' === Assignees::source() ) {
+			$filters['tw_assignee_id'] = $filters['assignee_id'];
+			unset( $filters['assignee_id'] );
+		}
+		$result = Items::query(
 			array_merge(
-				array_filter( self::filters(), static fn( $v ) => '' !== $v ),
+				$filters,
 				array(
 					'orderby'  => $orderby,
 					'order'    => $order,
@@ -145,7 +152,7 @@ final class ItemsTable extends \WP_List_Table {
 		$this->dropdown( 'fbc_status', __( 'All statuses', 'feedback-collector' ), $labels['status'], $f['status'] );
 
 		$people = array( '0' => __( 'Unassigned', 'feedback-collector' ) );
-		foreach ( Rest::reviewer_list() as $r ) {
+		foreach ( Assignees::options()['people'] as $r ) {
 			$people[ (string) $r['id'] ] = $r['name'];
 		}
 		$this->dropdown( 'fbc_assignee', __( 'Any assignee', 'feedback-collector' ), $people, $f['assignee_id'] );
@@ -241,8 +248,8 @@ final class ItemsTable extends \WP_List_Table {
 			case 'priority':
 				return esc_html( $labels['priority'][ $item['priority'] ] ?? $item['priority'] );
 			case 'assignee':
-				$u = $item['assignee_id'] ? get_userdata( (int) $item['assignee_id'] ) : false;
-				return $u ? esc_html( $u->display_name ) : '<span aria-hidden="true">—</span>';
+				$name = Assignees::name( $item );
+				return '' !== $name ? esc_html( $name ) : '<span aria-hidden="true">—</span>';
 			case 'page':
 				return sprintf( '<code>%s</code>%s', esc_html( $item['page_path'] ), $item['breakpoint'] ? ' <span class="fbc-bp">' . esc_html( $item['breakpoint'] ) . '</span>' : '' );
 			case 'reporter':

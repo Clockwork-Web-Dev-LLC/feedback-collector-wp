@@ -162,6 +162,10 @@ final class Items {
 			$where[]  = 'assignee_id = %d';
 			$params[] = (int) $args['assignee_id'];
 		}
+		if ( isset( $args['tw_assignee_id'] ) && '' !== $args['tw_assignee_id'] ) {
+			$where[]  = 'tw_assignee_id = %d';
+			$params[] = (int) $args['tw_assignee_id'];
+		}
 		if ( ! empty( $args['search'] ) ) {
 			$like     = '%' . $wpdb->esc_like( (string) $args['search'] ) . '%';
 			$where[]  = '(title LIKE %s OR description LIKE %s)';
@@ -230,22 +234,24 @@ final class Items {
 		$ok = $wpdb->insert(
 			self::table(),
 			array(
-				'type'        => $data['type'],
-				'status'      => 'open',
-				'priority'    => $data['priority'] ?? 'medium',
-				'title'       => $data['title'],
-				'description' => $data['description'] ?? '',
-				'page_path'   => $path,
-				'page_hash'   => md5( $path ),
-				'page_query'  => $data['page_query'] ?? '',
-				'page_title'  => $data['page_title'] ?? '',
-				'anchor'      => isset( $data['anchor'] ) ? wp_json_encode( $data['anchor'] ) : null,
-				'context'     => isset( $data['context'] ) ? wp_json_encode( $data['context'] ) : null,
-				'breakpoint'  => $data['breakpoint'] ?? '',
-				'reporter_id' => get_current_user_id(),
-				'assignee_id' => (int) ( $data['assignee_id'] ?? 0 ),
-				'created_at'  => $now,
-				'updated_at'  => $now,
+				'type'             => $data['type'],
+				'status'           => 'open',
+				'priority'         => $data['priority'] ?? 'medium',
+				'title'            => $data['title'],
+				'description'      => $data['description'] ?? '',
+				'page_path'        => $path,
+				'page_hash'        => md5( $path ),
+				'page_query'       => $data['page_query'] ?? '',
+				'page_title'       => $data['page_title'] ?? '',
+				'anchor'           => isset( $data['anchor'] ) ? wp_json_encode( $data['anchor'] ) : null,
+				'context'          => isset( $data['context'] ) ? wp_json_encode( $data['context'] ) : null,
+				'breakpoint'       => $data['breakpoint'] ?? '',
+				'reporter_id'      => get_current_user_id(),
+				'assignee_id'      => (int) ( $data['assignee_id'] ?? 0 ),
+				'tw_assignee_id'   => (int) ( $data['tw_assignee_id'] ?? 0 ),
+				'tw_assignee_name' => (string) ( $data['tw_assignee_name'] ?? '' ),
+				'created_at'       => $now,
+				'updated_at'       => $now,
 			)
 		);
 		return $ok ? (int) $wpdb->insert_id : 0;
@@ -264,7 +270,7 @@ final class Items {
 			return false;
 		}
 
-		$allowed = array( 'title', 'description', 'status', 'priority', 'assignee_id', 'type', 'anchor', 'tw_task_id', 'tw_project_id', 'tw_sync_state', 'tw_sync_error' );
+		$allowed = array( 'title', 'description', 'status', 'priority', 'assignee_id', 'tw_assignee_id', 'tw_assignee_name', 'type', 'anchor', 'tw_task_id', 'tw_project_id', 'tw_sync_state', 'tw_sync_error' );
 		$row     = array_intersect_key( $changes, array_flip( $allowed ) );
 		if ( array_key_exists( 'anchor', $row ) ) {
 			$row['anchor'] = null === $row['anchor'] ? null : wp_json_encode( $row['anchor'] );
@@ -299,6 +305,16 @@ final class Items {
 					$user
 						/* translators: %s: user display name */
 						? sprintf( __( 'assigned to %s', 'feedback-collector' ), $user->display_name )
+						: __( 'removed the assignee', 'feedback-collector' ),
+					'activity'
+				);
+			}
+			if ( isset( $row['tw_assignee_id'] ) && (int) $row['tw_assignee_id'] !== (int) $before['tw_assignee_id'] ) {
+				self::add_comment(
+					$id,
+					$row['tw_assignee_id']
+						/* translators: %s: Teamwork person name */
+						? sprintf( __( 'assigned to %s', 'feedback-collector' ), (string) ( $row['tw_assignee_name'] ?? '' ) )
 						: __( 'removed the assignee', 'feedback-collector' ),
 					'activity'
 				);
@@ -378,7 +394,7 @@ final class Items {
 	 * @return array<string, mixed>
 	 */
 	public static function hydrate( array $row ): array {
-		foreach ( array( 'id', 'reporter_id', 'assignee_id', 'tw_task_id', 'tw_project_id' ) as $int_field ) {
+		foreach ( array( 'id', 'reporter_id', 'assignee_id', 'tw_assignee_id', 'tw_task_id', 'tw_project_id' ) as $int_field ) {
 			$row[ $int_field ] = (int) $row[ $int_field ];
 		}
 		$row['anchor']  = $row['anchor'] ? json_decode( (string) $row['anchor'], true ) : null;

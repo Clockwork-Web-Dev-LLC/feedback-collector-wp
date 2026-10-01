@@ -13,6 +13,8 @@
 		<exclude name="WordPress.Files.FileName"/>
 		<!-- Short ternaries are used deliberately for fallbacks. -->
 		<exclude name="Universal.Operators.DisallowShortTernary"/>
+		<!-- Its auto-fix rewrites the string 'wordpress' to 'WordPress', which breaks identifiers like the assignee source value. -->
+		<exclude name="WordPress.WP.CapitalPDangit"/>
 	</rule>
 	<rule ref="WordPress.WP.I18n">
 		<properties>

@@ -223,6 +223,30 @@ final class Client {
 	}
 
 	/**
+	 * People on a project, for assignee pickers.
+	 *
+	 * @param int $project_id Project.
+	 * @return array<int, array{id: int, name: string, email: string}>|WP_Error Sorted by name.
+	 */
+	public function people( int $project_id ): array|WP_Error {
+		$rows = $this->paginate( "/projects/api/v3/projects/{$project_id}/people.json", 'people' );
+		if ( is_wp_error( $rows ) ) {
+			return $rows;
+		}
+		$out = array();
+		foreach ( $rows as $person ) {
+			$name  = trim( (string) ( $person['firstName'] ?? '' ) . ' ' . (string) ( $person['lastName'] ?? '' ) );
+			$out[] = array(
+				'id'    => (int) $person['id'],
+				'name'  => '' !== $name ? $name : (string) ( $person['email'] ?? $person['emailAddress'] ?? '#' . $person['id'] ),
+				'email' => strtolower( (string) ( $person['email'] ?? $person['emailAddress'] ?? '' ) ),
+			);
+		}
+		usort( $out, static fn( $a, $b ) => strcasecmp( $a['name'], $b['name'] ) );
+		return $out;
+	}
+
+	/**
 	 * People on a project, keyed by lowercase email.
 	 *
 	 * @param int $project_id Project.

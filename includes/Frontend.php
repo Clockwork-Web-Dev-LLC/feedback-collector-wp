@@ -133,7 +133,7 @@ final class Frontend {
 				'name'    => $user->display_name,
 				'isAdmin' => current_user_can( 'manage_options' ),
 			),
-			'reviewers' => Rest::reviewer_list(),
+			'assignees' => Assignees::options() + array( 'me' => Assignees::me() ),
 			'labels'    => Items::labels(),
 			'page'      => array(
 				'postId'   => $queried instanceof \WP_Post ? (int) $queried->ID : 0,

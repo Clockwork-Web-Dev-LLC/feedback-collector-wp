@@ -415,6 +415,15 @@ export class App {
 
   // ---------------------------------------------------------------- cards
 
+  /** Assignee picker options from the active source (Teamwork project members or WordPress users). */
+  private assigneeOptions(): Array<[string, string]> {
+    return [['0', 'Unassigned'], ...this.cfg.assignees.people.map((p): [string, string] => [String(p.id), p.name])];
+  }
+
+  private assigneeLabel(): string {
+    return this.cfg.assignees.source === 'teamwork' ? 'Assignee (Teamwork)' : 'Assignee';
+  }
+
   /** createAnchor throws for overlay, detached or shadow-DOM elements; never let that break the click. */
   private safeAnchor(el: Element, x: number, y: number): Anchor | null {
     try {
@@ -487,7 +496,7 @@ export class App {
     const title = h('input', { type: 'text', name: 'title', maxlength: 255, required: true, placeholder: 'What needs attention?', autocomplete: 'off' });
     const desc = h('textarea', { name: 'description', placeholder: 'Details, steps to reproduce, what you expected… (optional)' });
     const priority = select('priority', (Object.keys(labels.priority) as Priority[]).map((p) => [p, labels.priority[p]]), 'medium');
-    const assignee = select('assignee_id', [['0', 'Unassigned'], ...this.cfg.reviewers.map((r): [string, string] => [String(r.id), r.name])], '0');
+    const assignee = select('assignee_id', this.assigneeOptions(), '0');
     const error = h('div', { class: 'error', role: 'alert' });
     const submit = h('button', { class: 'btn primary', type: 'submit', text: 'Add' });
 
@@ -506,7 +515,7 @@ export class App {
       error,
       h('label', { class: 'field' }, h('span', { text: 'Description' }), desc),
       h('div', { class: 'row' }, h('label', { class: 'field' }, h('span', { text: 'Type' }), typeSelect), h('label', { class: 'field' }, h('span', { text: 'Priority' }), priority)),
-      h('label', { class: 'field' }, h('span', { text: 'Assignee' }), assignee),
+      h('label', { class: 'field' }, h('span', { text: this.assigneeLabel() }), assignee),
       h('div', { class: 'actions' }, h('button', { class: 'btn link', type: 'button', text: 'Cancel', onclick: () => this.closeCard() }), submit)
     );
 
@@ -575,7 +584,7 @@ export class App {
     const status = select('status', (Object.keys(labels.status) as ItemStatus[]).map((k) => [k, labels.status[k]]), item.status, {
       onchange: () => void save({ status: status.value as ItemStatus }),
     });
-    const assignee = select('assignee_id', [['0', 'Unassigned'], ...this.cfg.reviewers.map((r): [string, string] => [String(r.id), r.name])], String(item.assignee_id), {
+    const assignee = select('assignee_id', this.assigneeOptions(), String(item.assignee_id), {
       onchange: () => void save({ assignee_id: Number(assignee.value) }),
     });
     const priority = select('priority', (Object.keys(labels.priority) as Priority[]).map((k) => [k, labels.priority[k]]), item.priority, {
@@ -611,7 +620,15 @@ export class App {
       orphan,
       item.description ? h('p', { class: 'desc', text: item.description }) : null,
       h('div', { class: 'row' }, h('label', { class: 'field' }, h('span', { text: 'Status' }), status), h('label', { class: 'field' }, h('span', { text: 'Priority' }), priority)),
-      h('label', { class: 'field' }, h('span', { text: 'Assignee' }), assignee),
+      item.assignee_locked
+        ? h(
+            'div',
+            { class: 'field' },
+            h('span', { text: this.assigneeLabel() }),
+            h('div', { text: item.assignee_name || 'Unassigned' }),
+            h('div', { class: 'meta', text: 'In Teamwork now: change the assignee there.' })
+          )
+        : h('label', { class: 'field' }, h('span', { text: this.assigneeLabel() }), assignee),
       thread,
       h('label', { class: 'field' }, reply),
       h(
@@ -798,7 +815,7 @@ export class App {
     if (f.type && item.type !== f.type) return false;
     if (f.status === 'unresolved' && item.status === 'resolved') return false;
     if (f.status && f.status !== 'unresolved' && item.status !== f.status) return false;
-    if (f.mine && item.assignee_id !== this.cfg.user.id) return false;
+    if (f.mine && (!this.cfg.assignees.me || item.assignee_id !== this.cfg.assignees.me)) return false;
     return true;
   }
 

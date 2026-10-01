@@ -18,7 +18,7 @@ namespace FeedbackCollector;
 defined( 'ABSPATH' ) || exit;
 
 const VERSION     = '0.2.0';
-const DB_VERSION  = '2';
+const DB_VERSION  = '3';
 const CAP         = 'fbc_review';
 const PLUGIN_FILE = __FILE__;
 

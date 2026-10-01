@@ -13,7 +13,7 @@ const cfg = (): Config => ({
   pagePath: '/services/',
   adminUrl: 'http://localhost:8899/wp-admin/admin.php?page=feedback-collector',
   user: { id: 1, name: 'Admin', isAdmin: true },
-  reviewers: [{ id: 1, name: 'Admin' }],
+  assignees: { source: 'wordpress', people: [{ id: 1, name: 'Admin' }], error: '', me: 1 },
   labels: {
     type: { bug: 'Bug', tweak: 'Tweak', change: 'Change Request', comment: 'Comment' },
     status: { open: 'Open', in_progress: 'In Progress', ready_for_review: 'Ready for Review', resolved: 'Resolved' },

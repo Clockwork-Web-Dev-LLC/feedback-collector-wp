@@ -4,7 +4,7 @@ project: feedback-collector-wp
 effort: E4
 effort_source: classifier
 phase: verify
-progress: 102/168
+progress: 110/176
 mode: interactive
 started: 2026-09-30T00:00:00-07:00
 updated: 2026-10-01T03:30:04.547Z
@@ -303,6 +303,8 @@ Build order: F1 → (F2 ∥ F3 ∥ F4) → F5 → (F6 ∥ F7) → F8 → F9 → 
 - 2026-10-01: **refined:** Aaron wants the API key entered in the WordPress admin and stored in the DB, with no SSH or wp-config editing. The DB path (encrypted with libsodium, keyed from the auth salt) is now the primary flow, and the wp-config constant is an optional override. Settings detects an undecryptable key after a salt change and asks for it again.
 - 2026-10-01: **Renamed to "Clockwork Feedback Collector" and made white-labelable,** with the Clockwork Companion look and feel per Aaron. Only the display name changed: the folder, file, text domain and REST namespace stay `feedback-collector`, so the plugin didn't deactivate and no identifier carries a brand. The Companion CSS was ported under `.fbc-*` names, not copied as-is: its `.notice{display:none}` would hide every save and Teamwork message, and its `:root` palette would override white-label colors. Companion also loads that CSS on any screen hook containing "clockwork", so Collector dequeues it at priority 100. The list table went from 11 columns to 7 after Aaron flagged it as crowded.
 - 2026-10-01: **Mistake:** the mocked-Teamwork test script TRUNCATEd the feedback tables and left fake Teamwork settings on the shared test site, destroying items #35/#36 from the Chrome pass. The site was reset to empty and the script now records the high-water mark and the settings and restores both on shutdown, deleting only the rows it created.
+- 2026-10-01: **Assignees from Teamwork by default** (Aaron). Picking the Teamwork person directly replaces silent email matching. After a push the assignee is read-only in WordPress, the same "Teamwork owns it" rule as status. The `taskOptions.notify` field name came from Teamwork's API conventions and isn't in the public docs; confirm it during the live round trip.
+- 2026-10-01: **Mistake caught by tests:** phpcbf's `WordPress.WP.CapitalPDangit` auto-fix rewrote the identifier string 'wordpress' to 'WordPress', which broke the assignee source. The sniff is now excluded in phpcs.xml.dist.
 - 2026-09-30: **Delegation floor met:** two background research agents (Atarim features, Teamwork API). Forge is deferred to BUILD, where it auto-includes for E4 coding.
 
 ## Changelog
@@ -383,3 +385,13 @@ Test site: local WordPress 7.1.2 on PHP 8.4 / MySQL 26.7 at `http://localhost:88
 - [x] ISC-167: Menu icon is the Clockwork sparkle on the default brand and a neutral bubble when white-labeled
 - [x] ISC-168: Teamwork task body and task-list description use the brand name
 - [x] ISC-169: List table is 7 columns (title + meta line, no striping); no pill overflows its column at 1,450px
+
+### Teamwork email + assignees (2026-10-01)
+- [x] ISC-170: Global "Email notifications" setting (default on) sends `taskOptions.notify` true/false on task create
+- [x] ISC-171: Anti: the first Settings save, before the Teamwork options render, turns emails off
+- [x] ISC-172: "Assign feedback to" setting: Teamwork project members (default) or WordPress users, falling back to WordPress while Teamwork isn't connected
+- [x] ISC-173: Teamwork mode lists project people (sorted), stores tw_assignee_id/name, and assigns that person on push with no email matching
+- [x] ISC-174: Anti: a person not on the project, or a Teamwork ID in WordPress mode, is accepted (expect 400)
+- [x] ISC-175: Anti: changing a pushed item's assignee in WordPress (Teamwork mode) succeeds (expect 400; UI read-only)
+- [x] ISC-176: The "Assigned to me" filter and list filter match the Teamwork person matched to the current user by email
+- [x] ISC-177: WordPress integration suites live in tests/wp, run with `bun run test:wp`, and are non-destructive

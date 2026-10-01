@@ -54,6 +54,13 @@ Then, in **Feedback → Settings**:
 
 Push items from the detail screen, or select several in the list and use **Bulk actions → Push to Teamwork**.
 
+**Assignees:** under **Settings → Reviewers → Assign feedback to**, choose **Teamwork project members** (the default) or **WordPress users**.
+- With Teamwork, the Assignee dropdowns list the people on the chosen project, and the person you pick is assigned on the task directly.
+- Once an item is pushed, Teamwork owns the assignee. Change it there; the dropdown becomes read-only.
+- Until Teamwork is connected with a project, WordPress users are used.
+
+**Email notifications:** a global setting under Teamwork. Turn it off to create and assign tasks without Teamwork emailing anyone. It sends Teamwork's `taskOptions.notify`, the same switch as "Notify by email" in Teamwork.
+
 - **Each task gets:**
   - `[Type] Title` as its name
   - an HTML description with the details, a link to the pin, the page, breakpoint, browser and element, plus any JS errors
@@ -77,6 +84,12 @@ bun run watch
 bun test           # anchor engine
 bun run typecheck
 ```
+
+**Tests:**
+- `bun test` runs the overlay suites: the pin-anchoring engine and overlay boot.
+- `bun run test:wp` runs the WordPress integration suites in `tests/wp/` (REST and permissions, Teamwork push/sync against a mocked API, assignees, API-key storage). It runs inside a local WordPress with the plugin active, through wp-cli; set `WP="php wp-cli.phar --path=/path/to/wp"` if `wp` isn't on your PATH.
+- Every suite deletes only the rows it created and restores the settings it changed.
+- Never point the WordPress suites at a real staging or production site.
 
 - **PHP:** `phpcs` with the bundled `phpcs.xml.dist` (WordPress standard).
 - **REST contract:** see [docs/rest-api.md](docs/rest-api.md).
