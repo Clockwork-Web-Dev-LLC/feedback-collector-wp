@@ -218,7 +218,7 @@ Deliver a deactivatable WordPress plugin, "Feedback Collector". Reviewers with t
 - [x] ISC-139: API failure marks the item `sync_error` with the message, and a Retry action exists
 - [x] ISC-140: On 429, pushes back off until `X-Rate-Limit-Reset`; a 100-item bulk push completes with no item lost
 - [ ] ISC-141: "Auto-push new items" setting (default off) pushes on creation
-- [ ] ISC-142: WP-Cron job every 15 min polls the QA list with `updatedAfter`; completed tasks → Resolved
+- [ ] ISC-142: WP-Cron job (hourly by default; 5/15/30 min selectable in Settings) polls the QA list with `updatedAfter`; completed tasks → Resolved
 - [DEFERRED-VERIFY] ISC-143: Reopened tasks in Teamwork → Open in WordPress
 - [x] ISC-144: Anti: sync-back changes the status of an item that was never pushed
 
@@ -295,6 +295,7 @@ Build order: F1 → (F2 ∥ F3 ∥ F4) → F5 → (F6 ∥ F7) → F8 → F9 → 
 - 2026-09-30: **Click-to-pin added alongside right-click** (from IterativeDepth constraint-inversion lens). Trackpads and touch devices have no reliable right-click.
 - 2026-09-30: **Teamwork owns task status after a push** (from ApertureOscillation synthesis plus the Vault's "one fact, one home" rule). WordPress keeps status for unpushed items and mirrors Teamwork's completed/reopened state for pushed ones.
 - 2026-09-30: **API-key auth, not OAuth.** OAuth needs a registered redirect URI and client secret per install, which is awkward for a self-hosted agency plugin. API key (Basic `key:x`) acts as the agency user and is stored encrypted.
+- 2026-10-01: **Sync frequency is a setting, hourly by default.** Aaron asked for hourly with the option to go faster; choices are 5/15/30/60 min, invalid values ignored, and changing it reschedules the job. "Sync now" lives in Settings → Teamwork tools as well as the list header, and also flushes the push queue.
 - 2026-09-30: **Polling instead of webhooks for sync-back.** Teamwork webhooks are paid-plan only, and staging sites behind auth can't receive them. A WP-Cron poll with `updatedAfter` every 15 min stays well under 150 req/min.
 - 2026-09-30: **Idempotent push is a hard requirement.** Atarim documents duplicate cards when auto-push and workflow push overlap, so the stored Teamwork task ID blocks re-creation.
 - 2026-09-30: **Orphaned over guessed.** When no anchor strategy resolves, the item goes to an Orphaned list with Re-anchor rather than being drawn at stale coordinates. Atarim's re-anchor is also manual, but it gives no orphan signal.

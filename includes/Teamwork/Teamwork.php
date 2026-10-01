@@ -83,6 +83,7 @@ final class Teamwork {
 				'round_lists'   => array(), // round => array( 'id' => task list ID, 'name' => list name ).
 				'auto_push'     => false,
 				'send_email'    => true,
+				'sync_interval' => 'hourly',
 				'tags'          => array(),
 			)
 		);
@@ -238,26 +239,61 @@ final class Teamwork {
 	// ------------------------------------------------------------------ cron
 
 	/**
-	 * Adds a 15-minute interval.
+	 * Sync frequencies offered in Settings: cron schedule name => minutes.
+	 *
+	 * @return array<string, int>
+	 */
+	public static function sync_intervals(): array {
+		return array(
+			'fbc_five_minutes'    => 5,
+			'fbc_fifteen_minutes' => 15,
+			'fbc_thirty_minutes'  => 30,
+			'hourly'              => 60,
+		);
+	}
+
+	/**
+	 * The chosen sync schedule (falls back to hourly).
+	 */
+	public static function sync_interval(): string {
+		$chosen = (string) self::settings()['sync_interval'];
+		return isset( self::sync_intervals()[ $chosen ] ) ? $chosen : 'hourly';
+	}
+
+	/**
+	 * Adds the 5/15/30-minute intervals (hourly is built in).
 	 *
 	 * @param array<string, array<string, mixed>> $schedules Schedules.
 	 * @return array<string, array<string, mixed>>
 	 */
 	public static function cron_schedules( array $schedules ): array {
-		$schedules['fbc_fifteen_minutes'] = array(
-			'interval' => 15 * MINUTE_IN_SECONDS,
-			'display'  => __( 'Every 15 minutes', 'feedback-collector' ),
-		);
+		foreach ( self::sync_intervals() as $name => $minutes ) {
+			if ( 'hourly' === $name ) {
+				continue;
+			}
+			$schedules[ $name ] = array(
+				'interval' => $minutes * MINUTE_IN_SECONDS,
+				/* translators: %d: minutes */
+				'display'  => sprintf( __( 'Every %d minutes', 'feedback-collector' ), $minutes ),
+			);
+		}
 		return $schedules;
 	}
 
 	/**
-	 * Keeps the sync job scheduled while Teamwork is connected.
+	 * Keeps the sync job scheduled at the chosen frequency while Teamwork is connected.
 	 */
 	public static function ensure_schedule(): void {
-		if ( null !== self::client() && ! wp_next_scheduled( self::SYNC_HOOK ) ) {
-			wp_schedule_event( time() + 60, 'fbc_fifteen_minutes', self::SYNC_HOOK );
+		if ( null === self::client() ) {
+			return;
 		}
+		$interval = self::sync_interval();
+		if ( wp_get_schedule( self::SYNC_HOOK ) === $interval && wp_next_scheduled( self::SYNC_HOOK ) ) {
+			return;
+		}
+		// New install, or the frequency changed: (re)schedule from now.
+		wp_clear_scheduled_hook( self::SYNC_HOOK );
+		wp_schedule_event( time() + self::sync_intervals()[ $interval ] * MINUTE_IN_SECONDS, $interval, self::SYNC_HOOK );
 	}
 
 	/**
@@ -831,6 +867,18 @@ final class Teamwork {
 			esc_html__( 'Push new feedback to Teamwork as soon as it is created', 'feedback-collector' )
 		);
 
+		$labels = array(
+			'fbc_five_minutes'    => __( 'Every 5 minutes', 'feedback-collector' ),
+			'fbc_fifteen_minutes' => __( 'Every 15 minutes', 'feedback-collector' ),
+			'fbc_thirty_minutes'  => __( 'Every 30 minutes', 'feedback-collector' ),
+			'hourly'              => __( 'Every hour (default)', 'feedback-collector' ),
+		);
+		echo '<tr><th scope="row"><label for="fbc-tw-interval">' . esc_html__( 'Sync with Teamwork', 'feedback-collector' ) . '</label></th><td><select id="fbc-tw-interval" name="tw_sync_interval">';
+		foreach ( $labels as $value => $label ) {
+			printf( '<option value="%s"%s>%s</option>', esc_attr( $value ), selected( self::sync_interval(), $value, false ), esc_html( $label ) );
+		}
+		echo '</select><p class="description">' . esc_html( self::sync_status_text() ) . ' ' . esc_html__( 'Checks Teamwork for completed or reopened tasks. WP-Cron runs when the site gets visits, so a quiet staging site may sync a little late; use “Sync now” any time.', 'feedback-collector' ) . '</p></td></tr>';
+
 		printf(
 			'<tr><th scope="row">%1$s</th><td><input type="hidden" name="tw_options_shown" value="1" /><label><input type="checkbox" name="tw_send_email" value="1"%2$s /> %3$s</label><p class="description">%4$s</p></td></tr>',
 			esc_html__( 'Email notifications', 'feedback-collector' ),
@@ -896,6 +944,12 @@ final class Teamwork {
 			$s['auto_push']  = ! empty( $_POST['tw_auto_push'] );
 			$s['send_email'] = ! empty( $_POST['tw_send_email'] );
 		}
+		if ( isset( $_POST['tw_sync_interval'] ) ) {
+			$interval = sanitize_key( wp_unslash( $_POST['tw_sync_interval'] ) );
+			if ( isset( self::sync_intervals()[ $interval ] ) ) {
+				$s['sync_interval'] = $interval;
+			}
+		}
 		// phpcs:enable
 		self::save( $s );
 		self::ensure_schedule();
@@ -911,6 +965,8 @@ final class Teamwork {
 		$s = self::settings();
 		Layout::card_open( __( 'Teamwork tools', 'feedback-collector' ) );
 		echo '<p>';
+		self::button_form( 'fbc_tw_sync', __( 'Sync now', 'feedback-collector' ), array(), 'primary' );
+		echo ' ';
 		self::button_form( 'fbc_tw_test', __( 'Test connection', 'feedback-collector' ) );
 		$current = Rounds::current();
 		if ( $s['project_id'] && empty( $s['round_lists'][ $current ] ) ) {
@@ -921,7 +977,8 @@ final class Teamwork {
 				sprintf( __( 'Create “QA – Round %d” list', 'feedback-collector' ), $current )
 			);
 		}
-		echo '</p>';
+		echo '</p><p class="description">' . esc_html( self::sync_status_text() ) . '</p>';
+		self::sync_result_notice();
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended
 		if ( isset( $_GET['fbc_tw_msg'] ) ) {
 			$type = isset( $_GET['fbc_tw_ok'] ) && '1' === $_GET['fbc_tw_ok'] ? 'success' : 'error';
@@ -1095,6 +1152,9 @@ final class Teamwork {
 		if ( ! current_user_can( CAP ) ) {
 			wp_die( esc_html__( 'Not allowed.', 'feedback-collector' ), 403 );
 		}
+		// Send anything waiting in the push queue, then pull status changes back.
+		wp_clear_scheduled_hook( self::QUEUE_HOOK );
+		self::process_queue();
 		$result = self::sync();
 		$args   = is_wp_error( $result )
 			? array( 'fbc_sync_err' => rawurlencode( $result->get_error_message() ) )
@@ -1231,6 +1291,54 @@ final class Teamwork {
 	}
 
 	/**
+	 * "Last synced 5 minutes ago · next in 55 mins" (plus the last problem, if any).
+	 */
+	public static function sync_status_text(): string {
+		$state   = (array) get_option( self::STATE_OPTION, array() );
+		$parts   = array();
+		$parts[] = ! empty( $state['last_sync'] )
+			/* translators: %s: human time difference */
+			? sprintf( __( 'Last synced %s ago', 'feedback-collector' ), human_time_diff( (int) $state['last_sync'] ) )
+			: __( 'Not synced yet', 'feedback-collector' );
+		$next = wp_next_scheduled( self::SYNC_HOOK );
+		if ( $next ) {
+			$parts[] = $next > time()
+				/* translators: %s: human time difference */
+				? sprintf( __( 'next in %s', 'feedback-collector' ), human_time_diff( $next ) )
+				: __( 'next sync is due (waiting for a site visit)', 'feedback-collector' );
+		}
+		$text = implode( ' · ', $parts ) . '.';
+		if ( ! empty( $state['last_error'] ) ) {
+			/* translators: %s: error message */
+			$text .= ' ' . sprintf( __( 'Last problem: %s', 'feedback-collector' ), (string) $state['last_error'] );
+		}
+		return $text;
+	}
+
+	/**
+	 * Result of a "Sync now" click, wherever it was clicked.
+	 */
+	private static function sync_result_notice(): void {
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended
+		if ( isset( $_GET['fbc_sync_err'] ) ) {
+			printf( '<div class="notice notice-error inline is-dismissible"><p>%s</p></div>', esc_html( sanitize_text_field( wp_unslash( $_GET['fbc_sync_err'] ) ) ) );
+		} elseif ( isset( $_GET['fbc_synced'] ) ) {
+			printf(
+				'<div class="notice notice-success inline is-dismissible"><p>%s</p></div>',
+				esc_html(
+					sprintf(
+						/* translators: 1: changed count, 2: checked count */
+						__( 'Synced with Teamwork: %1$d item(s) updated, %2$d changed task(s) checked.', 'feedback-collector' ),
+						absint( $_GET['fbc_synced'] ),
+						absint( $_GET['fbc_checked'] ?? 0 )
+					)
+				)
+			);
+		}
+		// phpcs:enable
+	}
+
+	/**
 	 * "Sync now" next to the page title.
 	 */
 	public static function header_actions(): void {
@@ -1241,11 +1349,7 @@ final class Teamwork {
 		wp_nonce_field( 'fbc_tw_sync' );
 		echo '<input type="hidden" name="action" value="fbc_tw_sync" />';
 		submit_button( __( 'Sync with Teamwork', 'feedback-collector' ), 'secondary', 'submit', false );
-		$state = (array) get_option( self::STATE_OPTION, array() );
-		if ( ! empty( $state['last_sync'] ) ) {
-			/* translators: %s: human time difference */
-			printf( ' <span class="description">%s</span>', esc_html( sprintf( __( 'Last synced %s ago', 'feedback-collector' ), human_time_diff( (int) $state['last_sync'] ) ) ) );
-		}
+		printf( ' <span class="description">%s</span>', esc_html( self::sync_status_text() ) );
 		echo '</form>';
 	}
 
@@ -1288,23 +1392,7 @@ final class Teamwork {
 			}
 			printf( '<div class="notice notice-%s is-dismissible"><p>%s</p></div>', $failed ? 'warning' : 'success', esc_html( $msg ) );
 		}
-		if ( isset( $_GET['fbc_sync_err'] ) ) {
-			printf( '<div class="notice notice-error is-dismissible"><p>%s</p></div>', esc_html( sanitize_text_field( wp_unslash( $_GET['fbc_sync_err'] ) ) ) );
-		} elseif ( isset( $_GET['fbc_synced'] ) ) {
-			$changed = absint( $_GET['fbc_synced'] );
-			$checked = absint( $_GET['fbc_checked'] ?? 0 );
-			printf(
-				'<div class="notice notice-success is-dismissible"><p>%s</p></div>',
-				esc_html(
-					sprintf(
-						/* translators: 1: changed count, 2: checked count */
-						__( 'Synced with Teamwork: %1$d item(s) updated, %2$d changed task(s) checked.', 'feedback-collector' ),
-						$changed,
-						$checked
-					)
-				)
-			);
-		}
 		// phpcs:enable
+		self::sync_result_notice();
 	}
 }

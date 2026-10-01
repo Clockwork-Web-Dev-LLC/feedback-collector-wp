@@ -13,13 +13,19 @@ global $wpdb, $mock;
 $fbc_max_id      = (int) $wpdb->get_var( 'SELECT COALESCE(MAX(id),0) FROM ' . Items::table() );
 $fbc_backup_tw   = get_option( 'fbc_teamwork', null );
 $fbc_backup_st   = get_option( 'fbc_tw_state', null );
-register_shutdown_function( static function () use ( $fbc_max_id, $fbc_backup_tw, $fbc_backup_st ) {
+// The real site's sync job (time + frequency), put back exactly as it was.
+$fbc_backup_cron = array( wp_next_scheduled( Teamwork::SYNC_HOOK ), wp_get_schedule( Teamwork::SYNC_HOOK ) );
+register_shutdown_function( static function () use ( $fbc_max_id, $fbc_backup_tw, $fbc_backup_st, $fbc_backup_cron ) {
 	global $wpdb;
 	$ids = $wpdb->get_col( $wpdb->prepare( 'SELECT id FROM ' . Items::table() . ' WHERE id > %d', $fbc_max_id ) );
 	foreach ( $ids as $id ) { Items::delete( (int) $id ); }
 	null === $fbc_backup_tw ? delete_option( 'fbc_teamwork' ) : update_option( 'fbc_teamwork', $fbc_backup_tw );
 	null === $fbc_backup_st ? delete_option( 'fbc_tw_state' ) : update_option( 'fbc_tw_state', $fbc_backup_st );
 	wp_clear_scheduled_hook( Teamwork::QUEUE_HOOK );
+	wp_clear_scheduled_hook( Teamwork::SYNC_HOOK );
+	if ( $fbc_backup_cron[0] && $fbc_backup_cron[1] ) {
+		wp_schedule_event( $fbc_backup_cron[0], $fbc_backup_cron[1], Teamwork::SYNC_HOOK );
+	}
 	delete_transient( 'fbc_tw_people_100' );
 	delete_transient( 'fbc_tw_people_list_100' );
 	echo "cleanup: removed " . count( $ids ) . " test rows, restored settings\n";
@@ -169,3 +175,20 @@ check( 'REST item exposes tw_task_url', str_contains( $present, 'clockwork.teamw
 $cfg = wp_json_encode( FeedbackCollector\Frontend::config() );
 check( 'Anti: API key absent from front-end config', ! str_contains( $cfg, 'SECRET' ) );
 
+// 9. Sync frequency: hourly by default, adjustable, and invalid values never stick.
+wp_clear_scheduled_hook( Teamwork::SYNC_HOOK );
+Teamwork::ensure_schedule();
+$next = (int) wp_next_scheduled( Teamwork::SYNC_HOOK );
+check( 'sync runs hourly by default', 'hourly' === wp_get_schedule( Teamwork::SYNC_HOOK ) && abs( $next - ( time() + HOUR_IN_SECONDS ) ) < 10 );
+$_POST = array( 'tw_options_shown' => '1', 'tw_sync_interval' => 'fbc_five_minutes' );
+Teamwork::save_settings();
+check( 'choosing every 5 minutes reschedules the job', 'fbc_five_minutes' === wp_get_schedule( Teamwork::SYNC_HOOK ) && (int) wp_next_scheduled( Teamwork::SYNC_HOOK ) - time() <= 5 * MINUTE_IN_SECONDS );
+check( '5-minute interval registered with WP-Cron', 300 === ( wp_get_schedules()['fbc_five_minutes']['interval'] ?? 0 ) );
+$_POST = array( 'tw_options_shown' => '1', 'tw_sync_interval' => 'every_second' );
+Teamwork::save_settings();
+check( 'Anti: unknown interval ignored, previous choice kept', 'fbc_five_minutes' === Teamwork::sync_interval() && 'fbc_five_minutes' === wp_get_schedule( Teamwork::SYNC_HOOK ) );
+$_POST = array( 'tw_options_shown' => '1', 'tw_sync_interval' => 'hourly' );
+Teamwork::save_settings();
+$_POST = array();
+check( 'switching back to hourly reschedules once', 'hourly' === wp_get_schedule( Teamwork::SYNC_HOOK ) && 1 === count( array_filter( _get_cron_array(), static fn( $hooks ) => isset( $hooks[ Teamwork::SYNC_HOOK ] ) ) ) );
+check( 'status text shows last and next sync', str_contains( Teamwork::sync_status_text(), 'Last synced' ) && str_contains( Teamwork::sync_status_text(), 'next in' ) );

@@ -70,7 +70,7 @@ Push items from the detail screen, or select several in the list and use **Bulk 
 - **Pushing twice never creates a duplicate.**
 - **Large bulk pushes** continue in the background and back off when Teamwork's rate limit is hit.
 
-**Status sync:** every 15 minutes (WP-Cron), or on demand with **Sync with Teamwork**:
+**Status sync:** hourly by default (WP-Cron; Settings → Teamwork → "Sync with Teamwork" can make it every 5, 15 or 30 minutes), or on demand with **Sync now** (Settings → Teamwork tools) or **Sync with Teamwork** on the Feedback list. A manual sync also sends anything waiting in the push queue:
 - A task completed in Teamwork marks the item **Resolved**.
 - A reopened task marks it **Open** again.
 - Items that were never pushed are never touched.
