@@ -1,4 +1,5 @@
 <?php
+require __DIR__ . '/_guard.php';
 /**
  * QA rounds: one counter, per-round Teamwork lists, push routing, summary, REST.
  * Non-destructive: deletes only its own rows and restores the options it touches.

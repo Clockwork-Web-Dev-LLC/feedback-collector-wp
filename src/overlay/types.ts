@@ -110,6 +110,8 @@ export interface NewItem {
   description: string;
   priority: Priority;
   assignee_id: number;
+  /** Which list assignee_id was picked from; the server refuses it if that list changed. */
+  assignee_source?: 'teamwork' | 'wordpress';
   page_path: string;
   page_query: string;
   page_title: string;

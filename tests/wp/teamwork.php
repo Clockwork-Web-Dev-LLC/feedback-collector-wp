@@ -1,4 +1,5 @@
 <?php
+require __DIR__ . '/_guard.php';
 // Teamwork integration against a mocked Teamwork API (pre_http_request): push payload, idempotency,
 // rate-limit backoff, errors, email setting, sync-back, key secrecy. Non-destructive.
 use FeedbackCollector\Items;

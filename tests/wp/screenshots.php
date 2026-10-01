@@ -1,4 +1,5 @@
 <?php
+require __DIR__ . '/_guard.php';
 /**
  * Screenshots: validation, storage, multipart create, replace/delete, Teamwork attachment.
  * Non-destructive: deletes only its own items (and their files) and restores options.

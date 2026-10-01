@@ -198,6 +198,10 @@ final class Rest {
 		if ( ! in_array( $priority, Items::PRIORITIES, true ) ) {
 			return self::invalid( 'priority', __( 'Unknown priority.', 'feedback-collector' ) );
 		}
+		$stale = self::stale_assignee_list( $p );
+		if ( $stale ) {
+			return $stale;
+		}
 		$assignee = Assignees::resolve( absint( $p['assignee_id'] ?? 0 ) );
 		if ( is_wp_error( $assignee ) ) {
 			return self::invalid( 'assignee_id', $assignee->get_error_message() );
@@ -376,6 +380,10 @@ final class Rest {
 			if ( Assignees::selected( $item ) !== $wanted ) {
 				if ( Assignees::locked( $item ) ) {
 					return self::invalid( 'assignee_id', __( 'This item is in Teamwork now; change the assignee there.', 'feedback-collector' ) );
+				}
+				$stale = self::stale_assignee_list( $p );
+				if ( $stale ) {
+					return $stale;
 				}
 				$assignee = Assignees::resolve( $wanted );
 				if ( is_wp_error( $assignee ) ) {
@@ -573,6 +581,30 @@ final class Rest {
 	 * @param string $field   Field name.
 	 * @param string $message Message.
 	 */
+	/**
+	 * The page picked an assignee from one list (Teamwork people or WordPress users) but the
+	 * server now uses the other, e.g. Teamwork was connected or disconnected since the page
+	 * loaded. The ID means something different in each list, so never reinterpret it.
+	 *
+	 * @param array<string, mixed> $p Request payload.
+	 */
+	private static function stale_assignee_list( array $p ): ?WP_Error {
+		$sent = isset( $p['assignee_source'] ) ? sanitize_key( (string) $p['assignee_source'] ) : '';
+		if ( ! in_array( $sent, array( 'teamwork', 'wordpress' ), true ) || ! absint( $p['assignee_id'] ?? 0 ) || Assignees::source() === $sent ) {
+			return null;
+		}
+		return new WP_Error(
+			'fbc_assignee_list_changed',
+			'teamwork' === $sent
+				? __( 'Teamwork isn’t connected on the server any more, so that Teamwork assignee can’t be used. Reload the page (or check Settings → Teamwork) and pick again.', 'feedback-collector' )
+				: __( 'The assignee list changed to Teamwork people since this page loaded. Reload the page and pick the assignee again.', 'feedback-collector' ),
+			array(
+				'status' => 409,
+				'field'  => 'assignee_id',
+			)
+		);
+	}
+
 	private static function invalid( string $field, string $message ): WP_Error {
 		return new WP_Error(
 			'fbc_invalid',

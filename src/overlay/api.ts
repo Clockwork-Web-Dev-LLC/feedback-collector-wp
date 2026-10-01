@@ -65,7 +65,10 @@ export class Api {
     return this.request('POST', `/items/${id}/screenshot`, form);
   }
 
-  updateItem(id: number, changes: Partial<Pick<Item, 'title' | 'description' | 'status' | 'priority' | 'type' | 'assignee_id' | 'anchor'>>): Promise<Item> {
+  updateItem(
+    id: number,
+    changes: Partial<Pick<Item, 'title' | 'description' | 'status' | 'priority' | 'type' | 'assignee_id' | 'anchor'>> & { assignee_source?: 'teamwork' | 'wordpress' }
+  ): Promise<Item> {
     return this.request('PATCH', `/items/${id}`, changes);
   }
 

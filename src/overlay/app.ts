@@ -803,6 +803,7 @@ export class App {
             description: desc.value,
             priority: priority.value as Priority,
             assignee_id: Number(assignee.value),
+            assignee_source: this.cfg.assignees.source,
             page_path: this.pagePath,
             page_query: currentQuery(),
             page_title: document.title,
@@ -859,7 +860,7 @@ export class App {
       onchange: () => void save({ status: status.value as ItemStatus }),
     });
     const assignee = select('assignee_id', this.assigneeOptions(), String(item.assignee_id), {
-      onchange: () => void save({ assignee_id: Number(assignee.value) }),
+      onchange: () => void save({ assignee_id: Number(assignee.value), assignee_source: this.cfg.assignees.source }),
     });
     const priority = select('priority', (Object.keys(labels.priority) as Priority[]).map((k) => [k, labels.priority[k]]), item.priority, {
       onchange: () => void save({ priority: priority.value as Priority }),

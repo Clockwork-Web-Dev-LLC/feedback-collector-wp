@@ -1,4 +1,5 @@
 <?php
+require __DIR__ . '/_guard.php';
 /**
  * REST API: validation, sanitization, page scoping, threads and permissions.
  *
@@ -95,6 +96,16 @@ $check( 'invalid status → 400', 400 === $s );
 [ $s, $d ] = $call( 'PATCH', "/items/$id", array( 'status' => 'in_progress', 'assignee_id' => 1 ) );
 $check( 'valid status + assignee → 200', 200 === $s && 'in_progress' === $d['status'] );
 $check( 'status and assignee changes logged as activity', 2 === count( array_filter( (array) ( $d['comments'] ?? array() ), static fn( $c ) => 'activity' === $c['kind'] ) ) );
+
+// Stale assignee list: the page picked from Teamwork people, the server now uses WordPress users.
+[ $s, $d ] = $call( 'POST', '/items', array( 'title' => 'stale list', 'type' => 'bug', 'assignee_id' => 1, 'assignee_source' => 'teamwork' ) );
+$check( 'Anti: assignee picked from a list the server no longer uses → 409, nothing created', 409 === $s && 'fbc_assignee_list_changed' === ( $d['code'] ?? '' ) );
+[ $s, $d ] = $call( 'POST', '/items', array( 'title' => 'same list', 'type' => 'bug', 'assignee_id' => 1, 'assignee_source' => 'wordpress' ) );
+$check( 'assignee from the list the server uses → 201', 201 === $s && 1 === (int) $d['assignee_id'] );
+[ $s ] = $call( 'PATCH', "/items/$id", array( 'assignee_id' => 424242, 'assignee_source' => 'teamwork' ) );
+$check( 'Anti: PATCH with a stale assignee list → 409', 409 === $s );
+[ $s ] = $call( 'POST', '/items', array( 'title' => 'unassigned', 'type' => 'bug', 'assignee_id' => 0, 'assignee_source' => 'teamwork' ) );
+$check( 'unassigned is fine whatever list the page had', 201 === $s );
 
 // Page scoping.
 [ , $d ] = $call( 'GET', '/items', null, array( 'page_path' => '/rest-test-page/' ) );

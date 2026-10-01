@@ -1,4 +1,5 @@
 <?php
+require __DIR__ . '/_guard.php';
 // API key stored encrypted in the DB (the Settings-form path, no wp-config constant). Restores settings when done.
 use FeedbackCollector\Teamwork\Teamwork;
 // No real network calls: every outbound request gets a canned 401.

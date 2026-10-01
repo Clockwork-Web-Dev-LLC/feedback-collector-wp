@@ -1,4 +1,5 @@
 <?php
+require __DIR__ . '/_guard.php';
 // Assignee source tests against a mocked Teamwork API. Non-destructive: deletes only
 // rows it creates and restores every option it touches.
 use FeedbackCollector\Assignees;
