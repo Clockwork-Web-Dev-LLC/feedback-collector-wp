@@ -241,8 +241,15 @@ export class App {
   private async loadItems(): Promise<void> {
     try {
       const { items } = await this.api.listItems(this.pagePath);
+      // Reuse pins already on screen; drop the ones whose item is gone (never leave strays behind).
+      const prev = new Map(this.states);
       this.states.clear();
-      for (const item of items) this.states.set(item.id, { item, el: null, placement: 'orphan', pin: null });
+      for (const item of items) {
+        const old = prev.get(item.id);
+        prev.delete(item.id);
+        this.states.set(item.id, { item, el: old?.el ?? null, placement: 'orphan', pin: old?.pin ?? null });
+      }
+      for (const stale of prev.values()) stale.pin?.remove();
       this.loaded = true;
       this.refresh();
     } catch (err) {

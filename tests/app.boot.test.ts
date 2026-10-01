@@ -183,6 +183,27 @@ describe('overlay boot', () => {
   });
 });
 
+describe('pin reloads', () => {
+  it('reloading items (e.g. after closing device preview) never duplicates pins, and drops removed ones', async () => {
+    const anchor = { id: 'cta', selector: '#cta', xpath: '', text: 'Book a demo', tag: 'a', offsetX: 0.5, offsetY: 0.5, docX: 0, docY: 0 };
+    serverItems = [makeItem({ id: 5, anchor }), makeItem({ id: 9, anchor })];
+    const app = new App(cfg());
+    app.init();
+    await app.setMode(true);
+    const pins = () => [...(shadow()?.querySelectorAll('.pin') ?? [])].map((p) => p.textContent);
+    expect(pins()).toEqual(['5', '9']);
+
+    const reload = () => (app as unknown as { loadItems(): Promise<void> }).loadItems();
+    await reload();
+    await reload();
+    expect(pins()).toEqual(['5', '9']);
+
+    serverItems = [serverItems[0]];
+    await reload();
+    expect(pins()).toEqual(['5']);
+  });
+});
+
 describe('toolbar placement', () => {
   const adminBar = (bottom: number) => {
     const bar = document.createElement('div');
