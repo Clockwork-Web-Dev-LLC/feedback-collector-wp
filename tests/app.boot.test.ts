@@ -45,6 +45,7 @@ const shadow = () => document.getElementById(OVERLAY_HOST_ID)?.shadowRoot ?? nul
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
 beforeEach(() => {
+  document.getElementById('wpadminbar')?.remove();
   document.body.innerHTML = '<main><section><h2>Services</h2><a id="cta" href="/contact/">Book a demo</a></section></main>';
   try { window.localStorage.clear(); } catch { /* ignore */ }
   calls = [];
@@ -177,5 +178,83 @@ describe('overlay boot', () => {
     document.body.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, altKey: true, shiftKey: true, code: 'KeyF', key: 'Ï' }));
     await tick();
     expect(shadow()?.querySelector('.toolbar')).not.toBeNull();
+  });
+});
+
+describe('toolbar placement', () => {
+  const adminBar = (bottom: number) => {
+    const bar = document.createElement('div');
+    bar.id = 'wpadminbar';
+    bar.getBoundingClientRect = () => ({ x: 0, y: 0, left: 0, top: 0, right: 1024, bottom, width: 1024, height: bottom, toJSON: () => ({}) }) as DOMRect;
+    document.body.prepend(bar);
+    return bar;
+  };
+  const toolbar = () => shadow()?.querySelector('.toolbar') as HTMLElement;
+  const px = (v: string) => Number.parseFloat(v);
+
+  it('defaults to the bottom-right corner', async () => {
+    const app = new App(cfg());
+    app.init();
+    await app.setMode(true);
+    expect(toolbar().dataset.corner).toBe('br');
+    expect(px(toolbar().style.top)).toBe(window.innerHeight - toolbar().offsetHeight - 16);
+  });
+
+  it('drag snaps to the nearest corner, persists, and never sits under the admin bar', async () => {
+    adminBar(32);
+    const app = new App(cfg());
+    app.init();
+    await app.setMode(true);
+    const grip = toolbar().querySelector('.grip') as HTMLElement;
+    grip.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, button: 0, clientX: 900, clientY: 700 }));
+    expect(shadow()?.querySelector('.snap-ghost')).not.toBeNull();
+    window.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: 20, clientY: 5 }));
+    expect(px(toolbar().style.top)).toBeGreaterThanOrEqual(32); // clamped below the admin bar mid-drag
+    window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, clientX: 20, clientY: 5 }));
+    expect(toolbar().dataset.corner).toBe('tl');
+    expect(px(toolbar().style.top)).toBe(32 + 16);
+    expect(px(toolbar().style.left)).toBe(16);
+    expect(shadow()?.querySelector('.snap-ghost')).toBeNull();
+    expect(window.localStorage.getItem('fbc:corner')).toBe('tl');
+  });
+
+  it('restores the saved corner on the next page load', async () => {
+    window.localStorage.setItem('fbc:corner', 'tr');
+    adminBar(46); // the taller mobile admin bar
+    const app = new App(cfg());
+    app.init();
+    await app.setMode(true);
+    expect(toolbar().dataset.corner).toBe('tr');
+    expect(px(toolbar().style.top)).toBe(46 + 16);
+  });
+
+  it('arrow keys on the grip move between corners', async () => {
+    const app = new App(cfg());
+    app.init();
+    await app.setMode(true);
+    const grip = () => toolbar().querySelector('.grip') as HTMLElement;
+    grip().dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowUp' }));
+    expect(toolbar().dataset.corner).toBe('tr');
+    grip().dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'ArrowLeft' }));
+    expect(toolbar().dataset.corner).toBe('tl');
+  });
+
+  it('a right-corner toolbar moves aside when the sidebar opens', async () => {
+    const app = new App(cfg());
+    app.init();
+    await app.setMode(true);
+    const before = px(toolbar().style.left);
+    const listBtn = [...toolbar().querySelectorAll('button')].find((b) => b.textContent?.includes('List')) as HTMLButtonElement;
+    listBtn.click();
+    expect(px(toolbar().style.left)).toBe(before - 360);
+  });
+
+  it('keeps the sidebar and hints below the admin bar', async () => {
+    adminBar(32);
+    const app = new App(cfg());
+    app.init();
+    await app.setMode(true);
+    const root = shadow()?.querySelector('.fbc') as HTMLElement;
+    expect(root.style.getPropertyValue('--top-offset')).toBe('32px');
   });
 });

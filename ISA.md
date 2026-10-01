@@ -4,7 +4,7 @@ project: feedback-collector-wp
 effort: E4
 effort_source: classifier
 phase: verify
-progress: 110/176
+progress: 116/182
 mode: interactive
 started: 2026-09-30T00:00:00-07:00
 updated: 2026-10-01T03:30:04.547Z
@@ -395,3 +395,11 @@ Test site: local WordPress 7.1.2 on PHP 8.4 / MySQL 26.7 at `http://localhost:88
 - [x] ISC-175: Anti: changing a pushed item's assignee in WordPress (Teamwork mode) succeeds (expect 400; UI read-only)
 - [x] ISC-176: The "Assigned to me" filter and list filter match the Teamwork person matched to the current user by email
 - [x] ISC-177: WordPress integration suites live in tests/wp, run with `bun run test:wp`, and are non-destructive
+
+### Draggable toolbar (2026-10-01)
+- [x] ISC-178: The toolbar drags from its grip or logo and snaps to the nearest corner on release; a dashed ghost previews the target
+- [x] ISC-179: The chosen corner persists per browser (`fbc:corner`) and is restored on the next load
+- [x] ISC-180: Anti: the toolbar overlaps the WordPress admin bar, at rest or mid-drag (measured live: 32px desktop, 46px mobile, scrolled-away mobile)
+- [x] ISC-181: The sidebar, hints, banner and popovers stay below the admin bar; toasts sit on the edge opposite the toolbar
+- [x] ISC-182: A right-corner toolbar slides left when the sidebar opens, so the sidebar never covers it
+- [x] ISC-183: Arrow keys on the grip move between corners; motion respects prefers-reduced-motion

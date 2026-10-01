@@ -8,6 +8,12 @@ import type { Config, Item, ItemStatus, ItemType, Priority } from './types';
 
 const TYPES: ItemType[] = ['bug', 'tweak', 'change', 'comment'];
 const STORAGE_KEY = 'fbc:mode';
+const CORNER_KEY = 'fbc:corner';
+const EDGE = 16;
+const SIDEBAR_WIDTH = 360;
+
+type Corner = 'tl' | 'tr' | 'bl' | 'br';
+const CORNERS: Corner[] = ['tl', 'tr', 'bl', 'br'];
 
 type Placement = 'pinned' | 'hidden' | 'note' | 'orphan';
 
@@ -55,6 +61,9 @@ export class App {
   private lastWidth = window.innerWidth;
   private mutationObserver: MutationObserver | null = null;
   private loaded = false;
+  private corner: Corner = 'br';
+  private dragging = false;
+  private ghost: HTMLDivElement | null = null;
 
   constructor(private cfg: Config) {
     this.api = new Api(cfg);
@@ -69,6 +78,8 @@ export class App {
     let stored = false;
     try {
       stored = window.localStorage.getItem(STORAGE_KEY) === '1';
+      const corner = window.localStorage.getItem(CORNER_KEY) as Corner | null;
+      if (corner && CORNERS.includes(corner)) this.corner = corner;
     } catch {
       stored = false;
     }
@@ -284,6 +295,7 @@ export class App {
     requestAnimationFrame(() => {
       this.framePending = false;
       this.positionPins();
+      this.positionChrome();
     });
   }
 
@@ -450,7 +462,7 @@ export class App {
     const w = card.offsetWidth;
     const hgt = card.offsetHeight;
     const left = Math.max(12, Math.min(x + 8, window.innerWidth - w - 12));
-    const top = Math.max(12, Math.min(y + 8, window.innerHeight - hgt - 12));
+    const top = Math.max(this.topOffset() + 12, Math.min(y + 8, window.innerHeight - hgt - 12));
     card.style.left = `${left}px`;
     card.style.top = `${top}px`;
     card.style.visibility = '';
@@ -720,9 +732,18 @@ export class App {
     const bar = h(
       'div',
       { class: 'toolbar', role: 'toolbar', 'aria-label': this.cfg.brand?.name ?? 'Feedback' },
+      h('button', {
+        type: 'button',
+        class: 'grip',
+        title: 'Drag to move · arrow keys snap to a corner',
+        'aria-label': 'Move toolbar: drag, or use arrow keys to snap to a corner',
+        text: '⠿',
+        onpointerdown: (e: Event) => this.startDrag(e as PointerEvent),
+        onkeydown: (e: Event) => this.onGripKey(e as KeyboardEvent),
+      }),
       this.cfg.brand?.logo
-        ? h('span', { class: 'brand', title: this.cfg.brand.name }, h('img', { src: this.cfg.brand.logo, alt: this.cfg.brand.name }))
-        : h('span', { class: 'brand', text: this.cfg.brand?.label ?? 'Feedback' }),
+        ? h('span', { class: 'brand', title: `${this.cfg.brand.name} · drag to move`, onpointerdown: (e: Event) => this.startDrag(e as PointerEvent) }, h('img', { src: this.cfg.brand.logo, alt: this.cfg.brand.name }))
+        : h('span', { class: 'brand', title: 'Drag to move', text: this.cfg.brand?.label ?? 'Feedback', onpointerdown: (e: Event) => this.startDrag(e as PointerEvent) }),
       h('button', {
         type: 'button',
         class: this.pinMode ? 'on' : '',
@@ -748,13 +769,142 @@ export class App {
       }),
       h('button', { type: 'button', title: 'Exit Feedback mode (Alt+Shift+F)', 'aria-label': 'Exit Feedback mode', text: '×', onclick: () => void this.setMode(false) })
     );
+    const wasPlaced = !!this.toolbar;
     if (this.toolbar) this.toolbar.replaceWith(bar);
     else this.root.append(bar);
     this.toolbar = bar;
+    // Re-renders replace the element; place it at once (no animation) so it never jumps.
+    this.positionToolbar(false);
+    if (!wasPlaced) this.positionChrome();
   }
 
   private updateToolbarCount(): void {
     this.renderToolbar();
+  }
+
+  // ---------------------------------------------------------------- toolbar placement
+
+  /**
+   * Bottom edge of the WordPress admin bar in the viewport, or 0. Measured live: it is
+   * 32px on desktop, 46px on small screens, and scrolls away on phones (position: absolute).
+   */
+  private topOffset(): number {
+    const bar = document.getElementById('wpadminbar');
+    if (!bar) return 0;
+    const r = bar.getBoundingClientRect();
+    return r.height > 0 ? Math.max(0, Math.round(r.bottom)) : 0;
+  }
+
+  /** Where the toolbar sits for a corner, never under the admin bar or an open sidebar. */
+  private toolbarTarget(corner: Corner): { x: number; y: number } {
+    const bar = this.toolbar;
+    const w = bar?.offsetWidth ?? 0;
+    const hgt = bar?.offsetHeight ?? 0;
+    const top = this.topOffset();
+    let x = corner.endsWith('l') ? EDGE : window.innerWidth - w - EDGE;
+    if (corner.endsWith('r') && this.sidebar && window.innerWidth >= SIDEBAR_WIDTH + w + EDGE * 2) {
+      x -= SIDEBAR_WIDTH;
+    }
+    const y = corner.startsWith('t') ? top + EDGE : window.innerHeight - hgt - EDGE;
+    return { x: Math.max(0, x), y: Math.max(top, y) };
+  }
+
+  private nearestCorner(cx: number, cy: number): Corner {
+    const top = this.topOffset();
+    const v = cy < top + (window.innerHeight - top) / 2 ? 't' : 'b';
+    const hz = cx < window.innerWidth / 2 ? 'l' : 'r';
+    return `${v}${hz}` as Corner;
+  }
+
+  private positionToolbar(animate = false): void {
+    const bar = this.toolbar;
+    if (!bar || this.dragging) return;
+    const { x, y } = this.toolbarTarget(this.corner);
+    bar.classList.toggle('snapping', animate);
+    bar.style.left = `${x}px`;
+    bar.style.top = `${y}px`;
+    bar.dataset.corner = this.corner;
+  }
+
+  /** Keeps every top-anchored overlay element below the admin bar and toasts clear of the toolbar. */
+  private positionChrome(): void {
+    this.root.style.setProperty('--top-offset', `${this.topOffset()}px`);
+    const tbHeight = this.toolbar?.offsetHeight ?? 0;
+    const toastBottom = this.toolbar && this.corner.startsWith('b') ? tbHeight + EDGE * 2 : 24;
+    this.root.style.setProperty('--toast-bottom', `${toastBottom}px`);
+    this.positionToolbar(false);
+  }
+
+  private setCorner(corner: Corner): void {
+    this.corner = corner;
+    try {
+      window.localStorage.setItem(CORNER_KEY, corner);
+    } catch {
+      /* not remembered in private windows; still moves */
+    }
+    this.positionToolbar(true);
+    this.positionChrome();
+  }
+
+  /** Pointer drag from the grip or logo: follow the pointer, preview the snap corner, snap on release. */
+  private startDrag(e: PointerEvent): void {
+    const bar = this.toolbar;
+    if (!bar || e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = bar.getBoundingClientRect();
+    const dx = e.clientX - rect.left;
+    const dy = e.clientY - rect.top;
+    this.dragging = true;
+    bar.classList.remove('snapping');
+    bar.classList.add('dragging');
+
+    this.ghost?.remove();
+    this.ghost = h('div', { class: 'snap-ghost' });
+    Object.assign(this.ghost.style, { width: `${rect.width}px`, height: `${rect.height}px` });
+    this.root.append(this.ghost);
+
+    const move = (ev: PointerEvent) => {
+      const top = this.topOffset();
+      const x = Math.min(Math.max(ev.clientX - dx, 0), window.innerWidth - rect.width);
+      const y = Math.min(Math.max(ev.clientY - dy, top), window.innerHeight - rect.height);
+      bar.style.left = `${x}px`;
+      bar.style.top = `${y}px`;
+      const target = this.nearestCorner(x + rect.width / 2, y + rect.height / 2);
+      const spot = this.toolbarTarget(target);
+      if (this.ghost) Object.assign(this.ghost.style, { left: `${spot.x}px`, top: `${spot.y}px` });
+      bar.dataset.target = target;
+    };
+    const end = (ev: PointerEvent) => {
+      window.removeEventListener('pointermove', move, true);
+      window.removeEventListener('pointerup', end, true);
+      window.removeEventListener('pointercancel', end, true);
+      const r = bar.getBoundingClientRect();
+      this.dragging = false;
+      bar.classList.remove('dragging');
+      this.ghost?.remove();
+      this.ghost = null;
+      delete bar.dataset.target;
+      this.setCorner(ev.type === 'pointercancel' ? this.corner : this.nearestCorner(r.left + r.width / 2, r.top + r.height / 2));
+    };
+    window.addEventListener('pointermove', move, true);
+    window.addEventListener('pointerup', end, true);
+    window.addEventListener('pointercancel', end, true);
+  }
+
+  /** Arrow keys on the grip move the toolbar between corners. */
+  private onGripKey(e: KeyboardEvent): void {
+    const map: Record<string, (c: Corner) => Corner> = {
+      ArrowLeft: (c) => `${c[0]}l` as Corner,
+      ArrowRight: (c) => `${c[0]}r` as Corner,
+      ArrowUp: (c) => `t${c[1]}` as Corner,
+      ArrowDown: (c) => `b${c[1]}` as Corner,
+    };
+    const next = map[e.key];
+    if (!next) return;
+    e.preventDefault();
+    this.setCorner(next(this.corner));
+    (this.toolbar?.querySelector('.grip') as HTMLButtonElement | null)?.focus();
   }
 
   private openSidebar(): void {

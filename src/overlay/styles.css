@@ -327,8 +327,10 @@ button {
 /* Toolbar */
 .toolbar {
   position: fixed;
-  right: 16px;
-  bottom: 16px;
+  left: 0;
+  top: 0;
+  user-select: none;
+  -webkit-user-select: none;
   display: flex;
   gap: 4px;
   align-items: center;
@@ -361,6 +363,48 @@ button {
   width: auto;
   display: block;
 }
+.toolbar.snapping {
+  transition: left 0.24s cubic-bezier(0.2, 0.8, 0.2, 1), top 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.toolbar.dragging {
+  cursor: grabbing;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.38);
+  opacity: 0.96;
+}
+.toolbar .grip {
+  cursor: grab;
+  padding: 6px 4px;
+  font-size: 15px;
+  line-height: 1;
+  opacity: 0.6;
+  touch-action: none;
+}
+.toolbar .grip:hover,
+.toolbar .grip:focus-visible {
+  opacity: 1;
+}
+.toolbar.dragging .grip,
+.toolbar.dragging .brand {
+  cursor: grabbing;
+}
+.toolbar .brand {
+  cursor: grab;
+  touch-action: none;
+}
+.snap-ghost {
+  position: fixed;
+  border: 2px dashed var(--brand-accent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--dark) 12%, transparent);
+  pointer-events: none;
+  transition: left 0.12s ease, top 0.12s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .toolbar.snapping,
+  .snap-ghost {
+    transition: none;
+  }
+}
 .toolbar .brand {
   font-weight: 700;
   padding: 0 8px;
@@ -381,7 +425,7 @@ button {
 /* Sidebar */
 .sidebar {
   position: fixed;
-  top: 0;
+  top: var(--top-offset, 0px);
   right: 0;
   bottom: 0;
   width: 360px;
@@ -491,7 +535,7 @@ button {
 /* Banner + toast */
 .banner {
   position: fixed;
-  top: 44px;
+  top: calc(var(--top-offset, 0px) + 12px);
   left: 50%;
   transform: translateX(-50%);
   background: var(--dark);
@@ -516,7 +560,7 @@ button {
 .toast {
   position: fixed;
   left: 50%;
-  bottom: 76px;
+  bottom: var(--toast-bottom, 76px);
   transform: translateX(-50%);
   background: var(--dark);
   color: var(--on-dark);
@@ -531,7 +575,7 @@ button {
 }
 .crosshair-hint {
   position: fixed;
-  top: 44px;
+  top: calc(var(--top-offset, 0px) + 12px);
   left: 50%;
   transform: translateX(-50%);
   background: var(--accent);
