@@ -373,6 +373,9 @@ export class App {
   }
 
   private onKeyDown(e: KeyboardEvent): void {
+    // The annotator handles its own keys (Esc, undo, tool shortcuts); stay out of its way so
+    // Esc there never closes the composer underneath.
+    if (this.annotating) return;
     const origin = e.composedPath()[0];
     const typing =
       origin instanceof HTMLElement && (origin.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(origin.tagName));
@@ -430,6 +433,25 @@ export class App {
   // ---------------------------------------------------------------- cards
 
   private scripts = new Map<string, Promise<void>>();
+  private annotating = false;
+
+  /** Opens the screenshot annotator (Fabric.js, loaded on first use). Resolves null on cancel. */
+  private async annotate(image: Blob): Promise<Blob | null> {
+    if (this.annotating) return null;
+    this.annotating = true;
+    try {
+      if (!window.FBCAnnotator) await this.loadBundle('annotator.js');
+      const api = window.FBCAnnotator;
+      if (!api) throw new Error('The annotator could not load.');
+      const brand = this.cfg.brand?.primary ?? '#6953c4';
+      return await api.open({ image, mount: this.root, colors: ['#e5383b', brand, '#ffb703', '#ffffff', '#111111'] });
+    } catch (err) {
+      this.toast((err as Error).message, true);
+      return null;
+    } finally {
+      this.annotating = false;
+    }
+  }
 
   /** Loads a lazily built bundle from dist/ once (capture.js, annotator.js). */
   private loadBundle(file: string): Promise<void> {
@@ -568,6 +590,20 @@ export class App {
               h(
                 'div',
                 { class: 'shot-actions' },
+                h('button', {
+                  type: 'button',
+                  class: 'btn link',
+                  text: '✎ Annotate',
+                  onclick: async () => {
+                    if (!shotBlob) return;
+                    const edited = await this.annotate(shotBlob);
+                    if (edited) {
+                      shotBlob = edited;
+                      shotPromise = Promise.resolve(edited);
+                      renderShot();
+                    }
+                  },
+                }),
                 this.cfg.shots
                   ? h('button', { type: 'button', class: 'btn link', text: 'Remove screenshot', onclick: () => { shotBlob = null; shotPromise = Promise.resolve(null); renderShot(); } })
                   : null
@@ -716,7 +752,33 @@ export class App {
       orphan,
       item.description ? h('p', { class: 'desc', text: item.description }) : null,
       item.screenshot_url
-        ? h('a', { class: 'shot', href: item.screenshot_url, target: '_blank', rel: 'noopener', title: 'Open full screenshot' }, h('img', { src: item.screenshot_url, alt: 'Screenshot from when this was filed' }))
+        ? h(
+            'div',
+            { class: 'shot' },
+            h('a', { href: item.screenshot_url, target: '_blank', rel: 'noopener', title: 'Open full screenshot' }, h('img', { src: item.screenshot_url, alt: 'Screenshot from when this was filed' })),
+            h(
+              'div',
+              { class: 'shot-actions' },
+              h('button', {
+                type: 'button',
+                class: 'btn link',
+                text: '✎ Annotate',
+                onclick: async () => {
+                  try {
+                    const res = await fetch(item.screenshot_url as string, { credentials: 'same-origin', cache: 'no-store' });
+                    const edited = await this.annotate(await res.blob());
+                    if (!edited) return;
+                    const updated = await this.api.replaceScreenshot(item.id, edited);
+                    this.upsert(updated);
+                    this.toast(`Annotations saved on #${item.id}`);
+                    void this.openPopover(id, { x: parseFloat(card.style.left) - 8, y: parseFloat(card.style.top) - 8 });
+                  } catch (err) {
+                    this.toast((err as Error).message, true);
+                  }
+                },
+              })
+            )
+          )
         : null,
       h('div', { class: 'row' }, h('label', { class: 'field' }, h('span', { text: 'Status' }), status), h('label', { class: 'field' }, h('span', { text: 'Priority' }), priority)),
       item.assignee_locked

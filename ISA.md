@@ -4,7 +4,7 @@ project: feedback-collector-wp
 effort: E4
 effort_source: classifier
 phase: verify
-progress: 126/200
+progress: 128/200
 mode: interactive
 started: 2026-09-30T00:00:00-07:00
 updated: 2026-10-01T03:30:04.547Z
@@ -423,8 +423,8 @@ Test site: local WordPress 7.1.2 on PHP 8.4 / MySQL 26.7 at `http://localhost:88
 - [DEFERRED-VERIFY] ISC-194: The screenshot shows in the popover and the admin detail screen, and attaches to the Teamwork task via pendingFiles at create
 
 ### Phase A: Annotation
-- [ ] ISC-195: The annotator (Fabric.js, separate dist/annotator.js) opens on the captured image: arrow, box, highlight, pen, text, blur, undo, color
-- [ ] ISC-196: Saving flattens to the stored screenshot; Fabric's text input works inside the shadow root (Esc/click-outside don't close mid-typing)
+- [x] ISC-195: The annotator (Fabric.js, separate dist/annotator.js) opens on the captured image: arrow, box, highlight, pen, text, blur, undo, color
+- [x] ISC-196: Saving flattens to the stored screenshot; Fabric's text input works inside the shadow root (Esc/click-outside don't close mid-typing)
 
 ### Phase B: Breakpoint preview
 - [ ] ISC-197: A device preview (phone/tablet/desktop) shows the page in a same-origin iframe; the overlay runs inside (window.name flag) and the parent's toolbar and pins pause
@@ -434,3 +434,4 @@ Test site: local WordPress 7.1.2 on PHP 8.4 / MySQL 26.7 at `http://localhost:88
 - [ ] ISC-199: WordPress replies post to the Teamwork task ("From {name} via …"); Teamwork comments sync onto the item; dedupe by tw_comment_id
 - [ ] ISC-200: @mentions autocomplete from the assignee source, are stored as tokens and rendered as text nodes; mentioned people are notified
 - **Screenshots, 2026-10-01 (real Chrome):** right-click → capture took ~1.1s, producing a 1600×891 JPEG (85–89KB) with no overlay and no admin bar. SnapDOM's 'viewport' clip came out shifted by WP's 32px html margin; it's now an explicit page rect plus body offset, and the marker lands on the clicked link (verified from the saved file). 21 WP checks: validation, random names, index.php, multipart create, stored before fbc_item_created, bad image keeps the item, not-an-upload refused, replace/delete endpoints, file deleted with item, Teamwork pendingFiles (mock). ISC-194: display verified in the admin; Teamwork attachment verified against the mock only, pending the live test.
+- **Annotation, 2026-10-01 (real Chrome):** Composer → Annotate opened the Fabric editor (93KB gz, lazy). In the saved upload: arrow, box, blur (pixelated patch over the heading), highlight; full 1600×891. Text tool: hidden textarea mounted inside the shadow root; Esc while typing exited text editing without closing the editor or composer. Fabric 7's center-origin default first misplaced the background; fixed with top-left `FabricObject.ownDefaults`.

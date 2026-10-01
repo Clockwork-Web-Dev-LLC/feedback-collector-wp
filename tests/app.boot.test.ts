@@ -315,3 +315,46 @@ describe('screenshots', () => {
     delete window.FBCCapture;
   });
 });
+
+describe('annotation', () => {
+  it('Annotate swaps in the edited image; Esc while annotating never closes the composer', async () => {
+    const original = new Blob([new Uint8Array([1, 2, 3])], { type: 'image/jpeg' });
+    const edited = new Blob([new Uint8Array([9, 9, 9, 9])], { type: 'image/jpeg' });
+    window.FBCCapture = { captureViewport: async () => original };
+    let release: (b: Blob | null) => void = () => {};
+    let mountedIn: HTMLElement | null = null;
+    window.FBCAnnotator = {
+      open: (opts) => {
+        mountedIn = opts.mount;
+        expect(opts.image).toBe(original);
+        return new Promise((r) => {
+          release = r;
+        });
+      },
+    };
+    const app = new App({ ...cfg(), shots: true, assetsUrl: 'x/' });
+    app.init();
+    await app.setMode(true);
+    document.getElementById('cta')?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 150, clientY: 210 }));
+    (shadow()?.querySelector('.menu button') as HTMLButtonElement).click();
+    await tick();
+    const form = shadow()?.querySelector('form.composer') as HTMLFormElement;
+    const annotateBtn = [...form.querySelectorAll('button')].find((b) => b.textContent?.includes('Annotate')) as HTMLButtonElement;
+    annotateBtn.click();
+    await tick();
+    expect(mountedIn === shadow()?.querySelector('.fbc')).toBe(true);
+    document.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }));
+    expect(shadow()?.querySelector('form.composer')).not.toBeNull(); // still open
+    release(edited);
+    await tick();
+    await tick();
+    (form.querySelector('input[name="title"]') as HTMLInputElement).value = 'Annotated';
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await tick();
+    await tick();
+    const post = calls.find((c) => c.method === 'POST');
+    expect((post?.body as { file?: Blob }).file?.size).toBe(edited.size); // the annotated image was sent
+    delete window.FBCCapture;
+    delete window.FBCAnnotator;
+  });
+});
