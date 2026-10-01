@@ -77,6 +77,7 @@ final class Install {
 				tw_project_id bigint(20) unsigned NOT NULL DEFAULT 0,
 				tw_assignee_id bigint(20) unsigned NOT NULL DEFAULT 0,
 				tw_assignee_name varchar(190) NOT NULL DEFAULT '',
+				round smallint(5) unsigned NOT NULL DEFAULT 1,
 				tw_sync_state varchar(20) NOT NULL DEFAULT '',
 				tw_sync_error text NULL,
 				created_at datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
@@ -84,7 +85,8 @@ final class Install {
 				PRIMARY KEY  (id),
 				KEY page_hash (page_hash),
 				KEY status (status),
-				KEY assignee_id (assignee_id)
+				KEY assignee_id (assignee_id),
+				KEY round (round)
 			) {$charset};"
 		);
 

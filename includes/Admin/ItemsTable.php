@@ -93,6 +93,7 @@ final class ItemsTable extends \WP_List_Table {
 			'assignee_id' => isset( $_GET['fbc_assignee'] ) && '' !== $_GET['fbc_assignee'] ? (string) absint( $_GET['fbc_assignee'] ) : '',
 			'page_path'   => isset( $_GET['fbc_page'] ) ? sanitize_text_field( wp_unslash( $_GET['fbc_page'] ) ) : '',
 			'search'      => isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '',
+			'round'       => isset( $_GET['fbc_round'] ) && absint( $_GET['fbc_round'] ) ? (string) absint( $_GET['fbc_round'] ) : '',
 		);
 		// phpcs:enable
 	}
@@ -162,6 +163,13 @@ final class ItemsTable extends \WP_List_Table {
 		$paths = $wpdb->get_col( $wpdb->prepare( 'SELECT DISTINCT page_path FROM %i ORDER BY page_path ASC LIMIT 300', Items::table() ) );
 		$this->dropdown( 'fbc_page', __( 'All pages', 'feedback-collector' ), array_combine( $paths, $paths ) ?: array(), $f['page_path'] );
 
+		$rounds = array();
+		foreach ( \FeedbackCollector\Rounds::all() as $round ) {
+			/* translators: %d: round number */
+			$rounds[ (string) $round ] = sprintf( __( 'Round %d', 'feedback-collector' ), $round );
+		}
+		$this->dropdown( 'fbc_round', __( 'All rounds', 'feedback-collector' ), $rounds, $f['round'] );
+
 		submit_button( __( 'Filter', 'feedback-collector' ), '', 'filter_action', false );
 		echo '</div>';
 	}
@@ -203,6 +211,8 @@ final class ItemsTable extends \WP_List_Table {
 		$created  = strtotime( $item['created_at'] . ' UTC' );
 		$meta     = array_filter(
 			array(
+				/* translators: %d: round number */
+				esc_html( sprintf( __( 'Round %d', 'feedback-collector' ), (int) $item['round'] ) ),
 				esc_html( $item['page_path'] ),
 				esc_html( (string) $item['breakpoint'] ),
 				$reporter ? esc_html( $reporter->display_name ) : '',

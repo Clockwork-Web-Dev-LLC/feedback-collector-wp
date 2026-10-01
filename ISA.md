@@ -4,7 +4,7 @@ project: feedback-collector-wp
 effort: E4
 effort_source: classifier
 phase: verify
-progress: 116/182
+progress: 121/200
 mode: interactive
 started: 2026-09-30T00:00:00-07:00
 updated: 2026-10-01T03:30:04.547Z
@@ -408,11 +408,11 @@ Test site: local WordPress 7.1.2 on PHP 8.4 / MySQL 26.7 at `http://localhost:88
 - [x] ISC-183: Arrow keys on the grip move between corners; motion respects prefers-reduced-motion
 
 ### Phase R: QA rounds
-- [ ] ISC-184: Items store a `round` (existing items backfilled to 1); new items get the current round
-- [ ] ISC-185: The current round lives in its own option, used by both the "Create QA list" and "Start next round" flows (one counter)
-- [ ] ISC-186: "Start Round N+1" works without Teamwork; with Teamwork it also creates and activates "QA – Round N+1"
-- [ ] ISC-187: Push routes each item to its own round's task list (round → list map), not the latest list
-- [ ] ISC-188: The admin list and sidebar filter by round; the admin header shows the current round and a per-round summary
+- [x] ISC-184: Items store a `round` (existing items backfilled to 1); new items get the current round
+- [x] ISC-185: The current round lives in its own option, used by both the "Create QA list" and "Start next round" flows (one counter)
+- [x] ISC-186: "Start Round N+1" works without Teamwork; with Teamwork it also creates and activates "QA – Round N+1"
+- [x] ISC-187: Push routes each item to its own round's task list (round → list map), not the latest list
+- [x] ISC-188: The admin list and sidebar filter by round; the admin header shows the current round and a per-round summary
 
 ### Phase S: Screenshots
 - [ ] ISC-189: Capture happens at right-click time, with the overlay hidden and a pin marker drawn on the image at the click point

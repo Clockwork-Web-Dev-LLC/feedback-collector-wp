@@ -130,6 +130,9 @@ final class Rest {
 			$field          = 'teamwork' === Assignees::source() ? 'tw_assignee_id' : 'assignee_id';
 			$args[ $field ] = absint( $request->get_param( 'assignee_id' ) );
 		}
+		if ( $request->get_param( 'round' ) ) {
+			$args['round'] = absint( $request->get_param( 'round' ) );
+		}
 
 		$result = Items::query( $args );
 		return new WP_REST_Response(
@@ -365,6 +368,7 @@ final class Rest {
 			'anchor'          => $item['anchor'],
 			'context'         => $item['context'],
 			'breakpoint'      => $item['breakpoint'],
+			'round'           => (int) $item['round'],
 			'reporter_id'     => $item['reporter_id'],
 			'reporter_name'   => $reporter ? $reporter->display_name : '',
 			'assignee_id'     => Assignees::selected( $item ),

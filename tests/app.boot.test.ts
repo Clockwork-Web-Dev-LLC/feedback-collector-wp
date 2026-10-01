@@ -21,6 +21,7 @@ const cfg = (): Config => ({
   },
   page: { postId: 7, postType: 'page', theme: 'blocksy' },
   openItem: 0,
+  round: 2,
 });
 
 interface Call {
@@ -35,7 +36,7 @@ let serverItems: Item[] = [];
 function makeItem(over: Partial<Item>): Item {
   return {
     id: 1, type: 'bug', status: 'open', priority: 'medium', title: 't', description: '', page_path: '/services/', page_query: '',
-    page_title: '', page_url: 'http://localhost:8899/services/', anchor: null, context: null, breakpoint: 'desktop', reporter_id: 1,
+    page_title: '', page_url: 'http://localhost:8899/services/', anchor: null, context: null, breakpoint: 'desktop', round: 1, reporter_id: 1,
     reporter_name: 'Admin', assignee_id: 0, assignee_name: '', tw_task_id: 0, tw_task_url: '', tw_sync_state: '', created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(), can_delete: true, ...over,
   };

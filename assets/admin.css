@@ -214,3 +214,17 @@ body.wp-admin { overflow-x: hidden; }
 .fbc-logo-preview { display: inline-flex; align-items: center; min-height: 52px; padding: 8px 14px; margin-top: 8px; border-radius: 6px; background: var(--fbc-dark); border-bottom: 3px solid var(--fbc-accent); }
 .fbc-logo-preview img { max-height: 36px; max-width: 260px; display: block; }
 .fbc-logo-preview em { color: var(--fbc-on-dark); opacity: 0.7; font-size: 12px; }
+
+/* QA round summary chips above the list */
+.fbc-rounds { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+.fbc-round {
+	display: inline-flex; align-items: baseline; gap: 8px; padding: 7px 12px; border-radius: 999px;
+	background: #fff; border: 1px solid var(--fbc-border); color: var(--fbc-text-muted); text-decoration: none; font-size: 12px;
+}
+.fbc-round strong { color: var(--fbc-text); font-weight: 600; }
+.fbc-round:hover, .fbc-round:focus { border-color: var(--fbc-ink); color: var(--fbc-text); box-shadow: none; }
+.fbc-round.is-active { background: var(--fbc-primary); border-color: var(--fbc-primary); color: var(--fbc-on-primary); }
+.fbc-round.is-active strong { color: var(--fbc-on-primary); }
+
+/* WordPress draws its select chevron 5px from the edge; inset it to match the overlay. */
+.fbc-admin select { background-position: right 12px top 55%; padding-right: 32px; }

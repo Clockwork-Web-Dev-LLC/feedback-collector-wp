@@ -34,6 +34,7 @@ interface SidebarFilters {
   type: '' | ItemType;
   status: 'unresolved' | '' | ItemStatus;
   mine: boolean;
+  round: number; // 0 = all rounds
 }
 
 export class App {
@@ -54,7 +55,7 @@ export class App {
   private pinMode: PinModeRequest | null = null;
   private states = new Map<number, PinState>();
   private allItems: Item[] | null = null;
-  private filters: SidebarFilters = { scope: 'page', type: '', status: 'unresolved', mine: false };
+  private filters: SidebarFilters = { scope: 'page', type: '', status: 'unresolved', mine: false, round: 0 };
   private pagePath: string;
   private framePending = false;
   private refreshTimer = 0;
@@ -624,7 +625,7 @@ export class App {
       { class: 'card popover', role: 'dialog', 'aria-label': `Feedback #${item.id}` },
       h('div', { class: 'head' }, h('span', { class: 'chip' }, h('span', { class: `dot ${item.type}` }), `${labels.type[item.type]} #${item.id}`), h('button', { class: 'x', type: 'button', 'aria-label': 'Close', text: '×', onclick: () => this.closeCard() })),
       h('div', { class: 't', style: 'font-weight:700;font-size:15px;margin-bottom:4px', text: item.title }),
-      h('div', { class: 'meta', text: `${item.reporter_name} · ${relativeTime(item.created_at)}${item.breakpoint ? ` · ${item.breakpoint}` : ''}` }),
+      h('div', { class: 'meta', text: `Round ${item.round} · ${item.reporter_name} · ${relativeTime(item.created_at)}${item.breakpoint ? ` · ${item.breakpoint}` : ''}` }),
       item.tw_task_url
         ? h('div', { class: 'meta' }, h('a', { href: item.tw_task_url, target: '_blank', rel: 'noopener', text: `Teamwork task #${item.tw_task_id} ↗` }), item.status === 'resolved' ? ' · completed' : ' · status syncs from Teamwork')
         : null,
@@ -929,6 +930,14 @@ export class App {
         void this.renderSidebarList();
       },
     });
+    const rounds: Array<[string, string]> = [['0', 'All rounds']];
+    for (let r = this.cfg.round; r >= 1; r--) rounds.push([String(r), r === this.cfg.round ? `Round ${r} (current)` : `Round ${r}`]);
+    const round = select('round', rounds, String(f.round), {
+      onchange: () => {
+        f.round = Number(round.value);
+        void this.renderSidebarList();
+      },
+    });
     const mine = h('input', {
       type: 'checkbox',
       onchange: () => {
@@ -945,7 +954,7 @@ export class App {
         'header',
         {},
         h('h2', {}, this.cfg.brand?.label ?? 'Feedback', h('button', { class: 'x', type: 'button', 'aria-label': 'Close list', text: '×', onclick: () => this.closeSidebar() })),
-        h('div', { class: 'filters' }, scope, type, status, h('span'), h('label', {}, mine, 'Assigned to me'))
+        h('div', { class: 'filters' }, scope, type, status, round, h('label', {}, mine, 'Assigned to me'))
       ),
       h('div', { class: 'list' })
     );
@@ -963,6 +972,7 @@ export class App {
   private matches(item: Item): boolean {
     const f = this.filters;
     if (f.type && item.type !== f.type) return false;
+    if (f.round && item.round !== f.round) return false;
     if (f.status === 'unresolved' && item.status === 'resolved') return false;
     if (f.status && f.status !== 'unresolved' && item.status !== f.status) return false;
     if (f.mine && (!this.cfg.assignees.me || item.assignee_id !== this.cfg.assignees.me)) return false;
@@ -982,7 +992,7 @@ export class App {
           'span',
           {},
           h('span', { class: 't', text: item.title }),
-          h('span', { class: 's', text: `${this.cfg.labels.status[item.status]}${item.assignee_name ? ` · ${item.assignee_name}` : ''}${item.breakpoint ? ` · ${item.breakpoint}` : ''}` })
+          h('span', { class: 's', text: `Round ${item.round} · ${this.cfg.labels.status[item.status]}${item.assignee_name ? ` · ${item.assignee_name}` : ''}${item.breakpoint ? ` · ${item.breakpoint}` : ''}` })
         ),
         extra ?? null
       );

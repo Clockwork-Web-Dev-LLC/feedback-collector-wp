@@ -134,6 +134,7 @@ final class Frontend {
 				'isAdmin' => current_user_can( 'manage_options' ),
 			),
 			'assignees' => Assignees::options() + array( 'me' => Assignees::me() ),
+			'round'     => Rounds::current(),
 			'labels'    => Items::labels(),
 			'page'      => array(
 				'postId'   => $queried instanceof \WP_Post ? (int) $queried->ID : 0,

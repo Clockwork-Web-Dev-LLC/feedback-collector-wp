@@ -11,6 +11,7 @@ use FeedbackCollector\Assignees;
 use FeedbackCollector\Branding;
 use FeedbackCollector\Items;
 use FeedbackCollector\Rest;
+use FeedbackCollector\Rounds;
 use const FeedbackCollector\CAP;
 use const FeedbackCollector\PLUGIN_FILE;
 
@@ -32,6 +33,7 @@ final class Admin {
 		add_action( 'admin_post_fbc_comment', array( self::class, 'handle_comment' ) );
 		add_action( 'admin_post_fbc_settings', array( self::class, 'handle_settings' ) );
 		add_action( 'admin_post_fbc_branding', array( self::class, 'handle_branding' ) );
+		add_action( 'admin_post_fbc_start_round', array( self::class, 'handle_start_round' ) );
 		// Late, so Clockwork Companion's stylesheet is already enqueued and can be removed.
 		add_action( 'admin_enqueue_scripts', array( Layout::class, 'enqueue' ), 100 );
 		add_filter( 'all_plugins', array( Branding::class, 'plugins_list' ) );
@@ -133,19 +135,67 @@ final class Admin {
 		$table = new ItemsTable();
 		$table->prepare_items();
 
+		$current = Rounds::current();
 		Layout::render(
 			'feedback',
 			__( 'Feedback', 'feedback-collector' ),
-			__( 'Everything your team has flagged on this site. Turn on Feedback mode from the admin bar to add more.', 'feedback-collector' ),
-			static function () use ( $table ): void {
+			/* translators: %d: current QA round */
+			sprintf( __( 'QA Round %d is in progress. Turn on Feedback mode from the admin bar to add more.', 'feedback-collector' ), $current ),
+			static function () use ( $table, $current ): void {
 				// phpcs:disable WordPress.Security.NonceVerification.Recommended
 				if ( isset( $_GET['fbc_done'] ) ) {
 					$n = absint( $_GET['fbc_done'] );
 					/* translators: %d: number of items */
 					printf( '<div class="notice notice-success is-dismissible"><p>%s</p></div>', esc_html( sprintf( _n( '%d item updated.', '%d items updated.', $n, 'feedback-collector' ), $n ) ) );
 				}
+				if ( isset( $_GET['fbc_round_started'] ) ) {
+					$msg = sprintf(
+						/* translators: %d: round number */
+						__( 'Round %d started. New feedback goes into this round.', 'feedback-collector' ),
+						absint( $_GET['fbc_round_started'] )
+					);
+					if ( isset( $_GET['fbc_round_tw'] ) ) {
+						$msg .= ' ' . ( '1' === $_GET['fbc_round_tw']
+							? __( 'Its Teamwork QA list was created and is now active.', 'feedback-collector' )
+							: __( 'The Teamwork QA list could not be created; create it in Settings.', 'feedback-collector' ) );
+					}
+					printf( '<div class="notice notice-success is-dismissible"><p>%s</p></div>', esc_html( $msg ) );
+				}
 				// phpcs:enable
 				do_action( 'fbc_list_notices' );
+
+				// Per-round summary: what's left from earlier rounds at a glance. Each chip filters the list.
+				$active_round = (int) ( ItemsTable::filters()['round'] ?? 0 );
+				echo '<nav class="fbc-rounds" aria-label="' . esc_attr__( 'QA rounds', 'feedback-collector' ) . '">';
+				printf(
+					'<a class="fbc-round%s" href="%s">%s</a>',
+					0 === $active_round ? ' is-active' : '',
+					esc_url( remove_query_arg( array( 'fbc_round', 'paged' ) ) ),
+					esc_html__( 'All rounds', 'feedback-collector' )
+				);
+				foreach ( Rounds::summary() as $round => $counts ) {
+					printf(
+						'<a class="fbc-round%1$s" href="%2$s"><strong>%3$s</strong> <span>%4$s</span></a>',
+						$round === $active_round ? ' is-active' : '',
+						esc_url( add_query_arg( 'fbc_round', $round, remove_query_arg( 'paged' ) ) ),
+						esc_html(
+							$round === $current
+								/* translators: %d: round number */
+								? sprintf( __( 'Round %d · current', 'feedback-collector' ), $round )
+								/* translators: %d: round number */
+								: sprintf( __( 'Round %d', 'feedback-collector' ), $round )
+						),
+						esc_html(
+							sprintf(
+								/* translators: 1: open count, 2: resolved count */
+								__( '%1$d open · %2$d resolved', 'feedback-collector' ),
+								$counts['open'],
+								$counts['resolved']
+							)
+						)
+					);
+				}
+				echo '</nav>';
 
 				Layout::card_open( '', true );
 				echo '<form method="get">';
@@ -155,8 +205,20 @@ final class Admin {
 				echo '</form>';
 				Layout::card_close();
 			},
-			static function (): void {
+			static function () use ( $current ): void {
 				do_action( 'fbc_list_header_actions' );
+				if ( current_user_can( 'manage_options' ) ) {
+					printf( '<form method="post" action="%s">', esc_url( admin_url( 'admin-post.php' ) ) );
+					wp_nonce_field( 'fbc_start_round' );
+					echo '<input type="hidden" name="action" value="fbc_start_round" />';
+					printf(
+						'<button type="submit" class="button button-primary" onclick="return confirm(%1$s)">%2$s</button>',
+						esc_attr( wp_json_encode( sprintf( /* translators: %d: next round */ __( 'Start QA Round %d? New feedback will go into the new round. Existing items keep their round.', 'feedback-collector' ), $current + 1 ) ) ),
+						/* translators: %d: next round number */
+						esc_html( sprintf( __( 'Start Round %d', 'feedback-collector' ), $current + 1 ) )
+					);
+					echo '</form>';
+				}
 			}
 		);
 	}
@@ -570,6 +632,26 @@ final class Admin {
 				<?php
 			}
 		);
+	}
+
+	/**
+	 * Starts the next QA round (and its Teamwork list when connected).
+	 */
+	public static function handle_start_round(): void {
+		check_admin_referer( 'fbc_start_round' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'Not allowed.', 'feedback-collector' ), 403 );
+		}
+		$result = Rounds::start_next();
+		$args   = array(
+			'page'              => self::SLUG,
+			'fbc_round_started' => $result['round'],
+		);
+		if ( null !== $result['teamwork'] ) {
+			$args['fbc_round_tw'] = is_wp_error( $result['teamwork'] ) ? '0' : '1';
+		}
+		wp_safe_redirect( add_query_arg( $args, admin_url( 'admin.php' ) ) );
+		exit;
 	}
 
 	/**

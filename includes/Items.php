@@ -166,6 +166,10 @@ final class Items {
 			$where[]  = 'tw_assignee_id = %d';
 			$params[] = (int) $args['tw_assignee_id'];
 		}
+		if ( ! empty( $args['round'] ) ) {
+			$where[]  = 'round = %d';
+			$params[] = (int) $args['round'];
+		}
 		if ( ! empty( $args['search'] ) ) {
 			$like     = '%' . $wpdb->esc_like( (string) $args['search'] ) . '%';
 			$where[]  = '(title LIKE %s OR description LIKE %s)';
@@ -250,6 +254,7 @@ final class Items {
 				'assignee_id'      => (int) ( $data['assignee_id'] ?? 0 ),
 				'tw_assignee_id'   => (int) ( $data['tw_assignee_id'] ?? 0 ),
 				'tw_assignee_name' => (string) ( $data['tw_assignee_name'] ?? '' ),
+				'round'            => Rounds::current(),
 				'created_at'       => $now,
 				'updated_at'       => $now,
 			)
@@ -394,7 +399,7 @@ final class Items {
 	 * @return array<string, mixed>
 	 */
 	public static function hydrate( array $row ): array {
-		foreach ( array( 'id', 'reporter_id', 'assignee_id', 'tw_assignee_id', 'tw_task_id', 'tw_project_id' ) as $int_field ) {
+		foreach ( array( 'id', 'reporter_id', 'assignee_id', 'tw_assignee_id', 'tw_task_id', 'tw_project_id', 'round' ) as $int_field ) {
 			$row[ $int_field ] = (int) $row[ $int_field ];
 		}
 		$row['anchor']  = $row['anchor'] ? json_decode( (string) $row['anchor'], true ) : null;

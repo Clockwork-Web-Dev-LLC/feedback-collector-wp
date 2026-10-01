@@ -42,6 +42,7 @@ export interface Item {
   anchor: Anchor | null;
   context: Context | null;
   breakpoint: Breakpoint | '';
+  round: number;
   reporter_id: number;
   reporter_name: string;
   assignee_id: number;
@@ -89,6 +90,7 @@ export interface Config {
   page: { postId: number; postType: string; theme: string };
   brand?: Brand;
   openItem: number;
+  round: number;
 }
 
 export interface NewItem {

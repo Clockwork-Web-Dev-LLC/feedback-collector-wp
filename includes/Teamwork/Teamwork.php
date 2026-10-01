@@ -14,6 +14,7 @@ use FeedbackCollector\Admin\Admin;
 use FeedbackCollector\Admin\Layout;
 use FeedbackCollector\Branding;
 use FeedbackCollector\Items;
+use FeedbackCollector\Rounds;
 use WP_Error;
 use const FeedbackCollector\CAP;
 
@@ -75,7 +76,8 @@ final class Teamwork {
 				'project_name'  => '',
 				'tasklist_id'   => 0,
 				'tasklist_name' => '',
-				'round'         => 0,
+				'round'         => 0, // Legacy counter; Rounds::current() is the source of truth.
+				'round_lists'   => array(), // round => array( 'id' => task list ID, 'name' => list name ).
 				'auto_push'     => false,
 				'send_email'    => true,
 				'tags'          => array(),
@@ -131,7 +133,68 @@ final class Teamwork {
 	 */
 	public static function ready(): bool {
 		$s = self::settings();
-		return null !== self::client() && $s['project_id'] && $s['tasklist_id'];
+		return null !== self::client() && $s['project_id'] && self::list_for_round( Rounds::current() );
+	}
+
+	/**
+	 * The Teamwork task list for a round, or 0 if that round has none.
+	 *
+	 * Only a site set up before per-round lists existed (no map yet) treats its active
+	 * list as the current round's. Once any round is mapped, an unmapped round has no
+	 * list, so starting Round N+1 never routes its items into Round N's list.
+	 *
+	 * @param int $round Round.
+	 */
+	public static function list_for_round( int $round ): int {
+		$s   = self::settings();
+		$map = (array) $s['round_lists'];
+		if ( ! empty( $map[ $round ]['id'] ) ) {
+			return (int) $map[ $round ]['id'];
+		}
+		return ( ! $map && Rounds::current() === $round ) ? (int) $s['tasklist_id'] : 0;
+	}
+
+	/**
+	 * Display name of a round's task list.
+	 *
+	 * @param int $round Round.
+	 */
+	public static function list_name_for_round( int $round ): string {
+		$s   = self::settings();
+		$map = (array) $s['round_lists'];
+		if ( ! empty( $map[ $round ]['name'] ) ) {
+			return (string) $map[ $round ]['name'];
+		}
+		return ( ! $map && Rounds::current() === $round ) ? (string) $s['tasklist_name'] : '';
+	}
+
+	/**
+	 * Creates "QA – Round N – date" in the selected project, maps it to the round and makes it active.
+	 *
+	 * @param int $round Round.
+	 * @return int|WP_Error New task list ID.
+	 */
+	public static function create_round_list( int $round ): int|WP_Error {
+		$client = self::client();
+		$s      = self::settings();
+		if ( ! $client || ! $s['project_id'] ) {
+			return new WP_Error( 'fbc_tw_not_ready', __( 'Choose a Teamwork project first.', 'feedback-collector' ) );
+		}
+		/* translators: 1: round number, 2: date */
+		$name = sprintf( __( 'QA – Round %1$d – %2$s', 'feedback-collector' ), $round, wp_date( 'Y-m-d' ) );
+		$id   = $client->create_tasklist( (int) $s['project_id'], $name );
+		if ( is_wp_error( $id ) ) {
+			return $id;
+		}
+		$s['round_lists'][ $round ] = array(
+			'id'   => $id,
+			'name' => $name,
+		);
+		$s['round']                 = max( (int) $s['round'], $round );
+		$s['tasklist_id']           = $id;
+		$s['tasklist_name']         = $name;
+		self::save( $s );
+		return $id;
 	}
 
 	/**
@@ -228,15 +291,24 @@ final class Teamwork {
 		}
 		$client = self::client();
 		$s      = self::settings();
-		if ( ! $client || ! $s['project_id'] || ! $s['tasklist_id'] ) {
+		if ( ! $client || ! $s['project_id'] ) {
 			return new WP_Error( 'fbc_tw_not_ready', __( 'Connect Teamwork and choose a project and QA list in Feedback → Settings first.', 'feedback-collector' ) );
+		}
+		// Each item goes to its own round's list, so a Round 1 item pushed during Round 2 lands in Round 1.
+		$list = self::list_for_round( (int) $item['round'] );
+		if ( ! $list ) {
+			return new WP_Error(
+				'fbc_tw_no_round_list',
+				/* translators: %d: round number */
+				sprintf( __( 'There is no Teamwork list for Round %d. Pick or create one in Feedback → Settings.', 'feedback-collector' ), (int) $item['round'] )
+			);
 		}
 		if ( ! self::claim( $id ) ) {
 			return new WP_Error( 'fbc_tw_busy', __( 'This item is already being pushed.', 'feedback-collector' ) );
 		}
 
 		$task    = self::build_task( $item, $client, $s );
-		$task_id = $client->create_task( (int) $s['tasklist_id'], $task, (bool) $s['send_email'] );
+		$task_id = $client->create_task( $list, $task, (bool) $s['send_email'] );
 
 		if ( is_wp_error( $task_id ) ) {
 			$limited = 'fbc_tw_rate_limited' === $task_id->get_error_code();
@@ -722,6 +794,16 @@ final class Teamwork {
 					$client             = self::client();
 					$lists              = $client && $project ? $client->tasklists( $project ) : array();
 					$s['tasklist_name'] = is_array( $lists ) ? (string) ( $lists[ $list ] ?? '' ) : '';
+					// Picking a list maps it to the current round; earlier rounds keep theirs.
+					$current = Rounds::current();
+					if ( $list ) {
+						$s['round_lists'][ $current ] = array(
+							'id'   => $list,
+							'name' => $s['tasklist_name'],
+						);
+					} else {
+						unset( $s['round_lists'][ $current ] );
+					}
 				}
 			}
 		}
@@ -748,12 +830,13 @@ final class Teamwork {
 		Layout::card_open( __( 'Teamwork tools', 'feedback-collector' ) );
 		echo '<p>';
 		self::button_form( 'fbc_tw_test', __( 'Test connection', 'feedback-collector' ) );
-		if ( $s['project_id'] ) {
+		$current = Rounds::current();
+		if ( $s['project_id'] && empty( $s['round_lists'][ $current ] ) ) {
 			echo ' ';
 			self::button_form(
 				'fbc_tw_create_list',
 				/* translators: %d: round number */
-				sprintf( __( 'Create “QA – Round %d” list', 'feedback-collector' ), (int) $s['round'] + 1 )
+				sprintf( __( 'Create “QA – Round %d” list', 'feedback-collector' ), $current )
 			);
 		}
 		echo '</p>';
@@ -830,24 +913,12 @@ final class Teamwork {
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'Not allowed.', 'feedback-collector' ), 403 );
 		}
-		$s      = self::settings();
-		$client = self::client();
-		if ( ! $client || ! $s['project_id'] ) {
-			self::back_to_settings( __( 'Choose a project first.', 'feedback-collector' ), false );
-		}
-		$round = (int) $s['round'] + 1;
-		/* translators: 1: round number, 2: date */
-		$name = sprintf( __( 'QA – Round %1$d – %2$s', 'feedback-collector' ), $round, wp_date( 'Y-m-d' ) );
-		$id   = $client->create_tasklist( (int) $s['project_id'], $name );
+		$id = self::create_round_list( Rounds::current() );
 		if ( is_wp_error( $id ) ) {
 			self::back_to_settings( $id->get_error_message(), false );
 		}
-		$s['round']         = $round;
-		$s['tasklist_id']   = $id;
-		$s['tasklist_name'] = $name;
-		self::save( $s );
 		/* translators: %s: list name */
-		self::back_to_settings( sprintf( __( 'Created “%s” and set it as the active QA list.', 'feedback-collector' ), $name ), true );
+		self::back_to_settings( sprintf( __( 'Created “%s” and set it as the active QA list.', 'feedback-collector' ), self::list_name_for_round( Rounds::current() ) ), true );
 	}
 
 	/**
@@ -960,9 +1031,15 @@ final class Teamwork {
 			if ( 'error' === $item['tw_sync_state'] ) {
 				echo '<div class="notice notice-error inline"><p>' . esc_html( (string) $item['tw_sync_error'] ) . '</p></div>';
 			}
-			$s = self::settings();
-			/* translators: %s: task list name */
-			echo '<p class="description">' . esc_html( sprintf( __( 'Pushes to “%s”.', 'feedback-collector' ), $s['tasklist_name'] ?: '#' . $s['tasklist_id'] ) ) . '</p><p>';
+			$round = (int) $item['round'];
+			$name  = self::list_name_for_round( $round );
+			echo '<p class="description">' . esc_html(
+				$name
+					/* translators: 1: round number, 2: task list name */
+					? sprintf( __( 'Round %1$d → pushes to “%2$s”.', 'feedback-collector' ), $round, $name )
+					/* translators: %d: round number */
+					: sprintf( __( 'Round %d has no Teamwork list yet.', 'feedback-collector' ), $round )
+			) . '</p><p>';
 			self::button_form( 'fbc_tw_push', 'error' === $item['tw_sync_state'] ? __( 'Retry push', 'feedback-collector' ) : __( 'Push to Teamwork', 'feedback-collector' ), array( 'id' => (int) $item['id'] ), 'primary' );
 			echo '</p>';
 		} else {
