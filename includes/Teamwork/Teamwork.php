@@ -77,6 +77,7 @@ final class Teamwork {
 				'tasklist_name' => '',
 				'round'         => 0,
 				'auto_push'     => false,
+				'send_email'    => true,
 				'tags'          => array(),
 			)
 		);
@@ -235,7 +236,7 @@ final class Teamwork {
 		}
 
 		$task    = self::build_task( $item, $client, $s );
-		$task_id = $client->create_task( (int) $s['tasklist_id'], $task );
+		$task_id = $client->create_task( (int) $s['tasklist_id'], $task, (bool) $s['send_email'] );
 
 		if ( is_wp_error( $task_id ) ) {
 			$limited = 'fbc_tw_rate_limited' === $task_id->get_error_code();
@@ -672,6 +673,14 @@ final class Teamwork {
 			checked( (bool) $s['auto_push'], true, false ),
 			esc_html__( 'Push new feedback to Teamwork as soon as it is created', 'feedback-collector' )
 		);
+
+		printf(
+			'<tr><th scope="row">%1$s</th><td><input type="hidden" name="tw_options_shown" value="1" /><label><input type="checkbox" name="tw_send_email" value="1"%2$s /> %3$s</label><p class="description">%4$s</p></td></tr>',
+			esc_html__( 'Email notifications', 'feedback-collector' ),
+			checked( (bool) $s['send_email'], true, false ),
+			esc_html__( 'Email assignees when a task is created in Teamwork', 'feedback-collector' ),
+			esc_html__( 'Applies to every push from this site. When off, tasks are still created and assigned in Teamwork; nobody is emailed about them.', 'feedback-collector' )
+		);
 	}
 
 	/**
@@ -713,7 +722,13 @@ final class Teamwork {
 				}
 			}
 		}
-		$s['auto_push'] = ! empty( $_POST['tw_auto_push'] );
+		// These checkboxes only render once Teamwork is connected. An absent checkbox means
+		// "unchecked" only if it was on the form; otherwise the first save (pasting the key)
+		// would silently turn emails off.
+		if ( ! empty( $_POST['tw_options_shown'] ) ) {
+			$s['auto_push']  = ! empty( $_POST['tw_auto_push'] );
+			$s['send_email'] = ! empty( $_POST['tw_send_email'] );
+		}
 		// phpcs:enable
 		self::save( $s );
 		self::ensure_schedule();

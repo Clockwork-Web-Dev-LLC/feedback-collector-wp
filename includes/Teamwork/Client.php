@@ -279,10 +279,16 @@ final class Client {
 	 *
 	 * @param int                  $tasklist_id Task list.
 	 * @param array<string, mixed> $task        v3 task fields.
+	 * @param bool                 $notify      Whether Teamwork emails the assignees about the new task.
 	 * @return int|WP_Error Task ID.
 	 */
-	public function create_task( int $tasklist_id, array $task ): int|WP_Error {
-		$data = $this->request( 'POST', "/projects/api/v3/tasklists/{$tasklist_id}/tasks.json", array(), array( 'task' => $task ) );
+	public function create_task( int $tasklist_id, array $task, bool $notify = true ): int|WP_Error {
+		$body = array(
+			'task'        => $task,
+			// Same switch as "Notify by email" when adding a task in the Teamwork UI.
+			'taskOptions' => array( 'notify' => $notify ),
+		);
+		$data = $this->request( 'POST', "/projects/api/v3/tasklists/{$tasklist_id}/tasks.json", array(), $body );
 		if ( is_wp_error( $data ) ) {
 			return $data;
 		}
