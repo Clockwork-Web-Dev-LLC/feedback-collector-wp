@@ -299,19 +299,81 @@ final class Client {
 	}
 
 	/**
+	 * Uploads a file through Teamwork's presigned flow and returns its pending-file reference,
+	 * which create_task() attaches. Step 1 asks Teamwork for a signed URL; step 2 PUTs the bytes
+	 * straight to storage (no Teamwork auth header on that request).
+	 *
+	 * @param string $path     Local file.
+	 * @param string $filename Name shown in Teamwork.
+	 * @return string|WP_Error Pending-file reference.
+	 */
+	public function upload_pending_file( string $path, string $filename ): string|WP_Error {
+		$size = (int) filesize( $path );
+		if ( $size < 1 ) {
+			return new WP_Error( 'fbc_tw_file', __( 'Screenshot file is missing.', 'feedback-collector' ) );
+		}
+		$data = $this->request(
+			'GET',
+			'/projects/api/v1/pendingfiles/presignedurl.json',
+			array(
+				'fileName' => $filename,
+				'fileSize' => $size,
+			)
+		);
+		if ( is_wp_error( $data ) ) {
+			return $data;
+		}
+		$ref = (string) ( $data['ref'] ?? '' );
+		$url = (string) ( $data['url'] ?? '' );
+		if ( '' === $ref || '' === $url ) {
+			return new WP_Error( 'fbc_tw_file', __( 'Teamwork did not return an upload URL.', 'feedback-collector' ) );
+		}
+		$response = wp_remote_request(
+			$url,
+			array(
+				'method'  => 'PUT',
+				'timeout' => 30,
+				'headers' => array(
+					'X-Amz-Acl'      => 'public-read',
+					'Content-Length' => (string) $size,
+				),
+				'body'    => (string) file_get_contents( $path ), // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+			)
+		);
+		if ( is_wp_error( $response ) ) {
+			return new WP_Error( 'fbc_tw_file', $response->get_error_message() );
+		}
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		if ( $code < 200 || $code >= 300 ) {
+			/* translators: %d: HTTP status */
+			return new WP_Error( 'fbc_tw_file', sprintf( __( 'Screenshot upload to Teamwork failed (%d).', 'feedback-collector' ), $code ) );
+		}
+		return $ref;
+	}
+
+	/**
 	 * Creates a task in a task list.
 	 *
 	 * @param int                  $tasklist_id Task list.
 	 * @param array<string, mixed> $task        v3 task fields.
 	 * @param bool                 $notify      Whether Teamwork emails the assignees about the new task.
+	 * @param string[]             $pending     Pending-file references to attach (see upload_pending_file()).
 	 * @return int|WP_Error Task ID.
 	 */
-	public function create_task( int $tasklist_id, array $task, bool $notify = true ): int|WP_Error {
+	public function create_task( int $tasklist_id, array $task, bool $notify = true, array $pending = array() ): int|WP_Error {
 		$body = array(
 			'task'        => $task,
 			// Same switch as "Notify by email" when adding a task in the Teamwork UI.
 			'taskOptions' => array( 'notify' => $notify ),
 		);
+		if ( $pending ) {
+			$body['attachments'] = array(
+				'pendingFiles' => array_map(
+					static fn( string $ref ): array => array( 'reference' => $ref ),
+					array_values( $pending )
+				),
+			);
+		}
 		$data = $this->request( 'POST', "/projects/api/v3/tasklists/{$tasklist_id}/tasks.json", array(), $body );
 		if ( is_wp_error( $data ) ) {
 			return $data;

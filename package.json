@@ -4,7 +4,7 @@
   "version": "0.2.0",
   "type": "module",
   "scripts": {
-    "build": "bun build src/overlay/main.ts --outfile dist/overlay.js --minify --target browser --format iife",
+    "build": "bun build src/overlay/main.ts --outfile dist/overlay.js --minify --target browser --format iife && bun build src/overlay/capture-entry.ts --outfile dist/capture.js --minify --target browser --format iife",
     "watch": "bun build src/overlay/main.ts --outfile dist/overlay.js --target browser --format iife --watch",
     "test": "bun test",
     "test:wp": "sh tests/wp/run.sh",
@@ -15,5 +15,9 @@
     "bun-types": "^1.4.2",
     "happy-dom": "^20.14.5",
     "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "@zumer/snapdom": "3.2.0",
+    "fabric": "7.4.0"
   }
 }

@@ -65,6 +65,7 @@ export class App {
   private corner: Corner = 'br';
   private dragging = false;
   private ghost: HTMLDivElement | null = null;
+  private pendingShot: Promise<Blob | null> | null = null;
 
   constructor(private cfg: Config) {
     this.api = new Api(cfg);
@@ -428,6 +429,41 @@ export class App {
 
   // ---------------------------------------------------------------- cards
 
+  private scripts = new Map<string, Promise<void>>();
+
+  /** Loads a lazily built bundle from dist/ once (capture.js, annotator.js). */
+  private loadBundle(file: string): Promise<void> {
+    const cached = this.scripts.get(file);
+    if (cached) return cached;
+    const base = this.cfg.assetsUrl ?? '';
+    const p = new Promise<void>((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = `${base}${file}${this.cfg.version ? `?ver=${encodeURIComponent(this.cfg.version)}` : ''}`;
+      s.async = true;
+      s.onload = () => resolve();
+      s.onerror = () => {
+        this.scripts.delete(file);
+        reject(new Error(`Could not load ${file}`));
+      };
+      document.head.append(s);
+    });
+    this.scripts.set(file, p);
+    return p;
+  }
+
+  /** Screenshot of the current viewport (overlay excluded, inputs masked), or null if disabled/failed. */
+  private async startCapture(marker: { x: number; y: number } | null): Promise<Blob | null> {
+    if (!this.cfg.shots || !this.cfg.assetsUrl) return null;
+    try {
+      if (!window.FBCCapture) await this.loadBundle('capture.js');
+      const api = window.FBCCapture;
+      if (!api) return null;
+      return await api.captureViewport({ marker, color: this.cfg.brand?.primary ?? '#6953c4' });
+    } catch {
+      return null;
+    }
+  }
+
   /** Assignee picker options from the active source (Teamwork project members or WordPress users). */
   private assigneeOptions(): Array<[string, string]> {
     return [['0', 'Unassigned'], ...this.cfg.assignees.people.map((p): [string, string] => [String(p.id), p.name])];
@@ -470,6 +506,8 @@ export class App {
   }
 
   private openTypeMenu(el: Element, x: number, y: number): void {
+    // Capture now, while the page still looks the way the reviewer is reporting it.
+    this.pendingShot = this.startCapture({ x, y });
     const labels = this.cfg.labels.type;
     const choose = (type: ItemType) => this.openComposer(type, el, x, y);
     const buttons = TYPES.map((type, i) =>
@@ -513,6 +551,43 @@ export class App {
     const error = h('div', { class: 'error', role: 'alert' });
     const submit = h('button', { class: 'btn primary', type: 'submit', text: 'Add' });
 
+    // Screenshot: started at right-click (openTypeMenu) so the composer isn't covering the
+    // element yet; a page note starts its own capture here, without a marker.
+    let shotPromise: Promise<Blob | null> = this.pendingShot ?? this.startCapture(el ? { x, y } : null);
+    this.pendingShot = null;
+    let shotBlob: Blob | null = null;
+    let shotUrl = '';
+    const shotBox = h('div', { class: 'shot', 'aria-live': 'polite' });
+    const renderShot = () => {
+      if (shotUrl) URL.revokeObjectURL(shotUrl);
+      shotUrl = shotBlob ? URL.createObjectURL(shotBlob) : '';
+      shotBox.replaceChildren(
+        ...(shotBlob
+          ? [
+              h('img', { src: shotUrl, alt: 'Screenshot that will be attached' }),
+              h(
+                'div',
+                { class: 'shot-actions' },
+                this.cfg.shots
+                  ? h('button', { type: 'button', class: 'btn link', text: 'Remove screenshot', onclick: () => { shotBlob = null; shotPromise = Promise.resolve(null); renderShot(); } })
+                  : null
+              ),
+            ]
+          : [])
+      );
+      shotBox.hidden = !shotBlob;
+    };
+    if (this.cfg.shots) {
+      shotBox.textContent = 'Capturing screenshot…';
+      void shotPromise.then((blob) => {
+        shotBlob = blob;
+        renderShot();
+        if (!blob) shotBox.hidden = true;
+      });
+    } else {
+      shotBox.hidden = true;
+    }
+
     const form = h(
       'form',
       {
@@ -529,6 +604,7 @@ export class App {
       h('label', { class: 'field' }, h('span', { text: 'Description' }), desc),
       h('div', { class: 'row' }, h('label', { class: 'field' }, h('span', { text: 'Type' }), typeSelect), h('label', { class: 'field' }, h('span', { text: 'Priority' }), priority)),
       h('label', { class: 'field' }, h('span', { text: this.assigneeLabel() }), assignee),
+      shotBox,
       h('div', { class: 'actions' }, h('button', { class: 'btn link', type: 'button', text: 'Cancel', onclick: () => this.closeCard() }), submit)
     );
 
@@ -540,24 +616,31 @@ export class App {
       }
       submit.disabled = true;
       try {
-        const item = await this.api.createItem({
-          type: typeSelect.value as ItemType,
-          title: title.value.trim(),
-          description: desc.value,
-          priority: priority.value as Priority,
-          assignee_id: Number(assignee.value),
-          page_path: this.pagePath,
-          page_query: currentQuery(),
-          page_title: document.title,
-          anchor,
-          context: captureContext(this.cfg),
-        });
+        // Wait briefly for a capture still in flight; never hold the feedback hostage to it.
+        const blob = this.cfg.shots ? await Promise.race([shotPromise, new Promise<null>((r) => window.setTimeout(() => r(null), 10000))]) : null;
+        const item = await this.api.createItem(
+          {
+            type: typeSelect.value as ItemType,
+            title: title.value.trim(),
+            description: desc.value,
+            priority: priority.value as Priority,
+            assignee_id: Number(assignee.value),
+            page_path: this.pagePath,
+            page_query: currentQuery(),
+            page_title: document.title,
+            anchor,
+            context: captureContext(this.cfg),
+          },
+          shotBlob ?? blob
+        );
+        if (shotUrl) URL.revokeObjectURL(shotUrl);
         this.closeCard();
         this.upsert(item);
         const s = this.states.get(item.id);
         if (s && el) s.el = el;
         this.refresh();
-        this.toast(`Added #${item.id}`);
+        if (item.screenshot_error) this.toast(`Added #${item.id}, but the screenshot wasn’t saved: ${item.screenshot_error}`, true);
+        else this.toast(`Added #${item.id}`);
       } catch (err) {
         error.textContent = (err as Error).message;
         submit.disabled = false;
@@ -632,6 +715,9 @@ export class App {
       mismatch,
       orphan,
       item.description ? h('p', { class: 'desc', text: item.description }) : null,
+      item.screenshot_url
+        ? h('a', { class: 'shot', href: item.screenshot_url, target: '_blank', rel: 'noopener', title: 'Open full screenshot' }, h('img', { src: item.screenshot_url, alt: 'Screenshot from when this was filed' }))
+        : null,
       h('div', { class: 'row' }, h('label', { class: 'field' }, h('span', { text: 'Status' }), status), h('label', { class: 'field' }, h('span', { text: 'Priority' }), priority)),
       item.assignee_locked
         ? h(

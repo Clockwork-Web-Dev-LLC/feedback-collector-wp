@@ -15,6 +15,7 @@ use FeedbackCollector\Admin\Layout;
 use FeedbackCollector\Branding;
 use FeedbackCollector\Items;
 use FeedbackCollector\Rounds;
+use FeedbackCollector\Screenshots;
 use WP_Error;
 use const FeedbackCollector\CAP;
 
@@ -307,8 +308,23 @@ final class Teamwork {
 			return new WP_Error( 'fbc_tw_busy', __( 'This item is already being pushed.', 'feedback-collector' ) );
 		}
 
-		$task    = self::build_task( $item, $client, $s );
-		$task_id = $client->create_task( $list, $task, (bool) $s['send_email'] );
+		$task = self::build_task( $item, $client, $s );
+
+		// Attach the screenshot. A failed upload never blocks the push: the task body
+		// already links to the image, so the developer still sees it.
+		$pending = array();
+		$shot    = Screenshots::path( $item );
+		if ( '' !== $shot ) {
+			$ref = $client->upload_pending_file( $shot, sprintf( 'feedback-%d.%s', (int) $item['id'], pathinfo( $shot, PATHINFO_EXTENSION ) ) );
+			if ( is_wp_error( $ref ) ) {
+				/* translators: %s: error */
+				Items::add_comment( $id, sprintf( __( 'screenshot was not attached in Teamwork (%s); the task links to it instead', 'feedback-collector' ), $ref->get_error_message() ), 'activity', 0 );
+			} else {
+				$pending[] = $ref;
+			}
+		}
+
+		$task_id = $client->create_task( $list, $task, (bool) $s['send_email'], $pending );
 
 		if ( is_wp_error( $task_id ) ) {
 			$limited = 'fbc_tw_rate_limited' === $task_id->get_error_code();
@@ -380,9 +396,13 @@ final class Teamwork {
 			$html .= '<li>' . esc_html__( 'Breakpoint', 'feedback-collector' ) . ': ' . esc_html( sprintf( '%s · %d×%d @%sx', $ctx['breakpoint'] ?? '', $ctx['viewport_w'] ?? 0, $ctx['viewport_h'] ?? 0, $ctx['dpr'] ?? 1 ) ) . '</li>';
 			$html .= '<li>' . esc_html__( 'Browser', 'feedback-collector' ) . ': ' . esc_html( trim( ( $ctx['browser'] ?? '' ) . ' · ' . ( $ctx['os'] ?? '' ), ' ·' ) ) . '</li>';
 		}
-		$html .= '<li>' . esc_html__( 'Element', 'feedback-collector' ) . ': ' . ( $anchor ? '<code>' . esc_html( (string) ( $anchor['selector'] ?? '' ) ) . '</code>' : esc_html__( 'whole page', 'feedback-collector' ) ) . '</li>';
-		$html .= '<li>' . esc_html__( 'Priority', 'feedback-collector' ) . ': ' . esc_html( $labels['priority'][ $item['priority'] ] ?? $item['priority'] ) . '</li>';
-		$html .= '<li>' . esc_html__( 'Reported by', 'feedback-collector' ) . ': ' . esc_html( $by ? $by->display_name : '' ) . ' (' . esc_html( Branding::text( 'name' ) ) . ' #' . (int) $item['id'] . ')</li>';
+		$html    .= '<li>' . esc_html__( 'Element', 'feedback-collector' ) . ': ' . ( $anchor ? '<code>' . esc_html( (string) ( $anchor['selector'] ?? '' ) ) . '</code>' : esc_html__( 'whole page', 'feedback-collector' ) ) . '</li>';
+		$html    .= '<li>' . esc_html__( 'Priority', 'feedback-collector' ) . ': ' . esc_html( $labels['priority'][ $item['priority'] ] ?? $item['priority'] ) . '</li>';
+		$html    .= '<li>' . esc_html__( 'Reported by', 'feedback-collector' ) . ': ' . esc_html( $by ? $by->display_name : '' ) . ' (' . esc_html( Branding::text( 'name' ) ) . ' #' . (int) $item['id'] . ')</li>';
+		$shot_url = Screenshots::url( $item );
+		if ( '' !== $shot_url ) {
+			$html .= '<li>' . esc_html__( 'Screenshot', 'feedback-collector' ) . ': <a href="' . esc_url( $shot_url ) . '">' . esc_html__( 'view image', 'feedback-collector' ) . '</a></li>';
+		}
 		$html .= '</ul>';
 		if ( ! empty( $ctx['js_errors'] ) ) {
 			$html .= '<p>' . esc_html__( 'JavaScript errors on the page:', 'feedback-collector' ) . '</p><ul>';

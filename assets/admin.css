@@ -228,3 +228,7 @@ body.wp-admin { overflow-x: hidden; }
 
 /* WordPress draws its select chevron 5px from the edge; inset it to match the overlay. */
 .wp-core-ui .fbc-admin select, .fbc-admin select { background-position: right 12px top 55%; padding-right: 32px; }
+
+/* Screenshot on the detail screen */
+.fbc-shot { display: block; border: 1px solid var(--fbc-border); border-radius: 6px; overflow: hidden; background: #f6f7f7; }
+.fbc-shot img { display: block; width: 100%; height: auto; }

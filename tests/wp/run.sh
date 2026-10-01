@@ -11,7 +11,7 @@ set -u
 WP="${WP:-wp}"
 DIR="$(cd "$(dirname "$0")" && pwd)"
 failed=0
-for suite in rest teamwork assignees rounds api-key-storage; do
+for suite in rest teamwork assignees rounds screenshots api-key-storage; do
 	echo "== $suite"
 	out="$($WP eval-file "$DIR/$suite.php" 2>&1)"
 	echo "$out" | grep -E '^(FAIL|cleanup)|passed|Fatal|Error' || true

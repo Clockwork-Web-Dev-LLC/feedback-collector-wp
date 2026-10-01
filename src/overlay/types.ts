@@ -43,6 +43,8 @@ export interface Item {
   context: Context | null;
   breakpoint: Breakpoint | '';
   round: number;
+  screenshot_url?: string;
+  screenshot_error?: string;
   reporter_id: number;
   reporter_name: string;
   assignee_id: number;
@@ -91,6 +93,11 @@ export interface Config {
   brand?: Brand;
   openItem: number;
   round: number;
+  /** Base URL of dist/ for lazily loaded bundles (capture.js, annotator.js). */
+  assetsUrl?: string;
+  version?: string;
+  /** Attach a screenshot to new items. */
+  shots?: boolean;
 }
 
 export interface NewItem {
@@ -108,6 +115,7 @@ export interface NewItem {
 
 declare global {
   interface Window {
+    FBCCapture?: { captureViewport(opts: { marker: { x: number; y: number } | null; color: string; maxWidth?: number; maxBytes?: number }): Promise<Blob> };
     fbcConfig?: Config;
     __fbcErrors?: string[];
   }

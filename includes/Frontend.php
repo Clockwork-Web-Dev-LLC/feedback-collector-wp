@@ -135,6 +135,9 @@ final class Frontend {
 			),
 			'assignees' => Assignees::options() + array( 'me' => Assignees::me() ),
 			'round'     => Rounds::current(),
+			'assetsUrl' => FBC_URL . 'dist/',
+			'version'   => VERSION,
+			'shots'     => Screenshots::enabled(),
 			'labels'    => Items::labels(),
 			'page'      => array(
 				'postId'   => $queried instanceof \WP_Post ? (int) $queried->ID : 0,

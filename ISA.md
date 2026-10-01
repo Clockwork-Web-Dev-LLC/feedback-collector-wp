@@ -4,7 +4,7 @@ project: feedback-collector-wp
 effort: E4
 effort_source: classifier
 phase: verify
-progress: 121/200
+progress: 126/200
 mode: interactive
 started: 2026-09-30T00:00:00-07:00
 updated: 2026-10-01T03:30:04.547Z
@@ -415,12 +415,12 @@ Test site: local WordPress 7.1.2 on PHP 8.4 / MySQL 26.7 at `http://localhost:88
 - [x] ISC-188: The admin list and sidebar filter by round; the admin header shows the current round and a per-round summary
 
 ### Phase S: Screenshots
-- [ ] ISC-189: Capture happens at right-click time, with the overlay hidden and a pin marker drawn on the image at the click point
-- [ ] ISC-190: The screenshot uploads in the same multipart POST /items request; JPEG/WebP, ≤ 1600px wide, ≤ ~1MB
-- [ ] ISC-191: The server validates a real image, caps the size, uses random filenames in uploads/fbc-screenshots with index.php, and deletes the file with its item and on uninstall
-- [ ] ISC-192: Anti: input/textarea values appear in the screenshot (masked in the clone; amends ISC-60)
-- [ ] ISC-193: The capture library loads only when needed (separate dist/capture.js)
-- [ ] ISC-194: The screenshot shows in the popover and the admin detail screen, and attaches to the Teamwork task via pendingFiles at create
+- [x] ISC-189: Capture happens at right-click time, with the overlay hidden and a pin marker drawn on the image at the click point
+- [x] ISC-190: The screenshot uploads in the same multipart POST /items request; JPEG/WebP, ≤ 1600px wide, ≤ ~1MB
+- [x] ISC-191: The server validates a real image, caps the size, uses random filenames in uploads/fbc-screenshots with index.php, and deletes the file with its item and on uninstall
+- [x] ISC-192: Anti: input/textarea values appear in the screenshot (masked in the clone; amends ISC-60)
+- [x] ISC-193: The capture library loads only when needed (separate dist/capture.js)
+- [DEFERRED-VERIFY] ISC-194: The screenshot shows in the popover and the admin detail screen, and attaches to the Teamwork task via pendingFiles at create
 
 ### Phase A: Annotation
 - [ ] ISC-195: The annotator (Fabric.js, separate dist/annotator.js) opens on the captured image: arrow, box, highlight, pen, text, blur, undo, color
@@ -433,3 +433,4 @@ Test site: local WordPress 7.1.2 on PHP 8.4 / MySQL 26.7 at `http://localhost:88
 ### Phase C/M: Comments + mentions (after live Teamwork test)
 - [ ] ISC-199: WordPress replies post to the Teamwork task ("From {name} via …"); Teamwork comments sync onto the item; dedupe by tw_comment_id
 - [ ] ISC-200: @mentions autocomplete from the assignee source, are stored as tokens and rendered as text nodes; mentioned people are notified
+- **Screenshots, 2026-10-01 (real Chrome):** right-click → capture took ~1.1s, producing a 1600×891 JPEG (85–89KB) with no overlay and no admin bar. SnapDOM's 'viewport' clip came out shifted by WP's 32px html margin; it's now an explicit page rect plus body offset, and the marker lands on the clicked link (verified from the saved file). 21 WP checks: validation, random names, index.php, multipart create, stored before fbc_item_created, bad image keeps the item, not-an-upload refused, replace/delete endpoints, file deleted with item, Teamwork pendingFiles (mock). ISC-194: display verified in the admin; Teamwork attachment verified against the mock only, pending the live test.

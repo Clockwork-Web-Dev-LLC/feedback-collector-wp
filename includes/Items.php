@@ -275,7 +275,7 @@ final class Items {
 			return false;
 		}
 
-		$allowed = array( 'title', 'description', 'status', 'priority', 'assignee_id', 'tw_assignee_id', 'tw_assignee_name', 'type', 'anchor', 'tw_task_id', 'tw_project_id', 'tw_sync_state', 'tw_sync_error' );
+		$allowed = array( 'title', 'description', 'status', 'priority', 'assignee_id', 'tw_assignee_id', 'tw_assignee_name', 'type', 'anchor', 'tw_task_id', 'tw_project_id', 'tw_sync_state', 'tw_sync_error', 'screenshot' );
 		$row     = array_intersect_key( $changes, array_flip( $allowed ) );
 		if ( array_key_exists( 'anchor', $row ) ) {
 			$row['anchor'] = null === $row['anchor'] ? null : wp_json_encode( $row['anchor'] );
@@ -335,6 +335,10 @@ final class Items {
 	 */
 	public static function delete( int $id ): bool {
 		global $wpdb;
+		$item = self::get( $id );
+		if ( $item ) {
+			Screenshots::delete_file( $item );
+		}
 		// phpcs:disable WordPress.DB.DirectDatabaseQuery
 		$wpdb->delete( self::comments_table(), array( 'item_id' => $id ) );
 		$ok = (bool) $wpdb->delete( self::table(), array( 'id' => $id ) );

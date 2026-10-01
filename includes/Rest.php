@@ -85,6 +85,23 @@ final class Rest {
 
 		register_rest_route(
 			self::NS,
+			'/items/(?P<id>\d+)/screenshot',
+			array(
+				array(
+					'methods'             => WP_REST_Server::CREATABLE,
+					'callback'            => array( self::class, 'upload_screenshot' ),
+					'permission_callback' => $can,
+				),
+				array(
+					'methods'             => WP_REST_Server::DELETABLE,
+					'callback'            => array( self::class, 'delete_screenshot' ),
+					'permission_callback' => $can,
+				),
+			)
+		);
+
+		register_rest_route(
+			self::NS,
 			'/reviewers',
 			array(
 				'methods'             => WP_REST_Server::READABLE,
@@ -164,7 +181,7 @@ final class Rest {
 	 * @param WP_REST_Request $request Request.
 	 */
 	public static function create_item( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-		$p     = $request->get_json_params() ?: $request->get_body_params();
+		$p     = self::payload( $request );
 		$title = sanitize_text_field( (string) ( $p['title'] ?? '' ) );
 		$type  = sanitize_key( (string) ( $p['type'] ?? '' ) );
 
@@ -204,11 +221,113 @@ final class Rest {
 			return new WP_Error( 'fbc_db', __( 'Could not save feedback.', 'feedback-collector' ), array( 'status' => 500 ) );
 		}
 
+		// Stored before fbc_item_created fires, so an auto-push already has the screenshot.
+		// A bad image never loses the feedback itself: the item is kept and the error reported.
+		$shot_error = '';
+		$bytes      = self::uploaded_screenshot( $request );
+		if ( is_wp_error( $bytes ) ) {
+			$shot_error = $bytes->get_error_message();
+		} elseif ( null !== $bytes ) {
+			$saved = Screenshots::save_bytes( $id, $bytes );
+			if ( is_wp_error( $saved ) ) {
+				$shot_error = $saved->get_error_message();
+			}
+		}
+
 		do_action( 'fbc_item_created', $id );
 
-		$response = new WP_REST_Response( self::present( Items::get( $id ) ) );
+		$out = self::present( Items::get( $id ) );
+		if ( '' !== $shot_error ) {
+			$out['screenshot_error'] = $shot_error;
+		}
+		$response = new WP_REST_Response( $out );
 		$response->set_status( 201 );
 		return $response;
+	}
+
+	/**
+	 * POST /items/{id}/screenshot — replace an item's screenshot (e.g. after annotating).
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function upload_screenshot( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		$item = Items::get( (int) $request['id'] );
+		if ( ! $item ) {
+			return self::not_found();
+		}
+		$bytes = self::uploaded_screenshot( $request );
+		if ( null === $bytes ) {
+			return self::invalid( 'screenshot', __( 'No screenshot was uploaded.', 'feedback-collector' ) );
+		}
+		if ( is_wp_error( $bytes ) ) {
+			return self::invalid( 'screenshot', $bytes->get_error_message() );
+		}
+		$saved = Screenshots::save_bytes( $item['id'], $bytes );
+		if ( is_wp_error( $saved ) ) {
+			return $saved;
+		}
+		return new WP_REST_Response( self::present( Items::get( $item['id'] ) ) );
+	}
+
+	/**
+	 * DELETE /items/{id}/screenshot
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function delete_screenshot( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		$item = Items::get( (int) $request['id'] );
+		if ( ! $item ) {
+			return self::not_found();
+		}
+		Screenshots::delete_file( $item );
+		Items::update( $item['id'], array( 'screenshot' => '' ) );
+		return new WP_REST_Response( self::present( Items::get( $item['id'] ) ) );
+	}
+
+	/**
+	 * Request fields: JSON body, or multipart where the fields arrive as a JSON "data" part
+	 * next to the screenshot file.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 * @return array<string, mixed>
+	 */
+	private static function payload( WP_REST_Request $request ): array {
+		$json = $request->get_json_params();
+		if ( is_array( $json ) && $json ) {
+			return $json;
+		}
+		$body = $request->get_body_params();
+		if ( isset( $body['data'] ) && is_string( $body['data'] ) ) {
+			$decoded = json_decode( wp_unslash( $body['data'] ), true );
+			return is_array( $decoded ) ? $decoded : array();
+		}
+		return is_array( $body ) ? $body : array();
+	}
+
+	/**
+	 * Bytes of an uploaded "screenshot" file part; null when none was sent.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 * @return string|WP_Error|null
+	 */
+	private static function uploaded_screenshot( WP_REST_Request $request ): string|WP_Error|null {
+		$file = $request->get_file_params()['screenshot'] ?? null;
+		if ( ! is_array( $file ) || ! isset( $file['tmp_name'] ) ) {
+			return null;
+		}
+		if ( UPLOAD_ERR_OK !== (int) ( $file['error'] ?? UPLOAD_ERR_NO_FILE ) ) {
+			return new WP_Error( 'fbc_invalid', __( 'The screenshot upload failed.', 'feedback-collector' ) );
+		}
+		$tmp = (string) $file['tmp_name'];
+		/** Filters whether a temp file is a genuine HTTP upload (tests stand in for PHP's check). */
+		if ( ! apply_filters( 'fbc_is_uploaded_file', is_uploaded_file( $tmp ), $tmp ) ) {
+			return new WP_Error( 'fbc_invalid', __( 'The screenshot upload failed.', 'feedback-collector' ) );
+		}
+		if ( filesize( $tmp ) > Screenshots::MAX_BYTES ) {
+			return new WP_Error( 'fbc_invalid', __( 'The screenshot is too large.', 'feedback-collector' ) );
+		}
+		$bytes = file_get_contents( $tmp ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		return false === $bytes ? new WP_Error( 'fbc_invalid', __( 'The screenshot upload failed.', 'feedback-collector' ) ) : $bytes;
 	}
 
 	/**
@@ -369,6 +488,7 @@ final class Rest {
 			'context'         => $item['context'],
 			'breakpoint'      => $item['breakpoint'],
 			'round'           => (int) $item['round'],
+			'screenshot_url'  => Screenshots::url( $item ),
 			'reporter_id'     => $item['reporter_id'],
 			'reporter_name'   => $reporter ? $reporter->display_name : '',
 			'assignee_id'     => Assignees::selected( $item ),

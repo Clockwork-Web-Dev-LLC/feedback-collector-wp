@@ -20,14 +20,16 @@ export class Api {
   }
 
   private async request<T>(method: string, path: string, body?: unknown, params?: Record<string, string>): Promise<T> {
+    const isForm = typeof FormData !== 'undefined' && body instanceof FormData;
     const res = await fetch(this.url(path, params), {
       method,
       credentials: 'same-origin',
       headers: {
         'X-WP-Nonce': this.cfg.nonce,
-        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        // FormData sets its own multipart boundary header.
+        ...(body !== undefined && !isForm ? { 'Content-Type': 'application/json' } : {}),
       },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body),
     });
     const data: unknown = await res.json().catch(() => null);
     if (!res.ok) {
@@ -45,8 +47,22 @@ export class Api {
     return this.request('GET', `/items/${id}`);
   }
 
-  createItem(item: NewItem): Promise<Item> {
-    return this.request('POST', '/items', item);
+  /**
+   * Creates an item. With a screenshot, sends one multipart request (fields as a JSON "data"
+   * part plus the image), so the item and its screenshot arrive together.
+   */
+  createItem(item: NewItem, screenshot?: Blob | null): Promise<Item> {
+    if (!screenshot) return this.request('POST', '/items', item);
+    const form = new FormData();
+    form.append('data', JSON.stringify(item));
+    form.append('screenshot', screenshot, 'screenshot.jpg');
+    return this.request('POST', '/items', form);
+  }
+
+  replaceScreenshot(id: number, screenshot: Blob): Promise<Item> {
+    const form = new FormData();
+    form.append('screenshot', screenshot, 'screenshot.jpg');
+    return this.request('POST', `/items/${id}/screenshot`, form);
   }
 
   updateItem(id: number, changes: Partial<Pick<Item, 'title' | 'description' | 'status' | 'priority' | 'type' | 'assignee_id' | 'anchor'>>): Promise<Item> {

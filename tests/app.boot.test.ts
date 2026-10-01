@@ -58,7 +58,8 @@ beforeEach(() => {
     const url = String(input);
     const method = init?.method ?? 'GET';
     const headers = (init?.headers ?? {}) as Record<string, string>;
-    const body = init?.body ? JSON.parse(String(init.body)) : undefined;
+    const raw = init?.body;
+    const body = raw instanceof FormData ? { form: true, data: JSON.parse(String(raw.get('data'))), file: raw.get('screenshot') } : raw ? JSON.parse(String(raw)) : undefined;
     calls.push({ method, url, headers, body });
     if (method === 'GET' && url.includes('/items&') ) {
       return new Response(JSON.stringify({ items: serverItems, total: serverItems.length }), { status: 200 });
@@ -257,5 +258,60 @@ describe('toolbar placement', () => {
     await app.setMode(true);
     const root = shadow()?.querySelector('.fbc') as HTMLElement;
     expect(root.style.getPropertyValue('--top-offset')).toBe('32px');
+  });
+});
+
+describe('screenshots', () => {
+  it('captures at right-click and sends item + screenshot in one multipart request', async () => {
+    const marks: Array<{ x: number; y: number } | null> = [];
+    window.FBCCapture = {
+      captureViewport: async (opts) => {
+        marks.push(opts.marker);
+        return new Blob([new Uint8Array([0xff, 0xd8, 0xff])], { type: 'image/jpeg' });
+      },
+    };
+    const app = new App({ ...cfg(), shots: true, assetsUrl: 'http://localhost:8899/wp-content/plugins/feedback-collector/dist/' });
+    app.init();
+    await app.setMode(true);
+    document.getElementById('cta')?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 150, clientY: 210 }));
+    expect(marks).toEqual([{ x: 150, y: 210 }]); // started at right-click, before the composer opens
+    (shadow()?.querySelector('.menu button') as HTMLButtonElement).click();
+    await tick();
+    const form = shadow()?.querySelector('form.composer') as HTMLFormElement;
+    expect(form.querySelector('.shot img')).not.toBeNull(); // thumbnail shown
+    (form.querySelector('input[name="title"]') as HTMLInputElement).value = 'With a screenshot';
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await tick();
+    await tick();
+    const post = calls.find((c) => c.method === 'POST');
+    expect(post).toBeDefined();
+    const b = post?.body as { form?: boolean; data?: { title: string; anchor: unknown }; file?: unknown };
+    expect(b.form).toBe(true);
+    expect(b.data?.title).toBe('With a screenshot');
+    expect(b.data?.anchor).toBeTruthy();
+    expect(b.file).toBeInstanceOf(Blob);
+    expect(post?.headers['Content-Type']).toBeUndefined(); // browser sets the multipart boundary
+    delete window.FBCCapture;
+  });
+
+  it('Remove screenshot sends the item without one', async () => {
+    window.FBCCapture = { captureViewport: async () => new Blob([new Uint8Array([1])], { type: 'image/jpeg' }) };
+    const app = new App({ ...cfg(), shots: true, assetsUrl: 'x/' });
+    app.init();
+    await app.setMode(true);
+    document.getElementById('cta')?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 150, clientY: 210 }));
+    (shadow()?.querySelector('.menu button') as HTMLButtonElement).click();
+    await tick();
+    const form = shadow()?.querySelector('form.composer') as HTMLFormElement;
+    const remove = [...form.querySelectorAll('button')].find((b) => b.textContent === 'Remove screenshot') as HTMLButtonElement;
+    remove.click();
+    expect(form.querySelector('.shot img')).toBeNull();
+    (form.querySelector('input[name="title"]') as HTMLInputElement).value = 'No screenshot';
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await tick();
+    await tick();
+    const post = calls.find((c) => c.method === 'POST');
+    expect((post?.body as { title?: string })?.title).toBe('No screenshot'); // plain JSON body, no multipart
+    delete window.FBCCapture;
   });
 });

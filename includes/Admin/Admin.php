@@ -265,6 +265,17 @@ final class Admin {
 				printf( '<p><a class="button button-primary" href="%s" target="_blank" rel="noopener">%s</a></p>', esc_url( self::view_on_page_url( $item ) ), esc_html__( 'View on page', 'feedback-collector' ) );
 				Layout::card_close();
 
+				$shot = \FeedbackCollector\Screenshots::url( $item );
+				if ( '' !== $shot ) {
+					Layout::card_open( __( 'Screenshot', 'feedback-collector' ) );
+					printf(
+						'<a href="%1$s" target="_blank" rel="noopener" class="fbc-shot"><img src="%1$s" alt="%2$s" /></a>',
+						esc_url( $shot ),
+						esc_attr__( 'Screenshot of the page when this feedback was filed', 'feedback-collector' )
+					);
+					Layout::card_close();
+				}
+
 				Layout::card_open( __( 'Thread', 'feedback-collector' ) );
 				$thread = Items::comments( $item['id'] );
 				if ( $thread ) {
@@ -469,6 +480,13 @@ final class Admin {
 					$tw_note // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped above.
 				);
 				printf(
+					'<tr><th scope="row">%1$s</th><td><label><input type="checkbox" name="screenshots" value="1"%2$s /> %3$s</label><p class="description">%4$s</p></td></tr>',
+					esc_html__( 'Screenshots', 'feedback-collector' ),
+					checked( \FeedbackCollector\Screenshots::enabled(), true, false ),
+					esc_html__( 'Attach a screenshot of what the reviewer sees to each new item', 'feedback-collector' ),
+					esc_html__( 'Captured in the browser, with typed form values masked. Stored in uploads/fbc-screenshots and attached to the Teamwork task.', 'feedback-collector' )
+				);
+				printf(
 					'<tr><th scope="row">%1$s</th><td><label><input type="checkbox" name="delete_on_uninstall" value="1"%2$s /> %3$s</label></td></tr>',
 					esc_html__( 'Uninstall', 'feedback-collector' ),
 					checked( $cleanup, true, false ),
@@ -511,6 +529,7 @@ final class Admin {
 		}
 		update_option( 'fbc_review_roles', $roles, false );
 		update_option( 'fbc_delete_on_uninstall', ! empty( $_POST['delete_on_uninstall'] ), false );
+		update_option( \FeedbackCollector\Screenshots::OPTION, empty( $_POST['screenshots'] ) ? '0' : '1', false );
 		update_option( Assignees::OPTION, isset( $_POST['assignee_source'] ) && 'wordpress' === $_POST['assignee_source'] ? 'wordpress' : 'teamwork', false );
 
 		do_action( 'fbc_save_settings' );
