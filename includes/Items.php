@@ -88,7 +88,7 @@ final class Items {
 	public static function get( int $id ): ?array {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
-		$row = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM ' . self::table() . ' WHERE id = %d', $id ), ARRAY_A );
+		$row = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM %i WHERE id = %d', self::table(), $id ), ARRAY_A );
 		return $row ? self::hydrate( $row ) : null;
 	}
 
@@ -108,7 +108,11 @@ final class Items {
 			$where[]  = 'page_hash = %s';
 			$params[] = md5( self::normalize_path( (string) $args['page_path'] ) );
 		}
-		foreach ( array( 'type' => self::TYPES, 'status' => self::STATUSES, 'priority' => self::PRIORITIES ) as $field => $allowed ) {
+		foreach ( array(
+			'type'     => self::TYPES,
+			'status'   => self::STATUSES,
+			'priority' => self::PRIORITIES,
+		) as $field => $allowed ) {
 			if ( ! empty( $args[ $field ] ) ) {
 				$values = array_values( array_intersect( (array) $args[ $field ], $allowed ) );
 				if ( $values ) {
@@ -135,8 +139,8 @@ final class Items {
 			'status'   => "FIELD(status,'open','in_progress','ready_for_review','resolved')",
 			'title'    => 'title',
 		);
-		$orderby = $orderby_map[ $args['orderby'] ?? 'id' ] ?? 'id';
-		$order   = 'asc' === strtolower( (string) ( $args['order'] ?? 'desc' ) ) ? 'ASC' : 'DESC';
+		$orderby     = $orderby_map[ $args['orderby'] ?? 'id' ] ?? 'id';
+		$order       = 'asc' === strtolower( (string) ( $args['order'] ?? 'desc' ) ) ? 'ASC' : 'DESC';
 		if ( 'priority' === ( $args['orderby'] ?? '' ) ) {
 			// FIELD() ranks critical first, so flip so "desc" means most urgent first.
 			$order = 'ASC' === $order ? 'DESC' : 'ASC';
@@ -171,7 +175,7 @@ final class Items {
 	public static function count_status( string $status ): int {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
-		return (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . self::table() . ' WHERE status = %s', $status ) );
+		return (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE status = %s', self::table(), $status ) );
 	}
 
 	/**
@@ -283,9 +287,9 @@ final class Items {
 	/**
 	 * Adds a reply or activity entry to an item's thread.
 	 *
-	 * @param int    $item_id Item ID.
-	 * @param string $body    Comment body (already sanitized).
-	 * @param string $kind    'comment' or 'activity'.
+	 * @param int      $item_id Item ID.
+	 * @param string   $body    Comment body (already sanitized).
+	 * @param string   $kind    'comment' or 'activity'.
 	 * @param int|null $user_id Author; null means the current user, 0 means Teamwork sync.
 	 */
 	public static function add_comment( int $item_id, string $body, string $kind = 'comment', ?int $user_id = null ): int {
@@ -313,7 +317,7 @@ final class Items {
 	public static function comments( int $item_id ): array {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
-		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM ' . self::comments_table() . ' WHERE item_id = %d ORDER BY id ASC', $item_id ), ARRAY_A );
+		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %i WHERE item_id = %d ORDER BY id ASC', self::comments_table(), $item_id ), ARRAY_A );
 		return array_map(
 			static function ( array $row ): array {
 				$user = get_userdata( (int) $row['user_id'] );

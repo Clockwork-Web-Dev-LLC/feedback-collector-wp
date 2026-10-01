@@ -120,7 +120,17 @@ final class Client {
 	public function paginate( string $path, string $key, array $query = array(), int $max = 20 ): array|WP_Error {
 		$out = array();
 		for ( $page = 1; $page <= $max; $page++ ) {
-			$data = $this->request( 'GET', $path, array_merge( $query, array( 'page' => $page, 'pageSize' => 250 ) ) );
+			$data = $this->request(
+				'GET',
+				$path,
+				array_merge(
+					$query,
+					array(
+						'page'     => $page,
+						'pageSize' => 250,
+					)
+				)
+			);
 			if ( is_wp_error( $data ) ) {
 				return $data;
 			}
@@ -148,7 +158,14 @@ final class Client {
 	 * @return array<int, string>|WP_Error
 	 */
 	public function projects(): array|WP_Error {
-		$rows = $this->paginate( '/projects/api/v3/projects.json', 'projects', array( 'status' => 'active', 'orderBy' => 'name' ) );
+		$rows = $this->paginate(
+			'/projects/api/v3/projects.json',
+			'projects',
+			array(
+				'status'  => 'active',
+				'orderBy' => 'name',
+			)
+		);
 		if ( is_wp_error( $rows ) ) {
 			return $rows;
 		}
@@ -233,7 +250,14 @@ final class Client {
 	 * @return int|WP_Error Tag ID.
 	 */
 	public function ensure_tag( string $name ): int|WP_Error {
-		$data = $this->request( 'GET', '/projects/api/v3/tags.json', array( 'searchTerm' => $name, 'pageSize' => 100 ) );
+		$data = $this->request(
+			'GET',
+			'/projects/api/v3/tags.json',
+			array(
+				'searchTerm' => $name,
+				'pageSize'   => 100,
+			)
+		);
 		if ( is_wp_error( $data ) ) {
 			return $data;
 		}

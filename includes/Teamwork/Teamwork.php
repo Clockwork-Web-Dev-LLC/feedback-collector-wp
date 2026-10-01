@@ -405,8 +405,8 @@ final class Teamwork {
 			return 0;
 		}
 		$in = implode( ',', array_fill( 0, count( $ids ), '%d' ) );
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
-		$n = (int) $wpdb->query( $wpdb->prepare( 'UPDATE ' . Items::table() . " SET tw_sync_state = 'queued', tw_sync_error = NULL WHERE tw_task_id = 0 AND tw_sync_state <> 'pushing' AND id IN ($in)", $ids ) );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- $in is a list of %d placeholders.
+		$n = (int) $wpdb->query( $wpdb->prepare( "UPDATE %i SET tw_sync_state = 'queued', tw_sync_error = NULL WHERE tw_task_id = 0 AND tw_sync_state <> 'pushing' AND id IN ($in)", array_merge( array( Items::table() ), $ids ) ) );
 		self::schedule_queue( 0 );
 		return $n;
 	}
@@ -433,7 +433,7 @@ final class Teamwork {
 		global $wpdb;
 		$limit = $limit > 0 ? $limit : self::BATCH;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
-		$ids    = array_map( 'intval', $wpdb->get_col( $wpdb->prepare( 'SELECT id FROM ' . Items::table() . " WHERE tw_sync_state = 'queued' AND tw_task_id = 0 ORDER BY id ASC LIMIT %d", $limit ) ) );
+		$ids    = array_map( 'intval', $wpdb->get_col( $wpdb->prepare( "SELECT id FROM %i WHERE tw_sync_state = 'queued' AND tw_task_id = 0 ORDER BY id ASC LIMIT %d", Items::table(), $limit ) ) );
 		$pushed = 0;
 		$failed = 0;
 
@@ -456,7 +456,7 @@ final class Teamwork {
 		}
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
-		$remaining = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . Items::table() . " WHERE tw_sync_state = 'queued' AND tw_task_id = 0" ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		$remaining = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM %i WHERE tw_sync_state = 'queued' AND tw_task_id = 0", Items::table() ) );
 		if ( $remaining && self::ready() ) {
 			self::schedule_queue( 5 );
 		}
@@ -494,20 +494,33 @@ final class Teamwork {
 		}
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared
-		$rows = $wpdb->get_results( 'SELECT id, status, tw_task_id, tw_project_id FROM ' . Items::table() . ' WHERE tw_task_id > 0', ARRAY_A );
+		$rows    = $wpdb->get_results( 'SELECT id, status, tw_task_id, tw_project_id FROM ' . Items::table() . ' WHERE tw_task_id > 0', ARRAY_A );
 		$state   = (array) get_option( self::STATE_OPTION, array() );
 		$started = time();
 
 		if ( ! $rows ) {
-			$state = array_merge( $state, array( 'last_sync' => $started, 'last_result' => array( 'checked' => 0, 'changed' => 0 ), 'last_error' => '' ) );
+			$state = array_merge(
+				$state,
+				array(
+					'last_sync'   => $started,
+					'last_result' => array(
+						'checked' => 0,
+						'changed' => 0,
+					),
+					'last_error'  => '',
+				)
+			);
 			update_option( self::STATE_OPTION, $state, false );
-			return array( 'checked' => 0, 'changed' => 0 );
+			return array(
+				'checked' => 0,
+				'changed' => 0,
+			);
 		}
 
 		$by_task  = array();
 		$projects = array();
 		foreach ( $rows as $row ) {
-			$by_task[ (int) $row['tw_task_id'] ] = $row;
+			$by_task[ (int) $row['tw_task_id'] ]     = $row;
 			$projects[ (int) $row['tw_project_id'] ] = true;
 		}
 		unset( $projects[0] );
@@ -552,11 +565,17 @@ final class Teamwork {
 
 		$state = array(
 			'last_sync'   => $started,
-			'last_result' => array( 'checked' => $checked, 'changed' => $changed ),
+			'last_result' => array(
+				'checked' => $checked,
+				'changed' => $changed,
+			),
 			'last_error'  => '',
 		);
 		update_option( self::STATE_OPTION, $state, false );
-		return array( 'checked' => $checked, 'changed' => $changed );
+		return array(
+			'checked' => $checked,
+			'changed' => $changed,
+		);
 	}
 
 	// ------------------------------------------------------------------ REST shape
@@ -658,12 +677,12 @@ final class Teamwork {
 		// phpcs:disable WordPress.Security.NonceVerification.Missing
 		$s = self::settings();
 		if ( ! defined( 'FBC_TEAMWORK_SITE' ) && isset( $_POST['tw_site'] ) ) {
-			$site = esc_url_raw( trim( wp_unslash( $_POST['tw_site'] ) ) );
+			$site = esc_url_raw( trim( sanitize_text_field( wp_unslash( $_POST['tw_site'] ) ) ) );
 			if ( $site !== $s['site'] ) {
-				$s['site']         = $site;
-				$s['tags']         = array();
-				$s['project_id']   = 0;
-				$s['tasklist_id']  = 0;
+				$s['site']        = $site;
+				$s['tags']        = array();
+				$s['project_id']  = 0;
+				$s['tasklist_id'] = 0;
 				delete_transient( 'fbc_tw_projects' );
 			}
 		}
@@ -683,9 +702,9 @@ final class Teamwork {
 			} elseif ( isset( $_POST['tw_tasklist'] ) ) {
 				$list = absint( $_POST['tw_tasklist'] );
 				if ( $list !== (int) $s['tasklist_id'] ) {
-					$s['tasklist_id'] = $list;
-					$client           = self::client();
-					$lists            = $client && $project ? $client->tasklists( $project ) : array();
+					$s['tasklist_id']   = $list;
+					$client             = self::client();
+					$lists              = $client && $project ? $client->tasklists( $project ) : array();
 					$s['tasklist_name'] = is_array( $lists ) ? (string) ( $lists[ $list ] ?? '' ) : '';
 				}
 			}
@@ -726,18 +745,19 @@ final class Teamwork {
 	/**
 	 * A one-button admin-post form.
 	 *
-	 * @param string $action Action name.
-	 * @param string $label  Button label.
+	 * @param string                    $action Action name.
+	 * @param string                    $label  Button label.
 	 * @param array<string, int|string> $fields Extra hidden fields.
+	 * @param string                    $button_class Button class.
 	 */
-	private static function button_form( string $action, string $label, array $fields = array(), string $class = 'secondary' ): void {
+	private static function button_form( string $action, string $label, array $fields = array(), string $button_class = 'secondary' ): void {
 		printf( '<form method="post" action="%s" style="display:inline">', esc_url( admin_url( 'admin-post.php' ) ) );
 		wp_nonce_field( $action );
 		printf( '<input type="hidden" name="action" value="%s" />', esc_attr( $action ) );
 		foreach ( $fields as $name => $value ) {
 			printf( '<input type="hidden" name="%s" value="%s" />', esc_attr( $name ), esc_attr( (string) $value ) );
 		}
-		submit_button( $label, $class, 'submit', false );
+		submit_button( $label, $button_class, 'submit', false );
 		echo '</form>';
 	}
 
@@ -835,7 +855,10 @@ final class Teamwork {
 		$result = self::sync();
 		$args   = is_wp_error( $result )
 			? array( 'fbc_sync_err' => rawurlencode( $result->get_error_message() ) )
-			: array( 'fbc_synced' => $result['changed'], 'fbc_checked' => $result['checked'] );
+			: array(
+				'fbc_synced'  => $result['changed'],
+				'fbc_checked' => $result['checked'],
+			);
 		wp_safe_redirect( add_query_arg( $args, wp_get_referer() ?: admin_url( 'admin.php?page=' . Admin::SLUG ) ) );
 		exit;
 	}

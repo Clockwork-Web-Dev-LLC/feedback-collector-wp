@@ -52,8 +52,8 @@ final class Install {
 		global $wpdb;
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
-		$charset = $wpdb->get_charset_collate();
-		$items   = $wpdb->prefix . 'fbc_items';
+		$charset  = $wpdb->get_charset_collate();
+		$items    = $wpdb->prefix . 'fbc_items';
 		$comments = $wpdb->prefix . 'fbc_comments';
 
 		dbDelta(

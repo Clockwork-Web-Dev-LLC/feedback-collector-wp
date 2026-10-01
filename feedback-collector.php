@@ -16,20 +16,20 @@ namespace FeedbackCollector;
 
 defined( 'ABSPATH' ) || exit;
 
-const VERSION    = '0.1.0';
-const DB_VERSION = '2';
-const CAP        = 'fbc_review';
+const VERSION     = '0.1.0';
+const DB_VERSION  = '2';
+const CAP         = 'fbc_review';
 const PLUGIN_FILE = __FILE__;
 
 define( 'FBC_DIR', plugin_dir_path( __FILE__ ) );
 define( 'FBC_URL', plugin_dir_url( __FILE__ ) );
 
 spl_autoload_register(
-	static function ( string $class ): void {
-		if ( ! str_starts_with( $class, __NAMESPACE__ . '\\' ) ) {
+	static function ( string $class_name ): void {
+		if ( ! str_starts_with( $class_name, __NAMESPACE__ . '\\' ) ) {
 			return;
 		}
-		$relative = substr( $class, strlen( __NAMESPACE__ ) + 1 );
+		$relative = substr( $class_name, strlen( __NAMESPACE__ ) + 1 );
 		$path     = FBC_DIR . 'includes/' . str_replace( '\\', '/', $relative ) . '.php';
 		if ( is_readable( $path ) ) {
 			require $path;

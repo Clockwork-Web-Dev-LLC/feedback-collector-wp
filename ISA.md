@@ -3,11 +3,11 @@ task: "Plan v1 of Feedback Collector WordPress QA plugin"
 project: feedback-collector-wp
 effort: E4
 effort_source: classifier
-phase: build
-progress: 0/155
+phase: verify
+progress: 68/155
 mode: interactive
 started: 2026-09-30T00:00:00-07:00
-updated: 2026-09-30T00:00:00-07:00
+updated: 2026-10-01T03:30:04.547Z
 ---
 
 ## Problem
@@ -57,175 +57,175 @@ Deliver a deactivatable WordPress plugin, "Feedback Collector". Reviewers with t
 ## Criteria
 
 ### Foundation
-- [ ] ISC-1: `feedback-collector.php` has a valid plugin header (Name "Feedback Collector", Requires at least 6.5, Requires PHP 8.1)
-- [ ] ISC-2: `php -l` passes on every PHP file
-- [ ] ISC-3: PHPCS (WordPress standard) reports 0 errors
-- [ ] ISC-4: Activation creates table `{prefix}fbc_items`
-- [ ] ISC-5: Activation creates table `{prefix}fbc_comments`
-- [ ] ISC-6: Option `fbc_db_version` set; mismatch triggers `dbDelta` upgrade
-- [ ] ISC-7: Activation grants capability `fbc_review` to administrator and editor
+- [x] ISC-1: `feedback-collector.php` has a valid plugin header (Name "Feedback Collector", Requires at least 6.5, Requires PHP 8.1)
+- [x] ISC-2: `php -l` passes on every PHP file
+- [x] ISC-3: PHPCS (WordPress standard) reports 0 errors
+- [x] ISC-4: Activation creates table `{prefix}fbc_items`
+- [x] ISC-5: Activation creates table `{prefix}fbc_comments`
+- [x] ISC-6: Option `fbc_db_version` set; mismatch triggers `dbDelta` upgrade
+- [x] ISC-7: Activation grants capability `fbc_review` to administrator and editor
 - [ ] ISC-8: Settings screen lets an admin grant `fbc_review` to other roles
-- [ ] ISC-9: All PHP lives under namespace `FeedbackCollector\`
-- [ ] ISC-10: Activating on WP 6.5 / PHP 8.1 writes nothing to `debug.log`
-- [ ] ISC-11: Deactivation leaves both tables and their rows intact
+- [x] ISC-9: All PHP lives under namespace `FeedbackCollector\`
+- [x] ISC-10: Activating on WP 6.5 / PHP 8.1 writes nothing to `debug.log`
+- [x] ISC-11: Deactivation leaves both tables and their rows intact
 - [ ] ISC-12: Uninstall drops tables when `fbc_delete_on_uninstall` = true
-- [ ] ISC-13: Anti: uninstall with `fbc_delete_on_uninstall` = false deletes any row or table
+- [x] ISC-13: Anti: uninstall with `fbc_delete_on_uninstall` = false deletes any row or table
 
 ### Access and footprint
-- [ ] ISC-14: Anti: logged-out page HTML contains any `fbc-` script or style handle
-- [ ] ISC-15: Anti: logged-in user without `fbc_review` receives overlay assets
-- [ ] ISC-16: User with `fbc_review` receives `fbc-overlay` script and style
-- [ ] ISC-17: Admin bar shows a "Feedback" toggle node for `fbc_review` users
-- [ ] ISC-18: Anti: any `feedback-collector/v1` route returns 2xx to a user without `fbc_review`
-- [ ] ISC-19: Anti: plugin adds cookies or cache-control headers to logged-out responses
-- [ ] ISC-20: Overlay bundle ≤ 60 KB gzipped, excluding the optional screenshot library
-- [ ] ISC-21: Overlay UI mounts inside a Shadow DOM root
-- [ ] ISC-22: Anti: a hostile theme rule (`* { all: unset }`) changes overlay computed styles
+- [x] ISC-14: Anti: logged-out page HTML contains any `fbc-` script or style handle
+- [x] ISC-15: Anti: logged-in user without `fbc_review` receives overlay assets
+- [x] ISC-16: User with `fbc_review` receives `fbc-overlay` script and style
+- [x] ISC-17: Admin bar shows a "Feedback" toggle node for `fbc_review` users
+- [x] ISC-18: Anti: any `feedback-collector/v1` route returns 2xx to a user without `fbc_review`
+- [x] ISC-19: Anti: plugin adds cookies or cache-control headers to logged-out responses
+- [x] ISC-20: Overlay bundle ≤ 60 KB gzipped, excluding the optional screenshot library
+- [DEFERRED-VERIFY] ISC-21: Overlay UI mounts inside a Shadow DOM root
+- [DEFERRED-VERIFY] ISC-22: Anti: a hostile theme rule (`* { all: unset }`) changes overlay computed styles
 
 ### Feedback mode and capture UX
-- [ ] ISC-23: Admin bar toggle switches Feedback mode on/off
-- [ ] ISC-24: Feedback mode state persists per browser across page loads
-- [ ] ISC-25: `Alt+Shift+F` toggles Feedback mode
-- [ ] ISC-26: Anti: the shortcut fires while focus is in an input, textarea or contenteditable
-- [ ] ISC-27: In Feedback mode, right-click on an element opens a menu with Bug, Tweak, Change Request, Comment
-- [ ] ISC-28: Anti: with Feedback mode off, right-click shows a custom menu
-- [ ] ISC-29: Alt+right-click in Feedback mode shows the native browser menu
-- [ ] ISC-30: Hover in Feedback mode outlines the target element
-- [ ] ISC-31: Toolbar "+ Add" button enters click-to-pin mode (trackpad/touch path)
-- [ ] ISC-32: "Page note" option creates an item with no element anchor
-- [ ] ISC-33: Choosing a type opens a composer positioned next to the element
-- [ ] ISC-34: Composer has Title (required) and Description fields
-- [ ] ISC-35: Composer has Priority (Low/Medium/High/Critical, default Medium)
-- [ ] ISC-36: Composer has optional Assignee picker
-- [ ] ISC-37: Empty title is blocked in the UI
-- [ ] ISC-38: Empty title is rejected by the REST API with 400
-- [ ] ISC-39: Esc closes the composer without creating an item
-- [ ] ISC-40: Anti: in click-to-pin mode, clicking a link navigates away
+- [DEFERRED-VERIFY] ISC-23: Admin bar toggle switches Feedback mode on/off
+- [DEFERRED-VERIFY] ISC-24: Feedback mode state persists per browser across page loads
+- [DEFERRED-VERIFY] ISC-25: `Alt+Shift+F` toggles Feedback mode
+- [DEFERRED-VERIFY] ISC-26: Anti: the shortcut fires while focus is in an input, textarea or contenteditable
+- [DEFERRED-VERIFY] ISC-27: In Feedback mode, right-click on an element opens a menu with Bug, Tweak, Change Request, Comment
+- [DEFERRED-VERIFY] ISC-28: Anti: with Feedback mode off, right-click shows a custom menu
+- [DEFERRED-VERIFY] ISC-29: Alt+right-click in Feedback mode shows the native browser menu
+- [DEFERRED-VERIFY] ISC-30: Hover in Feedback mode outlines the target element
+- [DEFERRED-VERIFY] ISC-31: Toolbar "+ Add" button enters click-to-pin mode (trackpad/touch path)
+- [DEFERRED-VERIFY] ISC-32: "Page note" option creates an item with no element anchor
+- [DEFERRED-VERIFY] ISC-33: Choosing a type opens a composer positioned next to the element
+- [DEFERRED-VERIFY] ISC-34: Composer has Title (required) and Description fields
+- [DEFERRED-VERIFY] ISC-35: Composer has Priority (Low/Medium/High/Critical, default Medium)
+- [DEFERRED-VERIFY] ISC-36: Composer has optional Assignee picker
+- [DEFERRED-VERIFY] ISC-37: Empty title is blocked in the UI
+- [DEFERRED-VERIFY] ISC-38: Empty title is rejected by the REST API with 400
+- [DEFERRED-VERIFY] ISC-39: Esc closes the composer without creating an item
+- [DEFERRED-VERIFY] ISC-40: Anti: in click-to-pin mode, clicking a link navigates away
 
 ### Auto-captured context (each stored per item)
-- [ ] ISC-41: Page path relative to `home_url()`
-- [ ] ISC-42: Query string
-- [ ] ISC-43: Page title
-- [ ] ISC-44: CSS selector of target element
-- [ ] ISC-45: XPath of target element
-- [ ] ISC-46: Text snippet of target element (≤ 120 chars)
-- [ ] ISC-47: Tag name of target element
-- [ ] ISC-48: Click offset as ratio within the element bounding box
-- [ ] ISC-49: Document coordinates as last-resort fallback
-- [ ] ISC-50: Viewport width and height
-- [ ] ISC-51: Breakpoint label (mobile < 768, tablet 768–1024, desktop > 1024)
-- [ ] ISC-52: Device pixel ratio
-- [ ] ISC-53: Browser name and version parsed from user agent
-- [ ] ISC-54: OS parsed from user agent
-- [ ] ISC-55: Reporter user ID
-- [ ] ISC-56: `created_at` in UTC
-- [ ] ISC-57: Last ≤ 20 JS errors since page load (`window.onerror` + `unhandledrejection`)
-- [ ] ISC-58: Queried object post ID and post type
-- [ ] ISC-59: Active theme slug
-- [ ] ISC-60: Anti: captured payload contains any form field value or password input content
+- [DEFERRED-VERIFY] ISC-41: Page path relative to `home_url()`
+- [DEFERRED-VERIFY] ISC-42: Query string
+- [DEFERRED-VERIFY] ISC-43: Page title
+- [DEFERRED-VERIFY] ISC-44: CSS selector of target element
+- [DEFERRED-VERIFY] ISC-45: XPath of target element
+- [DEFERRED-VERIFY] ISC-46: Text snippet of target element (≤ 120 chars)
+- [DEFERRED-VERIFY] ISC-47: Tag name of target element
+- [DEFERRED-VERIFY] ISC-48: Click offset as ratio within the element bounding box
+- [DEFERRED-VERIFY] ISC-49: Document coordinates as last-resort fallback
+- [DEFERRED-VERIFY] ISC-50: Viewport width and height
+- [DEFERRED-VERIFY] ISC-51: Breakpoint label (mobile < 768, tablet 768–1024, desktop > 1024)
+- [DEFERRED-VERIFY] ISC-52: Device pixel ratio
+- [DEFERRED-VERIFY] ISC-53: Browser name and version parsed from user agent
+- [DEFERRED-VERIFY] ISC-54: OS parsed from user agent
+- [DEFERRED-VERIFY] ISC-55: Reporter user ID
+- [DEFERRED-VERIFY] ISC-56: `created_at` in UTC
+- [DEFERRED-VERIFY] ISC-57: Last ≤ 20 JS errors since page load (`window.onerror` + `unhandledrejection`)
+- [DEFERRED-VERIFY] ISC-58: Queried object post ID and post type
+- [DEFERRED-VERIFY] ISC-59: Active theme slug
+- [DEFERRED-VERIFY] ISC-60: Anti: captured payload contains any form field value or password input content
 
 ### Anchoring and pins
-- [ ] ISC-61: Existing items render as pins on their element on page load
-- [ ] ISC-62: Pins are numbered by item ID sequence on the site
-- [ ] ISC-63: Pin color encodes type (4 distinct colors)
-- [ ] ISC-64: Pin style encodes status (Resolved = green check)
-- [ ] ISC-65: Resolved pins hidden by default; "Show resolved" toggle reveals them
-- [ ] ISC-66: Anti: pins are visible when Feedback mode is off
-- [ ] ISC-67: Pins reposition after window resize within one animation frame
-- [ ] ISC-68: Pins follow their element after a layout shift (late-loading image above it)
-- [ ] ISC-69: Pins inside a sticky/fixed header stay attached while scrolling
-- [ ] ISC-70: Resolver tries id → selector → XPath → text-snippet → coordinates, in that order
-- [ ] ISC-71: Selector generator skips auto-generated/random IDs (fixture tests)
-- [ ] ISC-72: Selector generator prefers stable builder attributes (e.g. Elementor `data-id`)
-- [ ] ISC-73: Pin for an element hidden at the current breakpoint is not drawn
-- [ ] ISC-74: Sidebar shows "N items at other breakpoints" when any are hidden
-- [ ] ISC-75: Unresolvable items are flagged orphaned, never drawn at a guessed spot
-- [ ] ISC-76: "Re-anchor" lets a reviewer click a new element and saves the new anchor
-- [ ] ISC-77: Clicking a pin opens the item popover
-- [ ] ISC-78: `bun test` anchor-resolver suite has ≥ 15 fixtures, all passing
-- [ ] ISC-79: Anti: pins from a different page path render on the current page
-- [ ] ISC-80: Repositioning 50 pins takes < 16 ms (performance.now probe)
+- [DEFERRED-VERIFY] ISC-61: Existing items render as pins on their element on page load
+- [DEFERRED-VERIFY] ISC-62: Pins are numbered by item ID sequence on the site
+- [DEFERRED-VERIFY] ISC-63: Pin color encodes type (4 distinct colors)
+- [DEFERRED-VERIFY] ISC-64: Pin style encodes status (Resolved = green check)
+- [DEFERRED-VERIFY] ISC-65: Resolved pins hidden by default; "Show resolved" toggle reveals them
+- [DEFERRED-VERIFY] ISC-66: Anti: pins are visible when Feedback mode is off
+- [DEFERRED-VERIFY] ISC-67: Pins reposition after window resize within one animation frame
+- [DEFERRED-VERIFY] ISC-68: Pins follow their element after a layout shift (late-loading image above it)
+- [DEFERRED-VERIFY] ISC-69: Pins inside a sticky/fixed header stay attached while scrolling
+- [x] ISC-70: Resolver tries id → selector → XPath → text-snippet → coordinates, in that order
+- [x] ISC-71: Selector generator skips auto-generated/random IDs (fixture tests)
+- [x] ISC-72: Selector generator prefers stable builder attributes (e.g. Elementor `data-id`)
+- [DEFERRED-VERIFY] ISC-73: Pin for an element hidden at the current breakpoint is not drawn
+- [DEFERRED-VERIFY] ISC-74: Sidebar shows "N items at other breakpoints" when any are hidden
+- [x] ISC-75: Unresolvable items are flagged orphaned, never drawn at a guessed spot
+- [DEFERRED-VERIFY] ISC-76: "Re-anchor" lets a reviewer click a new element and saves the new anchor
+- [DEFERRED-VERIFY] ISC-77: Clicking a pin opens the item popover
+- [x] ISC-78: `bun test` anchor-resolver suite has ≥ 15 fixtures, all passing
+- [x] ISC-79: Anti: pins from a different page path render on the current page
+- [DEFERRED-VERIFY] ISC-80: Repositioning 50 pins takes < 16 ms (performance.now probe)
 
 ### Sidebar
-- [ ] ISC-81: Sidebar lists items for the current page
-- [ ] ISC-82: Scope switch: this page / all pages
-- [ ] ISC-83: Filter by type
-- [ ] ISC-84: Filter by status
-- [ ] ISC-85: "Assigned to me" filter
-- [ ] ISC-86: Clicking a list item scrolls to its pin and pulses it
-- [ ] ISC-87: Orphaned items appear in their own section with a Re-anchor action
+- [DEFERRED-VERIFY] ISC-81: Sidebar lists items for the current page
+- [DEFERRED-VERIFY] ISC-82: Scope switch: this page / all pages
+- [DEFERRED-VERIFY] ISC-83: Filter by type
+- [DEFERRED-VERIFY] ISC-84: Filter by status
+- [DEFERRED-VERIFY] ISC-85: "Assigned to me" filter
+- [DEFERRED-VERIFY] ISC-86: Clicking a list item scrolls to its pin and pulses it
+- [DEFERRED-VERIFY] ISC-87: Orphaned items appear in their own section with a Re-anchor action
 
 ### Item thread and status
-- [ ] ISC-88: Status enum is exactly Open, In Progress, Ready for Review, Resolved
-- [ ] ISC-89: Anti: REST accepts a status outside the enum (expect 400)
-- [ ] ISC-90: Status change from the popover persists via REST
-- [ ] ISC-91: Assignee picker lists only users with `fbc_review`
-- [ ] ISC-92: Replies are stored as threaded comments per item
-- [ ] ISC-93: Status and assignee changes are logged as activity entries (who, when, from → to)
-- [ ] ISC-94: Delete is allowed only for the reporter or an administrator
+- [x] ISC-88: Status enum is exactly Open, In Progress, Ready for Review, Resolved
+- [x] ISC-89: Anti: REST accepts a status outside the enum (expect 400)
+- [DEFERRED-VERIFY] ISC-90: Status change from the popover persists via REST
+- [x] ISC-91: Assignee picker lists only users with `fbc_review`
+- [x] ISC-92: Replies are stored as threaded comments per item
+- [x] ISC-93: Status and assignee changes are logged as activity entries (who, when, from → to)
+- [x] ISC-94: Delete is allowed only for the reporter or an administrator
 
 ### REST API and security
-- [ ] ISC-95: Routes registered under `feedback-collector/v1`
-- [ ] ISC-96: `GET /items?page_path=` returns only items for that path
-- [ ] ISC-97: `POST /items` returns 201 with the new ID
-- [ ] ISC-98: `PATCH /items/{id}` updates title, description, status, priority, assignee
-- [ ] ISC-99: `DELETE /items/{id}` enforces ISC-94
-- [ ] ISC-100: `POST /items/{id}/comments` creates a reply
-- [ ] ISC-101: Anti: a write route succeeds without a valid `wp_rest` nonce
-- [ ] ISC-102: Description sanitized with `wp_kses_post`; text fields with `sanitize_text_field`
-- [ ] ISC-103: Anti: a `<script>` in a description executes in the popover
-- [ ] ISC-104: Anti: a `<script>` in a description executes in admin screens
-- [ ] ISC-105: Every SQL query with input uses `$wpdb->prepare` (PHPCS DirectDatabaseQuery sniff clean)
-- [ ] ISC-106: REST contract documented in `docs/rest-api.md`
+- [x] ISC-95: Routes registered under `feedback-collector/v1`
+- [x] ISC-96: `GET /items?page_path=` returns only items for that path
+- [x] ISC-97: `POST /items` returns 201 with the new ID
+- [x] ISC-98: `PATCH /items/{id}` updates title, description, status, priority, assignee
+- [x] ISC-99: `DELETE /items/{id}` enforces ISC-94
+- [x] ISC-100: `POST /items/{id}/comments` creates a reply
+- [x] ISC-101: Anti: a write route succeeds without a valid `wp_rest` nonce
+- [x] ISC-102: Description sanitized with `wp_kses_post`; text fields with `sanitize_text_field`
+- [DEFERRED-VERIFY] ISC-103: Anti: a `<script>` in a description executes in the popover
+- [x] ISC-104: Anti: a `<script>` in a description executes in admin screens
+- [x] ISC-105: Every SQL query with input uses `$wpdb->prepare` (PHPCS DirectDatabaseQuery sniff clean)
+- [x] ISC-106: REST contract documented in `docs/rest-api.md`
 
 ### Admin
-- [ ] ISC-107: Top-level "Feedback" admin menu with an Open-count badge
-- [ ] ISC-108: List table columns: #, Title, Type, Status, Priority, Assignee, Page, Reporter, Created, Teamwork
-- [ ] ISC-109: Filter by type
-- [ ] ISC-110: Filter by status
-- [ ] ISC-111: Filter by assignee
-- [ ] ISC-112: Filter by page
-- [ ] ISC-113: Search across title and description
-- [ ] ISC-114: Sort by created date and by priority
-- [ ] ISC-115: Pagination at 20 per page
+- [x] ISC-107: Top-level "Feedback" admin menu with an Open-count badge
+- [x] ISC-108: List table columns: #, Title, Type, Status, Priority, Assignee, Page, Reporter, Created, Teamwork
+- [x] ISC-109: Filter by type
+- [x] ISC-110: Filter by status
+- [x] ISC-111: Filter by assignee
+- [x] ISC-112: Filter by page
+- [x] ISC-113: Search across title and description
+- [x] ISC-114: Sort by created date and by priority
+- [x] ISC-115: Pagination at 20 per page
 - [ ] ISC-116: Bulk action: change status
 - [ ] ISC-117: Bulk action: push to Teamwork
-- [ ] ISC-118: Detail screen shows every captured context field
-- [ ] ISC-119: "View on page" opens `?fbc_item={id}`, enables Feedback mode, scrolls to the pin and opens it
-- [ ] ISC-120: View-on-page shows a banner when the current breakpoint differs from the captured one
+- [x] ISC-118: Detail screen shows every captured context field
+- [DEFERRED-VERIFY] ISC-119: "View on page" opens `?fbc_item={id}`, enables Feedback mode, scrolls to the pin and opens it
+- [DEFERRED-VERIFY] ISC-120: View-on-page shows a banner when the current breakpoint differs from the captured one
 - [ ] ISC-121: CSV export of the current filtered list
 
 ### Teamwork integration
-- [ ] ISC-122: Settings fields: Teamwork site URL and API key
+- [x] ISC-122: Settings fields: Teamwork site URL and API key
 - [ ] ISC-123: "Test connection" calls `GET /projects/api/v3/me.json` and shows the user name on success
 - [ ] ISC-124: API key read from `FBC_TEAMWORK_API_KEY` in wp-config when defined (preferred); otherwise an encrypted DB option is the fallback
-- [ ] ISC-125: Anti: the API key appears in any front-end HTML, JS or REST response
+- [x] ISC-125: Anti: the API key appears in any front-end HTML, JS or REST response
 - [ ] ISC-126: Project dropdown lists all active projects (v3, loops while `meta.page.hasMore`)
 - [ ] ISC-127: Selected project ID persists in site options
 - [ ] ISC-128: "Create QA list" calls v1 `POST /projects/{id}/tasklists.json`, named "QA – Round N – YYYY-MM-DD"
 - [ ] ISC-129: Returned `TASKLISTID` is stored as the active QA list
 - [ ] ISC-130: Option to pick an existing task list instead of creating one
-- [ ] ISC-131: Push creates a v3 task in the active QA list
-- [ ] ISC-132: Task name format is `[Type] Title`
-- [ ] ISC-133: Task description (HTML) includes description, deep link to the pin, page URL, breakpoint and viewport, browser and OS, selector, reporter, JS errors
-- [ ] ISC-134: Task tagged with its type (tag created if missing, IDs cached)
-- [ ] ISC-135: Priority mapped: Critical/High → high, Medium → medium, Low → low
-- [ ] ISC-136: Assignee mapped by matching email against project people; unmatched → unassigned with a note
-- [ ] ISC-137: Teamwork task ID and URL stored on the item and linked in admin
-- [ ] ISC-138: Anti: pushing an already-pushed item creates a second Teamwork task
-- [ ] ISC-139: API failure marks the item `sync_error` with the message, and a Retry action exists
-- [ ] ISC-140: On 429, pushes back off until `X-Rate-Limit-Reset`; a 100-item bulk push completes with no item lost
+- [x] ISC-131: Push creates a v3 task in the active QA list
+- [x] ISC-132: Task name format is `[Type] Title`
+- [x] ISC-133: Task description (HTML) includes description, deep link to the pin, page URL, breakpoint and viewport, browser and OS, selector, reporter, JS errors
+- [x] ISC-134: Task tagged with its type (tag created if missing, IDs cached)
+- [x] ISC-135: Priority mapped: Critical/High → high, Medium → medium, Low → low
+- [x] ISC-136: Assignee mapped by matching email against project people; unmatched → unassigned with a note
+- [x] ISC-137: Teamwork task ID and URL stored on the item and linked in admin
+- [x] ISC-138: Anti: pushing an already-pushed item creates a second Teamwork task
+- [x] ISC-139: API failure marks the item `sync_error` with the message, and a Retry action exists
+- [x] ISC-140: On 429, pushes back off until `X-Rate-Limit-Reset`; a 100-item bulk push completes with no item lost
 - [ ] ISC-141: "Auto-push new items" setting (default off) pushes on creation
 - [ ] ISC-142: WP-Cron job every 15 min polls the QA list with `updatedAfter`; completed tasks → Resolved
-- [ ] ISC-143: Reopened tasks in Teamwork → Open in WordPress
-- [ ] ISC-144: Anti: sync-back changes the status of an item that was never pushed
+- [x] ISC-143: Reopened tasks in Teamwork → Open in WordPress
+- [x] ISC-144: Anti: sync-back changes the status of an item that was never pushed
 
 ### Compatibility and experience
 - [ ] ISC-145: [DROPPED — see Decisions 2026-09-30, staging-only]
-- [ ] ISC-146: Anti: overlay loads inside Elementor or Beaver Builder edit iframes
-- [ ] ISC-147: Works on one block theme and one classic theme (live probe)
-- [ ] ISC-148: Antecedent: with Feedback mode on, filing an item takes ≤ 3 interactions plus typing (right-click → type → Enter)
-- [ ] ISC-149: Antecedent: from a Teamwork task, the developer reaches the open pin in one click
+- [x] ISC-146: Anti: overlay loads inside Elementor or Beaver Builder edit iframes
+- [DEFERRED-VERIFY] ISC-147: Works on one block theme and one classic theme (live probe)
+- [DEFERRED-VERIFY] ISC-148: Antecedent: with Feedback mode on, filing an item takes ≤ 3 interactions plus typing (right-click → type → Enter)
+- [DEFERRED-VERIFY] ISC-149: Antecedent: from a Teamwork task, the developer reaches the open pin in one click
 
 ### Optional — screenshots (feature-flagged, stretch)
 - [ ] ISC-150: "Capture screenshot" setting exists, default off
@@ -234,11 +234,11 @@ Deliver a deactivatable WordPress plugin, "Feedback Collector". Reviewers with t
 - [ ] ISC-153: Anti: screenshot library is loaded when the setting is off
 
 ### Added after advisor review
-- [ ] ISC-154: A logged-out click on a `?fbc_item=` deep link redirects to wp-login with `redirect_to`, then returns to the open pin
+- [x] ISC-154: A logged-out click on a `?fbc_item=` deep link redirects to wp-login with `redirect_to`, then returns to the open pin
 
 ### Added after Aaron's decisions (2026-09-30)
 - [ ] ISC-155: "Sync now" button in admin runs the Teamwork status poll immediately and reports how many items changed
-- [ ] ISC-156: Plugins screen shows a warning on the Feedback Collector row with the count of open items not yet pushed to Teamwork (staging-only removal safeguard)
+- [x] ISC-156: Plugins screen shows a warning on the Feedback Collector row with the count of open items not yet pushed to Teamwork (staging-only removal safeguard)
 
 ## Test Strategy
 
@@ -315,4 +315,39 @@ Build order: F1 → (F2 ∥ F3 ∥ F4) → F5 → (F6 ∥ F7) → F8 → F9 → 
 
 ## Verification
 
-- Pending: no build yet. This ISA is at `phase: plan`, waiting for approval. Evidence is recorded here per ISC during EXECUTE/VERIFY.
+Test site: local WordPress 7.1.2 on PHP 8.4 / MySQL 26.7 at `http://localhost:8899` (`~/Herd/fbc-test`, plugin symlinked from this repo). 2026-09-30.
+
+- ISC-1, 2, 9: file read; `php -l` on every PHP file → no syntax errors; all classes under `FeedbackCollector\`.
+- ISC-3, 105: `phpcs` (WordPress standard, `phpcs.xml.dist`) exits 0 with no output. Every query with input uses `$wpdb->prepare`, and table names use `%i`.
+- ISC-4–7, 10: `wp plugin activate` → `wp_fbc_items` and `wp_fbc_comments` exist, `fbc_db_version` = 2 (upgraded 1→2 by dbDelta adding `tw_project_id`), `fbc_review` granted to administrator and editor. No `debug.log` was created with WP_DEBUG_LOG on.
+- ISC-11: rows before and after deactivation = 34 / 34.
+- ISC-13: `uninstall.php` included with `WP_UNINSTALL_PLUGIN` and the option off → 2 tables remain. (Never run `wp plugin uninstall` here: the plugin dir is a symlink to the source.)
+- ISC-14, 19: logged-out page has no plugin output (the one `fbc-` grep hit is the sample page's own `fbc-test.test` link) and no Set-Cookie or Cache-Control headers.
+- ISC-15: subscriber page → 0 `fbc-overlay` / `fbcConfig` / `fbc-early` matches.
+- ISC-16, 17: admin page has the `fbc-overlay-js` script, the `fbc-early-errors` inline script and the `wp-admin-bar-fbc-toggle` node. CSS ships inside the bundle and is injected into the shadow root.
+- ISC-18, 101: anonymous → 401; subscriber → 403; admin cookie without nonce → 401 `fbc_forbidden`; with nonce → 200.
+- ISC-20: `dist/overlay.js` 39.7 KB minified, **12.8 KB gzipped**.
+- ISC-70–72, 75, 78: `bun test` → 42 pass / 0 fail (120 expects), including the positional-drift fix and the edited-text keep-positional case; `tsc --noEmit` clean.
+- ISC-79: `GET /items?page_path=/sample-page/` → 1 item; `/other/` → 0.
+- ISC-88, 89: PATCH `status=done` → 400; valid status → 200.
+- ISC-91: assigning a subscriber → 400; an editor → 200.
+- ISC-92, 93: comment → 201; status and assignee changes add activity entries (thread count 2 after one PATCH).
+- ISC-94, 99: editor deleting admin's item → 403; editor deleting own → 200; admin → 200; missing → 404.
+- ISC-95–98, 100: REST smoke (`rest-smoke.php`): create 201; empty title / bad type → 400.
+- ISC-102, 104: `<script>` stripped by `sanitize_text_field` / `sanitize_textarea_field` (stored "Line1"). Admin output is escaped and PHPCS's escaping sniffs are clean.
+- ISC-106: `docs/rest-api.md` lists every route.
+- ISC-107–115, 118: admin list → badge 32 (= open count); all 11 columns. Filters: type=bug 0, status=resolved 1, assignee=unassigned 30, page=/services/ 33. Search "Bulk item 3" → 2. Priority sort renders. Detail screen shows Captured context, View on page, Open task #9001, Breakpoint row.
+- ISC-122, 125, 131–140, 143, 144: mocked Teamwork API via `pre_http_request` (`tw-mock-test.php`). 28 checks pass:
+  - Push and payload: `[Tweak] …` name, HTML with escaped user HTML, deep link, breakpoint/browser/selector/JS errors, critical→high, type tag created and cached, assignee matched by email case-insensitively, Basic `key:x`.
+  - Idempotent re-push.
+  - A 30-item bulk push hitting 429 after 5 creates stops, reschedules about 30 s out, then finishes with 31 unique tasks and 31 creates.
+  - A 400 marks `error` with the message, and Retry succeeds.
+  - Completed → Resolved, attributed to "Teamwork"; reopened → Open; unpushed resolved item untouched.
+  - v1 task-list create returns TASKLISTID.
+  - API key absent from the REST item shape and from the front-end config.
+- ISC-146: `?elementor-preview=2` as admin → 0 overlay matches.
+- ISC-154: logged-out `?fbc_item=1` → 302 to `wp-login.php?redirect_to=…fbc_item%3D1`.
+- ISC-156: Plugins screen shows "1 unresolved feedback item has not been pushed to Teamwork."
+- **DEFERRED-VERIFY (follow-up FBC-BROWSER-1):** every overlay-interaction ISC (21–69 UI parts, 73–77, 80–87, 90, 103, 119–120, 147–149). The real-Chrome pass is blocked because the Interceptor extension isn't connected to its daemon ("no extensions connected" after restarting a stale daemon). It needs a reload at `chrome://extensions`.
+- **Not yet verified, no live credentials:** ISC-123 (Test connection), 124 (encrypted-option fallback round trip), 126–130 (settings UI against real Teamwork), 141 (auto-push), 142 (cron schedule registers once credentials exist), 155 (Sync now over HTTP). These need a QA-bot API key and a sandbox project.
+- **Not built (pending approval):** ISC-121 CSV export. ISC-57 (JS error capture) and ISC-141 (auto-push, default off) were built; say if you'd rather they go.

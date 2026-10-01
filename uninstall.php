@@ -21,6 +21,6 @@ foreach ( array( 'fbc_db_version', 'fbc_delete_on_uninstall', 'fbc_review_roles'
 	delete_option( $option );
 }
 
-foreach ( wp_roles()->role_objects as $role ) {
-	$role->remove_cap( 'fbc_review' );
+foreach ( wp_roles()->role_objects as $fbc_role ) {
+	$fbc_role->remove_cap( 'fbc_review' );
 }

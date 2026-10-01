@@ -251,17 +251,17 @@ final class Admin {
 		echo '</div>';
 
 		$rows = array(
-			__( 'Page', 'feedback-collector' )       => '<a href="' . esc_url( home_url( $item['page_path'] ) ) . '" target="_blank" rel="noopener">' . esc_html( $item['page_path'] . ( $item['page_query'] ? '?' . $item['page_query'] : '' ) ) . '</a>',
-			__( 'Page title', 'feedback-collector' ) => esc_html( $item['page_title'] ),
-			__( 'Breakpoint', 'feedback-collector' ) => esc_html( trim( ( $ctx['breakpoint'] ?? '' ) . ' · ' . ( $ctx['viewport_w'] ?? '?' ) . '×' . ( $ctx['viewport_h'] ?? '?' ) . ' @' . ( $ctx['dpr'] ?? 1 ) . 'x', ' ·' ) ),
-			__( 'Browser', 'feedback-collector' )    => esc_html( $ctx['browser'] ?? '' ),
-			__( 'OS', 'feedback-collector' )         => esc_html( $ctx['os'] ?? '' ),
-			__( 'Element', 'feedback-collector' )    => $anchor ? '<code>' . esc_html( $anchor['selector'] ?? '' ) . '</code>' : esc_html__( 'Page note', 'feedback-collector' ),
+			__( 'Page', 'feedback-collector' )         => '<a href="' . esc_url( home_url( $item['page_path'] ) ) . '" target="_blank" rel="noopener">' . esc_html( $item['page_path'] . ( $item['page_query'] ? '?' . $item['page_query'] : '' ) ) . '</a>',
+			__( 'Page title', 'feedback-collector' )   => esc_html( $item['page_title'] ),
+			__( 'Breakpoint', 'feedback-collector' )   => esc_html( trim( ( $ctx['breakpoint'] ?? '' ) . ' · ' . ( $ctx['viewport_w'] ?? '?' ) . '×' . ( $ctx['viewport_h'] ?? '?' ) . ' @' . ( $ctx['dpr'] ?? 1 ) . 'x', ' ·' ) ),
+			__( 'Browser', 'feedback-collector' )      => esc_html( $ctx['browser'] ?? '' ),
+			__( 'OS', 'feedback-collector' )           => esc_html( $ctx['os'] ?? '' ),
+			__( 'Element', 'feedback-collector' )      => $anchor ? '<code>' . esc_html( $anchor['selector'] ?? '' ) . '</code>' : esc_html__( 'Page note', 'feedback-collector' ),
 			__( 'Element text', 'feedback-collector' ) => esc_html( $anchor['text'] ?? '' ),
-			__( 'Post', 'feedback-collector' )       => ! empty( $ctx['post_id'] ) ? '<a href="' . esc_url( (string) get_edit_post_link( (int) $ctx['post_id'] ) ) . '">' . esc_html( ( $ctx['post_type'] ?? '' ) . ' #' . $ctx['post_id'] ) . '</a>' : '—',
-			__( 'Theme', 'feedback-collector' )      => esc_html( $ctx['theme'] ?? '' ),
-			__( 'Reporter', 'feedback-collector' )   => esc_html( $reporter ? $reporter->display_name : '' ),
-			__( 'Created', 'feedback-collector' )    => esc_html( get_date_from_gmt( $item['created_at'], get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) ) ),
+			__( 'Post', 'feedback-collector' )         => ! empty( $ctx['post_id'] ) ? '<a href="' . esc_url( (string) get_edit_post_link( (int) $ctx['post_id'] ) ) . '">' . esc_html( ( $ctx['post_type'] ?? '' ) . ' #' . $ctx['post_id'] ) . '</a>' : '—',
+			__( 'Theme', 'feedback-collector' )        => esc_html( $ctx['theme'] ?? '' ),
+			__( 'Reporter', 'feedback-collector' )     => esc_html( $reporter ? $reporter->display_name : '' ),
+			__( 'Created', 'feedback-collector' )      => esc_html( get_date_from_gmt( $item['created_at'], get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) ) ),
 		);
 		if ( ! empty( $ctx['js_errors'] ) ) {
 			$rows[ __( 'JS errors', 'feedback-collector' ) ] = '<code>' . implode( '</code><br><code>', array_map( 'esc_html', $ctx['js_errors'] ) ) . '</code>';
@@ -300,7 +300,11 @@ final class Admin {
 			wp_die( esc_html__( 'Not allowed.', 'feedback-collector' ), 403 );
 		}
 		$changes = array();
-		foreach ( array( 'status' => Items::STATUSES, 'priority' => Items::PRIORITIES, 'type' => Items::TYPES ) as $field => $allowed ) {
+		foreach ( array(
+			'status'   => Items::STATUSES,
+			'priority' => Items::PRIORITIES,
+			'type'     => Items::TYPES,
+		) as $field => $allowed ) {
 			$value = isset( $_POST[ $field ] ) ? sanitize_key( wp_unslash( $_POST[ $field ] ) ) : '';
 			if ( in_array( $value, $allowed, true ) ) {
 				$changes[ $field ] = $value;
@@ -413,7 +417,7 @@ final class Admin {
 	public static function plugin_row_warning(): void {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
-		$pending = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM ' . Items::table() . ' WHERE tw_task_id = 0 AND status != %s', 'resolved' ) );
+		$pending = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE tw_task_id = 0 AND status != %s', Items::table(), 'resolved' ) );
 		if ( ! $pending ) {
 			return;
 		}

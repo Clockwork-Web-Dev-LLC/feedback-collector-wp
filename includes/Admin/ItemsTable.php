@@ -157,8 +157,8 @@ final class ItemsTable extends \WP_List_Table {
 		$this->dropdown( 'fbc_assignee', __( 'Any assignee', 'feedback-collector' ), $people, $f['assignee_id'] );
 
 		global $wpdb;
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$paths = $wpdb->get_col( 'SELECT DISTINCT page_path FROM ' . Items::table() . ' ORDER BY page_path ASC LIMIT 300' );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$paths = $wpdb->get_col( $wpdb->prepare( 'SELECT DISTINCT page_path FROM %i ORDER BY page_path ASC LIMIT 300', Items::table() ) );
 		$this->dropdown( 'fbc_page', __( 'All pages', 'feedback-collector' ), array_combine( $paths, $paths ) ?: array(), $f['page_path'] );
 
 		submit_button( __( 'Filter', 'feedback-collector' ), '', 'filter_action', false );

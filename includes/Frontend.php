@@ -76,7 +76,16 @@ final class Frontend {
 			return;
 		}
 
-		wp_enqueue_script( 'fbc-overlay', FBC_URL . 'dist/overlay.js', array(), VERSION . '-' . filemtime( $file ), array( 'in_footer' => true, 'strategy' => 'defer' ) );
+		wp_enqueue_script(
+			'fbc-overlay',
+			FBC_URL . 'dist/overlay.js',
+			array(),
+			VERSION . '-' . filemtime( $file ),
+			array(
+				'in_footer' => true,
+				'strategy'  => 'defer',
+			)
+		);
 		wp_add_inline_script( 'fbc-overlay', 'window.fbcConfig = ' . wp_json_encode( self::config() ) . ';', 'before' );
 	}
 

@@ -232,7 +232,11 @@ final class Rest {
 		if ( array_key_exists( 'description', $p ) ) {
 			$changes['description'] = sanitize_textarea_field( (string) $p['description'] );
 		}
-		foreach ( array( 'status' => Items::STATUSES, 'priority' => Items::PRIORITIES, 'type' => Items::TYPES ) as $field => $allowed ) {
+		foreach ( array(
+			'status'   => Items::STATUSES,
+			'priority' => Items::PRIORITIES,
+			'type'     => Items::TYPES,
+		) as $field => $allowed ) {
 			if ( array_key_exists( $field, $p ) ) {
 				$value = sanitize_key( (string) $p[ $field ] );
 				if ( ! in_array( $value, $allowed, true ) ) {
@@ -275,7 +279,12 @@ final class Rest {
 			return new WP_Error( 'fbc_forbidden', __( 'Only the reporter or an administrator can delete this.', 'feedback-collector' ), array( 'status' => 403 ) );
 		}
 		Items::delete( $item['id'] );
-		return new WP_REST_Response( array( 'deleted' => true, 'id' => $item['id'] ) );
+		return new WP_REST_Response(
+			array(
+				'deleted' => true,
+				'id'      => $item['id'],
+			)
+		);
 	}
 
 	/**
@@ -370,7 +379,7 @@ final class Rest {
 	 * @param array<string, mixed> $item Item.
 	 */
 	public static function can_delete( array $item ): bool {
-		return current_user_can( 'manage_options' ) || (int) $item['reporter_id'] === get_current_user_id();
+		return current_user_can( 'manage_options' ) || get_current_user_id() === (int) $item['reporter_id'];
 	}
 
 	/**
@@ -402,24 +411,24 @@ final class Rest {
 	 * @return array<string, mixed>
 	 */
 	private static function sanitize_context( array $c ): array {
-		$text = static fn( $v, int $max = 200 ) => mb_substr( sanitize_text_field( (string) $v ), 0, $max );
-		$bp   = sanitize_key( (string) ( $c['breakpoint'] ?? '' ) );
+		$text   = static fn( $v, int $max = 200 ) => mb_substr( sanitize_text_field( (string) $v ), 0, $max );
+		$bp     = sanitize_key( (string) ( $c['breakpoint'] ?? '' ) );
 		$errors = array();
 		foreach ( array_slice( (array) ( $c['js_errors'] ?? array() ), 0, 20 ) as $err ) {
 			$errors[] = $text( $err, 500 );
 		}
 		return array(
-			'viewport_w'   => absint( $c['viewport_w'] ?? 0 ),
-			'viewport_h'   => absint( $c['viewport_h'] ?? 0 ),
-			'dpr'          => is_numeric( $c['dpr'] ?? null ) ? round( (float) $c['dpr'], 2 ) : 1,
-			'breakpoint'   => in_array( $bp, array( 'mobile', 'tablet', 'desktop' ), true ) ? $bp : '',
-			'browser'      => $text( $c['browser'] ?? '' ),
-			'os'           => $text( $c['os'] ?? '' ),
-			'user_agent'   => $text( $c['user_agent'] ?? '', 500 ),
-			'post_id'      => absint( $c['post_id'] ?? 0 ),
-			'post_type'    => sanitize_key( (string) ( $c['post_type'] ?? '' ) ),
-			'theme'        => sanitize_key( (string) ( $c['theme'] ?? '' ) ),
-			'js_errors'    => $errors,
+			'viewport_w' => absint( $c['viewport_w'] ?? 0 ),
+			'viewport_h' => absint( $c['viewport_h'] ?? 0 ),
+			'dpr'        => is_numeric( $c['dpr'] ?? null ) ? round( (float) $c['dpr'], 2 ) : 1,
+			'breakpoint' => in_array( $bp, array( 'mobile', 'tablet', 'desktop' ), true ) ? $bp : '',
+			'browser'    => $text( $c['browser'] ?? '' ),
+			'os'         => $text( $c['os'] ?? '' ),
+			'user_agent' => $text( $c['user_agent'] ?? '', 500 ),
+			'post_id'    => absint( $c['post_id'] ?? 0 ),
+			'post_type'  => sanitize_key( (string) ( $c['post_type'] ?? '' ) ),
+			'theme'      => sanitize_key( (string) ( $c['theme'] ?? '' ) ),
+			'js_errors'  => $errors,
 		);
 	}
 
@@ -430,7 +439,14 @@ final class Rest {
 	 * @param string $message Message.
 	 */
 	private static function invalid( string $field, string $message ): WP_Error {
-		return new WP_Error( 'fbc_invalid', $message, array( 'status' => 400, 'field' => $field ) );
+		return new WP_Error(
+			'fbc_invalid',
+			$message,
+			array(
+				'status' => 400,
+				'field'  => $field,
+			)
+		);
 	}
 
 	/**
