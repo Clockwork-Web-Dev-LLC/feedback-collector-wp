@@ -54,6 +54,8 @@ export interface Item {
   assignee_locked?: boolean;
   tw_task_id: number;
   tw_task_url: string;
+  /** Why an item isn't in Teamwork yet (no QA list for its round, a failed push…). Empty when fine. */
+  tw_note?: string;
   tw_sync_state: string;
   created_at: string;
   updated_at: string;

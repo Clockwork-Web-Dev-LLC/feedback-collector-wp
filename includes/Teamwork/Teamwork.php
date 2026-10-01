@@ -57,6 +57,7 @@ final class Teamwork {
 			add_action( 'admin_post_fbc_tw_create_list', array( self::class, 'handle_create_list' ) );
 			add_action( 'admin_post_fbc_tw_push', array( self::class, 'handle_push' ) );
 			add_action( 'admin_post_fbc_tw_create_and_push', array( self::class, 'handle_create_and_push' ) );
+			add_action( 'admin_post_fbc_tw_create_and_push_all', array( self::class, 'handle_create_and_push_all' ) );
 			add_action( 'admin_post_fbc_tw_sync', array( self::class, 'handle_sync' ) );
 		}
 	}
@@ -690,6 +691,18 @@ final class Teamwork {
 	 */
 	public static function present( array $out, array $item ): array {
 		$out['tw_task_url'] = $item['tw_task_id'] && self::site() ? self::site() . '/app/tasks/' . (int) $item['tw_task_id'] : '';
+		$out['tw_note']     = '';
+		if ( ! $item['tw_task_id'] && self::client() && self::settings()['project_id'] ) {
+			if ( 'error' === $item['tw_sync_state'] ) {
+				/* translators: %s: error message */
+				$out['tw_note'] = sprintf( __( 'Teamwork push failed: %s', 'feedback-collector' ), (string) $item['tw_sync_error'] );
+			} elseif ( ! self::list_for_round( (int) $item['round'] ) ) {
+				/* translators: %d: round number */
+				$out['tw_note'] = sprintf( __( 'Not in Teamwork yet: Round %d has no QA list.', 'feedback-collector' ), (int) $item['round'] );
+			} elseif ( in_array( $item['tw_sync_state'], array( 'queued', 'pushing' ), true ) ) {
+				$out['tw_note'] = __( 'Sending to Teamwork…', 'feedback-collector' );
+			}
+		}
 		return $out;
 	}
 
@@ -986,6 +999,49 @@ final class Teamwork {
 	}
 
 	/**
+	 * List screen: creates the current round's QA list, then pushes every unpushed item in that round.
+	 */
+	public static function handle_create_and_push_all(): void {
+		check_admin_referer( 'fbc_tw_create_and_push_all' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'Not allowed.', 'feedback-collector' ), 403 );
+		}
+		$round  = Rounds::current();
+		$result = self::list_for_round( $round ) ? true : self::create_round_list( $round );
+		$back   = admin_url( 'admin.php?page=' . Admin::SLUG );
+		if ( is_wp_error( $result ) ) {
+			wp_safe_redirect( add_query_arg( 'fbc_sync_err', rawurlencode( $result->get_error_message() ), $back ) );
+			exit;
+		}
+		self::queue( self::unpushed_ids( $round ) );
+		wp_clear_scheduled_hook( self::QUEUE_HOOK );
+		$done = self::process_queue( 10 );
+		wp_safe_redirect(
+			add_query_arg(
+				array(
+					'fbc_tw_pushed' => (int) $done['pushed'],
+					'fbc_tw_failed' => (int) $done['failed'],
+					'fbc_tw_queued' => (int) $done['remaining'],
+				),
+				$back
+			)
+		);
+		exit;
+	}
+
+	/**
+	 * IDs of items in a round that aren't in Teamwork yet.
+	 *
+	 * @param int $round Round.
+	 * @return int[]
+	 */
+	private static function unpushed_ids( int $round ): array {
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		return array_map( 'intval', $wpdb->get_col( $wpdb->prepare( 'SELECT id FROM %i WHERE round = %d AND tw_task_id = 0', Items::table(), $round ) ) );
+	}
+
+	/**
 	 * "Sync with Teamwork now".
 	 */
 	public static function handle_sync(): void {
@@ -1151,7 +1207,41 @@ final class Teamwork {
 	 * Sync result notices on the list screen.
 	 */
 	public static function notices(): void {
+		$round = Rounds::current();
+		if ( self::client() && self::settings()['project_id'] && ! self::list_for_round( $round ) ) {
+			$waiting = count( self::unpushed_ids( $round ) );
+			echo '<div class="notice notice-warning inline"><p><strong>' . esc_html(
+				sprintf(
+					/* translators: 1: round number, 2: item count */
+					_n( 'Round %1$d has no Teamwork QA list, so %2$d item hasn’t been sent to Teamwork.', 'Round %1$d has no Teamwork QA list, so %2$d items haven’t been sent to Teamwork.', $waiting, 'feedback-collector' ),
+					$round,
+					$waiting
+				)
+			) . '</strong></p><p>';
+			if ( current_user_can( 'manage_options' ) ) {
+				/* translators: %d: round number */
+				self::button_form( 'fbc_tw_create_and_push_all', sprintf( __( 'Create Round %d QA list & push all', 'feedback-collector' ), $round ), array(), 'primary' );
+			} else {
+				esc_html_e( 'Ask an administrator to create it in Settings.', 'feedback-collector' );
+			}
+			echo '</p></div>';
+		}
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended
+		if ( isset( $_GET['fbc_tw_pushed'] ) ) {
+			$queued = absint( $_GET['fbc_tw_queued'] ?? 0 );
+			$failed = absint( $_GET['fbc_tw_failed'] ?? 0 );
+			/* translators: %d: pushed count */
+			$msg = sprintf( __( 'Sent %d item(s) to Teamwork.', 'feedback-collector' ), absint( $_GET['fbc_tw_pushed'] ) );
+			if ( $queued ) {
+				/* translators: %d: still-queued count */
+				$msg .= ' ' . sprintf( __( '%d more will follow in the background.', 'feedback-collector' ), $queued );
+			}
+			if ( $failed ) {
+				/* translators: %d: failed count */
+				$msg .= ' ' . sprintf( __( '%d failed: hover the warning icon in the Teamwork column for the reason.', 'feedback-collector' ), $failed );
+			}
+			printf( '<div class="notice notice-%s is-dismissible"><p>%s</p></div>', $failed ? 'warning' : 'success', esc_html( $msg ) );
+		}
 		if ( isset( $_GET['fbc_sync_err'] ) ) {
 			printf( '<div class="notice notice-error is-dismissible"><p>%s</p></div>', esc_html( sanitize_text_field( wp_unslash( $_GET['fbc_sync_err'] ) ) ) );
 		} elseif ( isset( $_GET['fbc_synced'] ) ) {

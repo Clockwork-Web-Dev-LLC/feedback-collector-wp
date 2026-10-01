@@ -860,7 +860,9 @@ export class App {
         : null,
       item.tw_task_url
         ? h('div', { class: 'meta' }, h('a', { href: item.tw_task_url, target: '_blank', rel: 'noopener', text: `Teamwork task #${item.tw_task_id} ↗` }), item.status === 'resolved' ? ' · completed' : ' · status syncs from Teamwork')
-        : null,
+        : item.tw_note
+          ? h('div', { class: 'notice', text: item.tw_note })
+          : null,
       mismatch,
       orphan,
       item.description ? h('p', { class: 'desc', text: item.description }) : null,
