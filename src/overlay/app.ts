@@ -966,7 +966,10 @@ export class App {
             'span',
             { class: 'devices', role: 'group', 'aria-label': 'Preview at a device size' },
             ...DEVICES.map((d) =>
-              h('button', { type: 'button', class: 'icon-btn', title: `Preview as ${d.label} (${d.w}px)`, 'aria-label': `Preview as ${d.label}, ${d.w} pixels wide`, onclick: () => this.openPreview(d.id) }, deviceIcon(d.id))
+              d.id === 'desktop'
+                ? // Desktop is the real page you're already on: shown as the active view.
+                  h('button', { type: 'button', class: 'icon-btn', 'aria-pressed': 'true', title: 'Desktop: the page as you see it now', 'aria-label': 'Desktop view (current)', onclick: () => this.closePreview() }, deviceIcon(d.id))
+                : h('button', { type: 'button', class: 'icon-btn', 'aria-pressed': 'false', title: `Preview as ${d.label} (${d.w}px)`, 'aria-label': `Preview as ${d.label}, ${d.w} pixels wide`, onclick: () => this.openPreview(d.id) }, deviceIcon(d.id))
             )
           ),
       h('button', { type: 'button', class: this.sidebar ? 'on' : '', onclick: () => (this.sidebar ? this.closeSidebar() : this.openSidebar()) }, h('span', { class: 'label', text: 'List' }), count ? h('span', { class: 'count', text: String(count) }) : null),
@@ -1006,6 +1009,10 @@ export class App {
    * pins and toolbar pause meanwhile, and refresh on close.
    */
   private openPreview(deviceId: string, rotated = false): void {
+    if (deviceId === 'desktop') {
+      this.closePreview(); // desktop is the page itself, never a frame
+      return;
+    }
     const device = DEVICES.find((d) => d.id === deviceId) ?? DEVICES[0];
     const w = rotated ? device.h : device.w;
     const hgt = rotated ? device.w : device.h;
@@ -1033,9 +1040,9 @@ export class App {
           type: 'button',
           class: 'icon-btn',
           'aria-pressed': String(d.id === device.id),
-          title: `${d.label} (${d.w}px)`,
-          'aria-label': `${d.label}, ${d.w} pixels wide`,
-          onclick: () => this.openPreview(d.id, d.id === device.id ? rotated : false),
+          title: d.id === 'desktop' ? 'Desktop: back to the page itself' : `${d.label} (${d.w}px)`,
+          'aria-label': d.id === 'desktop' ? 'Desktop: close the preview' : `${d.label}, ${d.w} pixels wide`,
+          onclick: () => (d.id === 'desktop' ? this.closePreview() : this.openPreview(d.id, d.id === device.id ? rotated : false)),
         },
         deviceIcon(d.id),
         h('span', { class: 'icon-label', text: d.label })

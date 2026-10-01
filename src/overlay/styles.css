@@ -25,6 +25,10 @@
   --brand-accent: #7eff83;
   --accent: var(--primary);
 }
+/* The hidden attribute must always win over component display rules (e.g. .toolbar's flex). */
+[hidden] {
+  display: none !important;
+}
 .layer {
   position: fixed;
   inset: 0;
@@ -824,6 +828,9 @@ select {
 }
 .toolbar .icon-btn {
   padding: 6px 7px;
+}
+.toolbar .icon-btn[aria-pressed='true'] {
+  box-shadow: inset 0 -3px 0 var(--brand-accent);
 }
 .preview-bar .icon-btn {
   display: inline-flex;

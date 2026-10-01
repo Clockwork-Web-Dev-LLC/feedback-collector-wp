@@ -4,7 +4,7 @@ project: feedback-collector-wp
 effort: E4
 effort_source: classifier
 phase: verify
-progress: 136/206
+progress: 138/208
 mode: interactive
 started: 2026-09-30T00:00:00-07:00
 updated: 2026-10-01T03:30:04.547Z
@@ -444,3 +444,5 @@ Test site: local WordPress 7.1.2 on PHP 8.4 / MySQL 26.7 at `http://localhost:88
 - [x] ISC-204: When Teamwork is preferred but not connected, the assignee pickers say so (composer hint + admin link)
 - [x] ISC-205: Device preview is three icon buttons (Mobile 390 / Tablet 820 / Desktop 1440) on the toolbar and in the preview switcher (Chrome: frame widths 820 → 1440 → 390)
 - [x] ISC-206: Anti: a test suite contacts a real Teamwork account (rest.php now blocks HTTP and forces WordPress-user assignees)
+- [x] ISC-207: Desktop is never framed: the Desktop icon shows the current page (active on the toolbar) and closes any preview; only Mobile and Tablet open the device frame (Chrome-verified)
+- [x] ISC-208: Anti: the parent toolbar or pins show through the device preview (`[hidden]` now beats component display rules; computed display none)
