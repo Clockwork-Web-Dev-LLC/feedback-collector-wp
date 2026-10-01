@@ -50,6 +50,9 @@ add_filter( 'pre_http_request', function ( $pre, $args, $url ) {
 		return $json( 201, array( 'task' => array( 'id' => $id ) ) );
 	}
 	if ( '/projects/api/v3/projects/100/tasks.json' === $path ) return $json( 200, array( 'tasks' => $mock['tasks'], 'meta' => array( 'page' => array( 'hasMore' => false ) ) ) );
+	if ( '/projects/api/v3/projects/999/tasks.json' === $path ) return $json( 403, array( 'errors' => array( array( 'detail' => 'no access to project' ) ) ) );
+	// Any other project (e.g. real items already on this site): nothing changed. Never a real request.
+	if ( preg_match( '#^/projects/api/v3/projects/\d+/tasks\.json$#', (string) $path ) ) return $json( 200, array( 'tasks' => array(), 'meta' => array( 'page' => array( 'hasMore' => false ) ) ) );
 	if ( 'POST' === $args['method'] && '/projects/100/tasklists.json' === $path ) return $json( 201, array( 'TASKLISTID' => '301', 'STATUS' => 'OK' ) );
 	return $json( 404, array( 'message' => 'unmocked ' . $path ) );
 }, 10, 3 );
@@ -57,7 +60,7 @@ add_filter( 'pre_http_request', function ( $pre, $args, $url ) {
 $ok = 0; $fail = 0;
 function check( $label, $cond ) { global $ok, $fail; echo ( $cond ? 'PASS ' : 'FAIL ' ) . $label . "\n"; $cond ? $ok++ : $fail++; }
 function mk( $title, $extra = array() ) {
-	return Items::create( array_merge( array( 'type' => 'tweak', 'priority' => 'critical', 'title' => $title, 'description' => "Line one\n<b>two</b>", 'page_path' => '/services/', 'anchor' => array( 'selector' => '#cta', 'tag' => 'a' ), 'context' => array( 'breakpoint' => 'desktop', 'viewport_w' => 1440, 'viewport_h' => 900, 'dpr' => 2, 'browser' => 'Chrome 154', 'os' => 'macOS 15.6', 'js_errors' => array( 'TypeError: x is undefined' ) ), 'breakpoint' => 'desktop', 'assignee_id' => 1 ), $extra ) );
+	return Items::create( array_merge( array( 'type' => 'tweak', 'priority' => 'critical', 'title' => $title, 'description' => "Line one\n<b>two</b> *not bold*", 'page_path' => '/services/', 'anchor' => array( 'selector' => '#cta', 'tag' => 'a' ), 'context' => array( 'breakpoint' => 'desktop', 'viewport_w' => 1440, 'viewport_h' => 900, 'dpr' => 2, 'browser' => 'Chrome 154', 'os' => 'macOS 15.6', 'js_errors' => array( 'TypeError: x is undefined' ) ), 'breakpoint' => 'desktop', 'assignee_id' => 1 ), $extra ) );
 }
 
 // 1. Push builds the right task
@@ -68,11 +71,12 @@ $p = $mock['last_payload']['task'] ?? array();
 check( 'push returns task id', 9001 === $res );
 check( 'task id stored on item', 9001 === $item['tw_task_id'] && 100 === $item['tw_project_id'] && 'synced' === $item['tw_sync_state'] );
 check( 'name is [Type] Title', '[Tweak] CTA button misaligned' === ( $p['name'] ?? '' ) );
-check( 'HTML description content type', 'HTML' === ( $p['descriptionContentType'] ?? '' ) );
-check( 'description escapes user HTML', str_contains( $p['description'] ?? '', '&lt;b&gt;two&lt;/b&gt;' ) );
+check( 'Anti: no descriptionContentType sent (Teamwork 400s on HTML and unknown types)', ! isset( $p['descriptionContentType'] ) );
+check( 'Anti: no HTML tags in the description', ! preg_match( '/<[a-z\/]/i', (string) ( $p['description'] ?? '' ) ) );
+check( 'description escapes Markdown in user text', str_contains( $p['description'] ?? '', '\\*not bold\\*' ) );
 check( 'description has deep link to pin', str_contains( $p['description'] ?? '', 'fbc_item=' . $id ) );
 $full_url = home_url( '/services/' );
-check( 'description leads with the full page URL as visible text', str_starts_with( (string) $p['description'], '<p><strong>Page URL:</strong> <a href="' . esc_url( $full_url ) . '">' . esc_html( $full_url ) . '</a></p>' ) );
+check( 'description leads with the full page URL as visible text', str_starts_with( (string) $p['description'], '**Page URL:** [' . $full_url . '](' . $full_url . ')' ) );
 check( 'description has breakpoint+browser+selector+errors', str_contains( $p['description'], '1440×900' ) && str_contains( $p['description'], 'Chrome 154' ) && str_contains( $p['description'], '#cta' ) && str_contains( $p['description'], 'TypeError' ) );
 check( 'critical maps to high', 'high' === ( $p['priority'] ?? '' ) );
 check( 'type tag attached (created + cached)', array( 77 ) === ( $p['tagIds'] ?? null ) && 77 === (int) Teamwork::settings()['tags']['tweak'] );
@@ -139,6 +143,17 @@ check( 'reopened in Teamwork → Open in WP', 'open' === Items::get( $id )['stat
 check( 'Anti: sync never touches unpushed items', 'resolved' === Items::get( $unpushed )['status'] );
 $st = get_option( 'fbc_tw_state' );
 check( 'sync records last_sync', ! empty( $st['last_sync'] ) );
+
+// 5b. One unreachable project never blocks the others.
+$bad = mk( 'In a project the key cannot see' );
+$wpdb->update( Items::table(), array( 'tw_task_id' => 777777, 'tw_project_id' => 999, 'tw_sync_state' => 'synced' ), array( 'id' => $bad ) );
+$before_window = (int) get_option( 'fbc_tw_state' )['last_sync'];
+$mock['tasks'] = array( array( 'id' => $first['tw_task_id'], 'status' => 'completed', 'completedAt' => '2026-10-01T11:00:00Z' ) );
+$s  = Teamwork::sync();
+$st = get_option( 'fbc_tw_state' );
+check( 'failing project skipped, others still sync', ! is_wp_error( $s ) && 'resolved' === Items::get( $id )['status'] );
+check( 'failing project error recorded', str_contains( (string) $st['last_error'], 'Project 999' ) );
+check( 'Anti: sync window not advanced past a failed project', $before_window === (int) $st['last_sync'] );
 $last_list = end( $mock['calls'] );
 check( 'second sync uses updatedAfter window', true ); // window computed from last_sync; asserted via no-crash + state
 

@@ -391,35 +391,35 @@ final class Teamwork {
 		$page   = Items::page_url( $item );
 		$by     = get_userdata( (int) $item['reporter_id'] );
 
-		// The page URL leads, in full, so it's visible in Teamwork lists and notifications too.
-		$html  = '<p><strong>' . esc_html__( 'Page URL', 'feedback-collector' ) . ':</strong> <a href="' . esc_url( $page ) . '">' . esc_html( $page ) . '</a></p>';
-		$html .= '' !== $item['description'] ? '<p>' . nl2br( esc_html( $item['description'] ) ) . '</p>' : '';
-		$html .= '<p><strong><a href="' . esc_url( $link ) . '">' . esc_html__( 'Open the pin on the page →', 'feedback-collector' ) . '</a></strong></p><ul>';
-		$html .= '<li>' . esc_html__( 'Page title', 'feedback-collector' ) . ': ' . esc_html( (string) $item['page_title'] ) . '</li>';
+		// Teamwork rejects HTML descriptions (and any explicit content type other than its default),
+		// so this is Markdown-flavoured text. The page URL leads, in
+		// full, so it's visible in Teamwork lists and notifications too.
+		$md    = '**' . __( 'Page URL', 'feedback-collector' ) . ':** ' . self::md_link( $page, $page ) . "\n\n";
+		$md   .= '' !== $item['description'] ? self::md_text( (string) $item['description'] ) . "\n\n" : '';
+		$md   .= '**' . self::md_link( __( 'Open the pin on the page →', 'feedback-collector' ), $link ) . "**\n\n";
+		$lines = array( __( 'Page title', 'feedback-collector' ) . ': ' . self::md_text( (string) $item['page_title'] ) );
 		if ( $ctx ) {
-			$html .= '<li>' . esc_html__( 'Breakpoint', 'feedback-collector' ) . ': ' . esc_html( sprintf( '%s · %d×%d @%sx', $ctx['breakpoint'] ?? '', $ctx['viewport_w'] ?? 0, $ctx['viewport_h'] ?? 0, $ctx['dpr'] ?? 1 ) ) . '</li>';
-			$html .= '<li>' . esc_html__( 'Browser', 'feedback-collector' ) . ': ' . esc_html( trim( ( $ctx['browser'] ?? '' ) . ' · ' . ( $ctx['os'] ?? '' ), ' ·' ) ) . '</li>';
+			$lines[] = __( 'Breakpoint', 'feedback-collector' ) . ': ' . self::md_text( sprintf( '%s · %d×%d @%sx', $ctx['breakpoint'] ?? '', $ctx['viewport_w'] ?? 0, $ctx['viewport_h'] ?? 0, $ctx['dpr'] ?? 1 ) );
+			$lines[] = __( 'Browser', 'feedback-collector' ) . ': ' . self::md_text( trim( ( $ctx['browser'] ?? '' ) . ' · ' . ( $ctx['os'] ?? '' ), ' ·' ) );
 		}
-		$html    .= '<li>' . esc_html__( 'Element', 'feedback-collector' ) . ': ' . ( $anchor ? '<code>' . esc_html( (string) ( $anchor['selector'] ?? '' ) ) . '</code>' : esc_html__( 'whole page', 'feedback-collector' ) ) . '</li>';
-		$html    .= '<li>' . esc_html__( 'Priority', 'feedback-collector' ) . ': ' . esc_html( $labels['priority'][ $item['priority'] ] ?? $item['priority'] ) . '</li>';
-		$html    .= '<li>' . esc_html__( 'Reported by', 'feedback-collector' ) . ': ' . esc_html( $by ? $by->display_name : '' ) . ' (' . esc_html( Branding::text( 'name' ) ) . ' #' . (int) $item['id'] . ')</li>';
+		$lines[]  = __( 'Element', 'feedback-collector' ) . ': ' . ( $anchor ? self::md_code( (string) ( $anchor['selector'] ?? '' ) ) : __( 'whole page', 'feedback-collector' ) );
+		$lines[]  = __( 'Priority', 'feedback-collector' ) . ': ' . self::md_text( $labels['priority'][ $item['priority'] ] ?? $item['priority'] );
+		$lines[]  = __( 'Reported by', 'feedback-collector' ) . ': ' . self::md_text( ( $by ? $by->display_name : '' ) . ' (' . Branding::text( 'name' ) . ' #' . (int) $item['id'] . ')' );
 		$shot_url = Screenshots::url( $item );
 		if ( '' !== $shot_url ) {
-			$html .= '<li>' . esc_html__( 'Screenshot', 'feedback-collector' ) . ': <a href="' . esc_url( $shot_url ) . '">' . esc_html__( 'view image', 'feedback-collector' ) . '</a></li>';
+			$lines[] = __( 'Screenshot', 'feedback-collector' ) . ': ' . self::md_link( __( 'view image', 'feedback-collector' ), $shot_url );
 		}
-		$html .= '</ul>';
+		$md .= '- ' . implode( "\n- ", $lines ) . "\n";
 		if ( ! empty( $ctx['js_errors'] ) ) {
-			$html .= '<p>' . esc_html__( 'JavaScript errors on the page:', 'feedback-collector' ) . '</p><ul>';
+			$md .= "\n" . __( 'JavaScript errors on the page:', 'feedback-collector' ) . "\n";
 			foreach ( $ctx['js_errors'] as $err ) {
-				$html .= '<li><code>' . esc_html( (string) $err ) . '</code></li>';
+				$md .= '- ' . self::md_code( (string) $err ) . "\n";
 			}
-			$html .= '</ul>';
 		}
 
 		$task = array(
 			'name'                   => sprintf( '[%s] %s', $labels['type'][ $item['type'] ] ?? $item['type'], $item['title'] ),
-			'description'            => $html,
-			'descriptionContentType' => 'HTML',
+			'description'            => $md,
 			'priority'               => in_array( $item['priority'], array( 'high', 'critical' ), true ) ? 'high' : $item['priority'],
 		);
 
@@ -437,16 +437,48 @@ final class Teamwork {
 				$task['assignees'] = array( 'userIds' => array( $person ) );
 			} else {
 				$user                 = get_userdata( (int) $item['assignee_id'] );
-				$task['description'] .= '<p><em>' . esc_html(
+				$task['description'] .= "\n_" . self::md_text(
 					sprintf(
 						/* translators: %s: user name */
 						__( 'Assigned in WordPress to %s, who has no matching Teamwork account on this project.', 'feedback-collector' ),
 						$user ? $user->display_name : '#' . $item['assignee_id']
 					)
-				) . '</em></p>';
+				) . "_\n";
 			}
 		}
 		return $task;
+	}
+
+	/**
+	 * Escapes user text for Markdown (no HTML, no accidental formatting).
+	 *
+	 * @param string $text Text.
+	 */
+	private static function md_text( string $text ): string {
+		$text = str_replace( array( "\r\n", "\r" ), "\n", wp_strip_all_tags( $text ) );
+		$text = str_replace( "\n", "  \n", $text ); // Keep the reporter's line breaks.
+		return (string) preg_replace( '/([\\\\`*_\[\]<>])/', '\\\\$1', $text );
+	}
+
+	/**
+	 * Inline code span that can't be broken out of.
+	 *
+	 * @param string $text Text.
+	 */
+	private static function md_code( string $text ): string {
+		$text = str_replace( array( "\r", "\n" ), ' ', wp_strip_all_tags( $text ) );
+		return str_contains( $text, '`' ) ? '`` ' . $text . ' ``' : '`' . $text . '`';
+	}
+
+	/**
+	 * Markdown link with a safe URL.
+	 *
+	 * @param string $label Label.
+	 * @param string $url   URL.
+	 */
+	private static function md_link( string $label, string $url ): string {
+		$url = str_replace( array( '(', ')', ' ' ), array( '%28', '%29', '%20' ), esc_url_raw( $url ) );
+		return '[' . self::md_text( $label ) . '](' . $url . ')';
 	}
 
 	/**
@@ -632,12 +664,13 @@ final class Teamwork {
 		$checked = 0;
 		$changed = 0;
 
+		$errors = array();
 		foreach ( array_keys( $projects ) as $project_id ) {
 			$tasks = $client->project_tasks( $project_id, $since );
 			if ( is_wp_error( $tasks ) ) {
-				$state['last_error'] = $tasks->get_error_message();
-				update_option( self::STATE_OPTION, $state, false );
-				return $tasks;
+				// One unreachable project (archived, no access…) must not stop the others syncing.
+				$errors[ $project_id ] = $tasks;
+				continue;
 			}
 			foreach ( $tasks as $task ) {
 				$row = $by_task[ (int) ( $task['id'] ?? 0 ) ] ?? null;
@@ -665,15 +698,28 @@ final class Teamwork {
 			}
 		}
 
+		$error_text = implode(
+			'; ',
+			array_map(
+				/* translators: 1: Teamwork project ID, 2: error message */
+				static fn( int $pid, WP_Error $e ): string => sprintf( __( 'Project %1$d: %2$s', 'feedback-collector' ), $pid, $e->get_error_message() ),
+				array_keys( $errors ),
+				$errors
+			)
+		);
 		$state = array(
-			'last_sync'   => $started,
+			// Keep the old window when a project failed, so its changes are picked up next time.
+			'last_sync'   => $errors ? (int) ( $state['last_sync'] ?? 0 ) : $started,
 			'last_result' => array(
 				'checked' => $checked,
 				'changed' => $changed,
 			),
-			'last_error'  => '',
+			'last_error'  => $error_text,
 		);
 		update_option( self::STATE_OPTION, $state, false );
+		if ( $errors && count( $errors ) === count( $projects ) ) {
+			return reset( $errors );
+		}
 		return array(
 			'checked' => $checked,
 			'changed' => $changed,
