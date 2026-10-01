@@ -227,4 +227,4 @@ body.wp-admin { overflow-x: hidden; }
 .fbc-round.is-active strong { color: var(--fbc-on-primary); }
 
 /* WordPress draws its select chevron 5px from the edge; inset it to match the overlay. */
-.fbc-admin select { background-position: right 12px top 55%; padding-right: 32px; }
+.wp-core-ui .fbc-admin select, .fbc-admin select { background-position: right 12px top 55%; padding-right: 32px; }
