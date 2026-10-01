@@ -1,17 +1,17 @@
 <?php
 /**
- * Admin screens: list, detail, settings.
+ * Admin screens: list, detail, settings, branding.
  *
  * @package FeedbackCollector\Admin
  */
 
 namespace FeedbackCollector\Admin;
 
+use FeedbackCollector\Branding;
 use FeedbackCollector\Items;
 use FeedbackCollector\Rest;
 use const FeedbackCollector\CAP;
 use const FeedbackCollector\PLUGIN_FILE;
-use const FeedbackCollector\VERSION;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -30,7 +30,10 @@ final class Admin {
 		add_action( 'admin_post_fbc_update', array( self::class, 'handle_update' ) );
 		add_action( 'admin_post_fbc_comment', array( self::class, 'handle_comment' ) );
 		add_action( 'admin_post_fbc_settings', array( self::class, 'handle_settings' ) );
-		add_action( 'admin_enqueue_scripts', array( self::class, 'styles' ) );
+		add_action( 'admin_post_fbc_branding', array( self::class, 'handle_branding' ) );
+		// Late, so Clockwork Companion's stylesheet is already enqueued and can be removed.
+		add_action( 'admin_enqueue_scripts', array( Layout::class, 'enqueue' ), 100 );
+		add_filter( 'all_plugins', array( Branding::class, 'plugins_list' ) );
 		add_action( 'after_plugin_row_' . plugin_basename( PLUGIN_FILE ), array( self::class, 'plugin_row_warning' ), 10, 0 );
 	}
 
@@ -40,43 +43,15 @@ final class Admin {
 	public static function menu(): void {
 		$open  = Items::count_status( 'open' );
 		$badge = $open ? sprintf( ' <span class="awaiting-mod count-%1$d"><span class="pending-count">%1$d</span></span>', $open ) : '';
+		$label = Branding::text( 'menu_label' );
+		$name  = Branding::text( 'name' );
 
-		$hook = add_menu_page(
-			__( 'Feedback', 'feedback-collector' ),
-			__( 'Feedback', 'feedback-collector' ) . $badge,
-			CAP,
-			self::SLUG,
-			array( self::class, 'render_list' ),
-			'dashicons-format-chat',
-			58
-		);
-		add_submenu_page( self::SLUG, __( 'All Feedback', 'feedback-collector' ), __( 'All Feedback', 'feedback-collector' ), CAP, self::SLUG, array( self::class, 'render_list' ) );
-		add_submenu_page( self::SLUG, __( 'Feedback Settings', 'feedback-collector' ), __( 'Settings', 'feedback-collector' ), 'manage_options', self::SLUG . '-settings', array( self::class, 'render_settings' ) );
+		$hook = add_menu_page( $name, esc_html( $label ) . $badge, CAP, self::SLUG, array( self::class, 'render_list' ), Branding::menu_icon(), 58 );
+		add_submenu_page( self::SLUG, $name, __( 'All Feedback', 'feedback-collector' ), CAP, self::SLUG, array( self::class, 'render_list' ) );
+		add_submenu_page( self::SLUG, $name . ' — ' . __( 'Settings', 'feedback-collector' ), __( 'Settings', 'feedback-collector' ), 'manage_options', self::SLUG . '-settings', array( self::class, 'render_settings' ) );
+		add_submenu_page( self::SLUG, $name . ' — ' . __( 'Branding', 'feedback-collector' ), __( 'Branding', 'feedback-collector' ), 'manage_options', self::SLUG . '-branding', array( self::class, 'render_branding' ) );
 
 		add_action( 'load-' . $hook, array( self::class, 'process_bulk' ) );
-	}
-
-	/**
-	 * Admin styles, only on our screens.
-	 *
-	 * @param string $hook Screen hook.
-	 */
-	public static function styles( string $hook ): void {
-		if ( ! str_contains( $hook, self::SLUG ) ) {
-			return;
-		}
-		wp_register_style( 'fbc-admin', false, array(), VERSION );
-		wp_enqueue_style( 'fbc-admin' );
-		wp_add_inline_style(
-			'fbc-admin',
-			'.fbc-badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;line-height:18px;background:#f0f0f1;color:#1d2327;white-space:nowrap}
-			.fbc-type-bug{background:#fcf0f1;color:#8a2424}.fbc-type-tweak{background:#fcf9e8;color:#6e4e00}.fbc-type-change{background:#f0f6fc;color:#0a4b78}.fbc-type-comment{background:#f6f0fc;color:#5b2a86}
-			.fbc-status-open{background:#fff;border:1px solid #c3c4c7}.fbc-status-in_progress{background:#f0f6fc;color:#0a4b78}.fbc-status-ready_for_review{background:#fcf9e8;color:#6e4e00}.fbc-status-resolved{background:#edfaef;color:#005c12}
-			.fbc-bp{color:#646970;font-size:11px}.fbc-detail{display:grid;grid-template-columns:minmax(0,2fr) minmax(260px,1fr);gap:20px;max-width:1200px}
-			.fbc-detail .postbox{padding:0 16px 12px}.fbc-meta th{text-align:left;padding:4px 12px 4px 0;color:#646970;font-weight:500;vertical-align:top;white-space:nowrap}.fbc-meta td{padding:4px 0;word-break:break-word}
-			.fbc-thread li{border-left:3px solid #c3c4c7;padding:4px 10px;margin:0 0 10px}.fbc-thread li.activity{border-color:#dcdcde;color:#646970;font-size:12px}
-			.fbc-desc{white-space:pre-wrap}@media (max-width:960px){.fbc-detail{grid-template-columns:1fr}}'
-		);
 	}
 
 	/**
@@ -100,8 +75,7 @@ final class Admin {
 	 * @param array<string, mixed> $item Item.
 	 */
 	public static function view_on_page_url( array $item ): string {
-		$url = Items::page_url( $item );
-		return add_query_arg( 'fbc_item', (int) $item['id'], $url );
+		return add_query_arg( 'fbc_item', (int) $item['id'], Items::page_url( $item ) );
 	}
 
 	/**
@@ -158,22 +132,32 @@ final class Admin {
 		$table = new ItemsTable();
 		$table->prepare_items();
 
-		echo '<div class="wrap"><h1 class="wp-heading-inline">' . esc_html__( 'Feedback', 'feedback-collector' ) . '</h1>';
-		do_action( 'fbc_list_header_actions' );
-		echo '<hr class="wp-header-end">';
+		Layout::render(
+			'feedback',
+			__( 'Feedback', 'feedback-collector' ),
+			__( 'Everything your team has flagged on this site. Turn on Feedback mode from the admin bar to add more.', 'feedback-collector' ),
+			static function () use ( $table ): void {
+				// phpcs:disable WordPress.Security.NonceVerification.Recommended
+				if ( isset( $_GET['fbc_done'] ) ) {
+					$n = absint( $_GET['fbc_done'] );
+					/* translators: %d: number of items */
+					printf( '<div class="notice notice-success is-dismissible"><p>%s</p></div>', esc_html( sprintf( _n( '%d item updated.', '%d items updated.', $n, 'feedback-collector' ), $n ) ) );
+				}
+				// phpcs:enable
+				do_action( 'fbc_list_notices' );
 
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		if ( isset( $_GET['fbc_done'] ) ) {
-			/* translators: %d: number of items */
-			printf( '<div class="notice notice-success is-dismissible"><p>%s</p></div>', esc_html( sprintf( _n( '%d item updated.', '%d items updated.', absint( $_GET['fbc_done'] ), 'feedback-collector' ), absint( $_GET['fbc_done'] ) ) ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		}
-		do_action( 'fbc_list_notices' );
-
-		echo '<form method="get">';
-		printf( '<input type="hidden" name="page" value="%s" />', esc_attr( self::SLUG ) );
-		$table->search_box( __( 'Search feedback', 'feedback-collector' ), 'fbc-search' );
-		$table->display();
-		echo '</form></div>';
+				Layout::card_open( '', true );
+				echo '<form method="get">';
+				printf( '<input type="hidden" name="page" value="%s" />', esc_attr( self::SLUG ) );
+				$table->search_box( __( 'Search feedback', 'feedback-collector' ), 'fbc-search' );
+				$table->display();
+				echo '</form>';
+				Layout::card_close();
+			},
+			static function (): void {
+				do_action( 'fbc_list_header_actions' );
+			}
+		);
 	}
 
 	/**
@@ -183,96 +167,114 @@ final class Admin {
 	 */
 	private static function render_detail( int $id ): void {
 		$item = Items::get( $id );
-		echo '<div class="wrap">';
-		printf( '<p><a href="%s">&larr; %s</a></p>', esc_url( admin_url( 'admin.php?page=' . self::SLUG ) ), esc_html__( 'All feedback', 'feedback-collector' ) );
 		if ( ! $item ) {
-			echo '<div class="notice notice-error"><p>' . esc_html__( 'Feedback item not found.', 'feedback-collector' ) . '</p></div></div>';
+			Layout::render(
+				'feedback',
+				__( 'Not found', 'feedback-collector' ),
+				'',
+				static function (): void {
+					echo '<div class="fbc-callout fbc-callout--muted">' . esc_html__( 'This feedback item no longer exists.', 'feedback-collector' ) . '</div>';
+				}
+			);
 			return;
 		}
 
-		$labels   = Items::labels();
-		$ctx      = is_array( $item['context'] ) ? $item['context'] : array();
-		$anchor   = is_array( $item['anchor'] ) ? $item['anchor'] : array();
-		$reporter = get_userdata( $item['reporter_id'] );
+		$labels = Items::labels();
+		Layout::render(
+			'feedback',
+			sprintf( '#%d %s', $item['id'], $item['title'] ),
+			'',
+			static function () use ( $item, $labels ): void {
+				$ctx      = is_array( $item['context'] ) ? $item['context'] : array();
+				$anchor   = is_array( $item['anchor'] ) ? $item['anchor'] : array();
+				$reporter = get_userdata( $item['reporter_id'] );
 
-		printf(
-			'<h1>#%1$d %2$s <span class="fbc-badge fbc-type-%3$s">%4$s</span></h1>',
-			(int) $item['id'],
-			esc_html( $item['title'] ),
-			esc_attr( $item['type'] ),
-			esc_html( $labels['type'][ $item['type'] ] ?? $item['type'] )
+				printf( '<a class="fbc-admin__back" href="%s">&larr; %s</a>', esc_url( admin_url( 'admin.php?page=' . self::SLUG ) ), esc_html__( 'All feedback', 'feedback-collector' ) );
+				// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+				if ( isset( $_GET['fbc_saved'] ) ) {
+					echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Saved.', 'feedback-collector' ) . '</p></div>';
+				}
+
+				echo '<div class="fbc-grid"><div>';
+
+				Layout::card_open( __( 'Description', 'feedback-collector' ), false, Layout::pill( $item['type'], $labels['type'][ $item['type'] ] ?? $item['type'] ) . ' ' . Layout::pill( $item['status'], $labels['status'][ $item['status'] ] ?? $item['status'] ) );
+				echo '<p class="fbc-desc">' . ( '' !== $item['description'] ? esc_html( $item['description'] ) : '<em>' . esc_html__( 'No description.', 'feedback-collector' ) . '</em>' ) . '</p>';
+				printf( '<p><a class="button button-primary" href="%s" target="_blank" rel="noopener">%s</a></p>', esc_url( self::view_on_page_url( $item ) ), esc_html__( 'View on page', 'feedback-collector' ) );
+				Layout::card_close();
+
+				Layout::card_open( __( 'Thread', 'feedback-collector' ) );
+				$thread = Items::comments( $item['id'] );
+				if ( $thread ) {
+					echo '<ul class="fbc-thread">';
+					foreach ( $thread as $c ) {
+						printf(
+							'<li class="%1$s"><strong>%2$s</strong><span class="when">%3$s</span><div class="fbc-desc">%4$s</div></li>',
+							esc_attr( $c['kind'] ),
+							esc_html( $c['user_name'] ),
+							esc_html( get_date_from_gmt( gmdate( 'Y-m-d H:i:s', strtotime( $c['created_at'] ) ), get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) ) ),
+							esc_html( $c['body'] )
+						);
+					}
+					echo '</ul>';
+				}
+				printf( '<form method="post" action="%s">', esc_url( admin_url( 'admin-post.php' ) ) );
+				wp_nonce_field( 'fbc_comment_' . $item['id'] );
+				printf( '<input type="hidden" name="action" value="fbc_comment" /><input type="hidden" name="id" value="%d" />', (int) $item['id'] );
+				echo '<p><textarea name="body" rows="3" class="large-text" required placeholder="' . esc_attr__( 'Reply…', 'feedback-collector' ) . '"></textarea></p>';
+				submit_button( __( 'Add reply', 'feedback-collector' ), 'secondary', 'submit', false );
+				echo '</form>';
+				Layout::card_close();
+
+				$rows = array(
+					__( 'Page', 'feedback-collector' )     => '<a href="' . esc_url( Items::page_url( $item ) ) . '" target="_blank" rel="noopener">' . esc_html( $item['page_path'] ) . '</a>',
+					__( 'Page title', 'feedback-collector' ) => esc_html( $item['page_title'] ),
+					__( 'Breakpoint', 'feedback-collector' ) => esc_html( trim( ( $ctx['breakpoint'] ?? '' ) . ' · ' . ( $ctx['viewport_w'] ?? '?' ) . '×' . ( $ctx['viewport_h'] ?? '?' ) . ' @' . ( $ctx['dpr'] ?? 1 ) . 'x', ' ·' ) ),
+					__( 'Browser', 'feedback-collector' )  => esc_html( trim( ( $ctx['browser'] ?? '' ) . ' · ' . ( $ctx['os'] ?? '' ), ' ·' ) ),
+					__( 'Element', 'feedback-collector' )  => $anchor ? '<code>' . esc_html( $anchor['selector'] ?? '' ) . '</code>' : esc_html__( 'Whole page', 'feedback-collector' ),
+					__( 'Element text', 'feedback-collector' ) => esc_html( $anchor['text'] ?? '' ),
+					__( 'Post', 'feedback-collector' )     => ! empty( $ctx['post_id'] ) ? '<a href="' . esc_url( (string) get_edit_post_link( (int) $ctx['post_id'] ) ) . '">' . esc_html( ( $ctx['post_type'] ?? '' ) . ' #' . $ctx['post_id'] ) . '</a>' : '—',
+					__( 'Theme', 'feedback-collector' )    => esc_html( $ctx['theme'] ?? '' ),
+					__( 'Reporter', 'feedback-collector' ) => esc_html( $reporter ? $reporter->display_name : '' ),
+					__( 'Created', 'feedback-collector' )  => esc_html( get_date_from_gmt( $item['created_at'], get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) ) ),
+				);
+				if ( ! empty( $ctx['js_errors'] ) ) {
+					$rows[ __( 'JS errors', 'feedback-collector' ) ] = '<code>' . implode( '</code><br><code>', array_map( 'esc_html', $ctx['js_errors'] ) ) . '</code>';
+				}
+				Layout::card_open( __( 'Captured context', 'feedback-collector' ) );
+				echo '<dl class="fbc-defs">';
+				foreach ( $rows as $label => $html ) {
+					printf( '<dt>%s</dt><dd>%s</dd>', esc_html( $label ), $html ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped above.
+				}
+				echo '</dl>';
+				Layout::card_close();
+
+				echo '</div><div>';
+
+				Layout::card_open( __( 'Triage', 'feedback-collector' ) );
+				printf( '<form method="post" action="%s">', esc_url( admin_url( 'admin-post.php' ) ) );
+				wp_nonce_field( 'fbc_update_' . $item['id'] );
+				printf( '<input type="hidden" name="action" value="fbc_update" /><input type="hidden" name="id" value="%d" />', (int) $item['id'] );
+				$people = array( '0' => __( 'Unassigned', 'feedback-collector' ) );
+				foreach ( Rest::reviewer_list() as $r ) {
+					$people[ (string) $r['id'] ] = $r['name'];
+				}
+				foreach ( array(
+					'status'      => array( __( 'Status', 'feedback-collector' ), $labels['status'], $item['status'] ),
+					'priority'    => array( __( 'Priority', 'feedback-collector' ), $labels['priority'], $item['priority'] ),
+					'type'        => array( __( 'Type', 'feedback-collector' ), $labels['type'], $item['type'] ),
+					'assignee_id' => array( __( 'Assignee', 'feedback-collector' ), $people, (string) $item['assignee_id'] ),
+				) as $field => $def ) {
+					echo '<p><label><strong>' . esc_html( $def[0] ) . '</strong><br />' . self::select( $field, $def[1], (string) $def[2] ) . '</label></p>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- select() escapes.
+				}
+				submit_button( __( 'Save', 'feedback-collector' ), 'primary', 'submit', false );
+				echo '</form>';
+				Layout::card_close();
+
+				do_action( 'fbc_detail_sidebar', $item );
+
+				echo '</div></div>';
+			}
 		);
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		if ( isset( $_GET['fbc_saved'] ) ) {
-			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Saved.', 'feedback-collector' ) . '</p></div>';
-		}
-
-		echo '<div class="fbc-detail"><div>';
-
-		echo '<div class="postbox"><h2>' . esc_html__( 'Description', 'feedback-collector' ) . '</h2>';
-		echo '<div class="fbc-desc">' . ( '' !== $item['description'] ? esc_html( $item['description'] ) : '<em>' . esc_html__( 'No description.', 'feedback-collector' ) . '</em>' ) . '</div>';
-		printf( '<p><a class="button button-primary" href="%s" target="_blank" rel="noopener">%s</a></p>', esc_url( self::view_on_page_url( $item ) ), esc_html__( 'View on page', 'feedback-collector' ) );
-		echo '</div>';
-
-		echo '<div class="postbox"><h2>' . esc_html__( 'Thread', 'feedback-collector' ) . '</h2><ul class="fbc-thread">';
-		foreach ( Items::comments( $item['id'] ) as $c ) {
-			printf(
-				'<li class="%1$s"><strong>%2$s</strong> <span class="fbc-bp">%3$s</span><div class="fbc-desc">%4$s</div></li>',
-				esc_attr( $c['kind'] ),
-				esc_html( $c['user_name'] ),
-				esc_html( get_date_from_gmt( gmdate( 'Y-m-d H:i:s', strtotime( $c['created_at'] ) ), get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) ) ),
-				esc_html( $c['body'] )
-			);
-		}
-		echo '</ul>';
-		printf( '<form method="post" action="%s">', esc_url( admin_url( 'admin-post.php' ) ) );
-		wp_nonce_field( 'fbc_comment_' . $item['id'] );
-		printf( '<input type="hidden" name="action" value="fbc_comment" /><input type="hidden" name="id" value="%d" />', (int) $item['id'] );
-		echo '<textarea name="body" rows="3" class="large-text" required></textarea>';
-		submit_button( __( 'Add reply', 'feedback-collector' ), 'secondary', 'submit', false );
-		echo '</form></div>';
-
-		echo '</div><div>';
-
-		printf( '<div class="postbox"><h2>%s</h2><form method="post" action="%s">', esc_html__( 'Triage', 'feedback-collector' ), esc_url( admin_url( 'admin-post.php' ) ) );
-		wp_nonce_field( 'fbc_update_' . $item['id'] );
-		printf( '<input type="hidden" name="action" value="fbc_update" /><input type="hidden" name="id" value="%d" />', (int) $item['id'] );
-		echo '<p><label>' . esc_html__( 'Status', 'feedback-collector' ) . '<br />' . self::select( 'status', $labels['status'], $item['status'] ) . '</label></p>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-		echo '<p><label>' . esc_html__( 'Priority', 'feedback-collector' ) . '<br />' . self::select( 'priority', $labels['priority'], $item['priority'] ) . '</label></p>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-		echo '<p><label>' . esc_html__( 'Type', 'feedback-collector' ) . '<br />' . self::select( 'type', $labels['type'], $item['type'] ) . '</label></p>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-		$people = array( '0' => __( 'Unassigned', 'feedback-collector' ) );
-		foreach ( Rest::reviewer_list() as $r ) {
-			$people[ (string) $r['id'] ] = $r['name'];
-		}
-		echo '<p><label>' . esc_html__( 'Assignee', 'feedback-collector' ) . '<br />' . self::select( 'assignee_id', $people, (string) $item['assignee_id'] ) . '</label></p>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
-		submit_button( __( 'Save', 'feedback-collector' ), 'primary', 'submit', false );
-		echo '</form>';
-		do_action( 'fbc_detail_sidebar', $item );
-		echo '</div>';
-
-		$rows = array(
-			__( 'Page', 'feedback-collector' )         => '<a href="' . esc_url( Items::page_url( $item ) ) . '" target="_blank" rel="noopener">' . esc_html( $item['page_path'] . ( $item['page_query'] ? '?' . $item['page_query'] : '' ) ) . '</a>',
-			__( 'Page title', 'feedback-collector' )   => esc_html( $item['page_title'] ),
-			__( 'Breakpoint', 'feedback-collector' )   => esc_html( trim( ( $ctx['breakpoint'] ?? '' ) . ' · ' . ( $ctx['viewport_w'] ?? '?' ) . '×' . ( $ctx['viewport_h'] ?? '?' ) . ' @' . ( $ctx['dpr'] ?? 1 ) . 'x', ' ·' ) ),
-			__( 'Browser', 'feedback-collector' )      => esc_html( $ctx['browser'] ?? '' ),
-			__( 'OS', 'feedback-collector' )           => esc_html( $ctx['os'] ?? '' ),
-			__( 'Element', 'feedback-collector' )      => $anchor ? '<code>' . esc_html( $anchor['selector'] ?? '' ) . '</code>' : esc_html__( 'Page note', 'feedback-collector' ),
-			__( 'Element text', 'feedback-collector' ) => esc_html( $anchor['text'] ?? '' ),
-			__( 'Post', 'feedback-collector' )         => ! empty( $ctx['post_id'] ) ? '<a href="' . esc_url( (string) get_edit_post_link( (int) $ctx['post_id'] ) ) . '">' . esc_html( ( $ctx['post_type'] ?? '' ) . ' #' . $ctx['post_id'] ) . '</a>' : '—',
-			__( 'Theme', 'feedback-collector' )        => esc_html( $ctx['theme'] ?? '' ),
-			__( 'Reporter', 'feedback-collector' )     => esc_html( $reporter ? $reporter->display_name : '' ),
-			__( 'Created', 'feedback-collector' )      => esc_html( get_date_from_gmt( $item['created_at'], get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) ) ),
-		);
-		if ( ! empty( $ctx['js_errors'] ) ) {
-			$rows[ __( 'JS errors', 'feedback-collector' ) ] = '<code>' . implode( '</code><br><code>', array_map( 'esc_html', $ctx['js_errors'] ) ) . '</code>';
-		}
-		echo '<div class="postbox"><h2>' . esc_html__( 'Captured context', 'feedback-collector' ) . '</h2><table class="fbc-meta">';
-		foreach ( $rows as $label => $html ) {
-			printf( '<tr><th>%s</th><td>%s</td></tr>', esc_html( $label ), $html ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped above.
-		}
-		echo '</table></div>';
-
-		echo '</div></div></div>';
 	}
 
 	/**
@@ -342,44 +344,57 @@ final class Admin {
 	 * Settings screen.
 	 */
 	public static function render_settings(): void {
-		$roles   = (array) get_option( 'fbc_review_roles', array( 'administrator', 'editor' ) );
-		$cleanup = (bool) get_option( 'fbc_delete_on_uninstall' );
+		Layout::render(
+			'settings',
+			__( 'Settings', 'feedback-collector' ),
+			__( 'Who can leave feedback, what happens on uninstall, and the Teamwork connection.', 'feedback-collector' ),
+			static function (): void {
+				$roles   = (array) get_option( 'fbc_review_roles', array( 'administrator', 'editor' ) );
+				$cleanup = (bool) get_option( 'fbc_delete_on_uninstall' );
 
-		echo '<div class="wrap"><h1>' . esc_html__( 'Feedback Settings', 'feedback-collector' ) . '</h1>';
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		if ( isset( $_GET['fbc_saved'] ) ) {
-			echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Settings saved.', 'feedback-collector' ) . '</p></div>';
-		}
-		printf( '<form method="post" action="%s">', esc_url( admin_url( 'admin-post.php' ) ) );
-		wp_nonce_field( 'fbc_settings' );
-		echo '<input type="hidden" name="action" value="fbc_settings" /><table class="form-table" role="presentation">';
+				// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+				if ( isset( $_GET['fbc_saved'] ) ) {
+					echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Settings saved.', 'feedback-collector' ) . '</p></div>';
+				}
 
-		echo '<tr><th scope="row">' . esc_html__( 'Who can leave feedback', 'feedback-collector' ) . '</th><td><fieldset>';
-		foreach ( wp_roles()->get_names() as $slug => $name ) {
-			$locked = 'administrator' === $slug;
-			printf(
-				'<label><input type="checkbox" name="roles[]" value="%1$s"%2$s%3$s /> %4$s</label><br />',
-				esc_attr( $slug ),
-				checked( $locked || in_array( $slug, $roles, true ), true, false ),
-				disabled( $locked, true, false ),
-				esc_html( translate_user_role( $name ) )
-			);
-		}
-		echo '<p class="description">' . esc_html__( 'Reviewers see the Feedback toggle in the admin bar and can be assigned items.', 'feedback-collector' ) . '</p></fieldset></td></tr>';
+				printf( '<form method="post" action="%s">', esc_url( admin_url( 'admin-post.php' ) ) );
+				wp_nonce_field( 'fbc_settings' );
+				echo '<input type="hidden" name="action" value="fbc_settings" />';
 
-		printf(
-			'<tr><th scope="row">%1$s</th><td><label><input type="checkbox" name="delete_on_uninstall" value="1"%2$s /> %3$s</label></td></tr>',
-			esc_html__( 'Uninstall', 'feedback-collector' ),
-			checked( $cleanup, true, false ),
-			esc_html__( 'Delete all feedback data when the plugin is deleted', 'feedback-collector' )
+				Layout::card_open( __( 'Reviewers', 'feedback-collector' ) );
+				echo '<table class="form-table" role="presentation">';
+				echo '<tr><th scope="row">' . esc_html__( 'Who can leave feedback', 'feedback-collector' ) . '</th><td><fieldset>';
+				foreach ( wp_roles()->get_names() as $slug => $name ) {
+					$locked = 'administrator' === $slug;
+					printf(
+						'<label><input type="checkbox" name="roles[]" value="%1$s"%2$s%3$s /> %4$s</label><br />',
+						esc_attr( $slug ),
+						checked( $locked || in_array( $slug, $roles, true ), true, false ),
+						disabled( $locked, true, false ),
+						esc_html( translate_user_role( $name ) )
+					);
+				}
+				echo '<p class="description">' . esc_html__( 'Reviewers see the Feedback toggle in the admin bar and can be assigned items.', 'feedback-collector' ) . '</p></fieldset></td></tr>';
+				printf(
+					'<tr><th scope="row">%1$s</th><td><label><input type="checkbox" name="delete_on_uninstall" value="1"%2$s /> %3$s</label></td></tr>',
+					esc_html__( 'Uninstall', 'feedback-collector' ),
+					checked( $cleanup, true, false ),
+					esc_html__( 'Delete all feedback data when the plugin is deleted', 'feedback-collector' )
+				);
+				echo '</table>';
+				Layout::card_close();
+
+				Layout::card_open( __( 'Teamwork', 'feedback-collector' ) );
+				echo '<table class="form-table" role="presentation">';
+				do_action( 'fbc_settings_rows' );
+				echo '</table>';
+				Layout::card_close();
+
+				submit_button();
+				echo '</form>';
+				do_action( 'fbc_settings_after' );
+			}
 		);
-
-		do_action( 'fbc_settings_rows' );
-		echo '</table>';
-		submit_button();
-		echo '</form>';
-		do_action( 'fbc_settings_after' );
-		echo '</div>';
 	}
 
 	/**
@@ -407,6 +422,139 @@ final class Admin {
 		do_action( 'fbc_save_settings' );
 
 		wp_safe_redirect( add_query_arg( 'fbc_saved', 1, admin_url( 'admin.php?page=' . self::SLUG . '-settings' ) ) );
+		exit;
+	}
+
+	/**
+	 * Branding (white-label) screen.
+	 */
+	public static function render_branding(): void {
+		Layout::render(
+			'branding',
+			__( 'Branding', 'feedback-collector' ),
+			__( 'White-label the plugin: the name, logo and colors shown in wp-admin, on the Plugins screen, in the on-page toolbar and in Teamwork tasks.', 'feedback-collector' ),
+			static function (): void {
+				$b = Branding::get();
+				$d = Branding::defaults();
+
+				// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+				if ( isset( $_GET['fbc_saved'] ) ) {
+					echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Branding saved.', 'feedback-collector' ) . '</p></div>';
+				}
+				if ( has_filter( 'fbc_branding' ) ) {
+					echo '<div class="fbc-callout">' . esc_html__( 'Some values are being set in code with the fbc_branding filter and override what you save here.', 'feedback-collector' ) . '</div>';
+				}
+
+				printf( '<form method="post" action="%s">', esc_url( admin_url( 'admin-post.php' ) ) );
+				wp_nonce_field( 'fbc_branding' );
+				echo '<input type="hidden" name="action" value="fbc_branding" />';
+
+				$text = static function ( string $key, string $label, string $help = '' ) use ( $b, $d ): void {
+					printf(
+						'<tr><th scope="row"><label for="fbc-b-%1$s">%2$s</label></th><td><input type="text" class="regular-text" id="fbc-b-%1$s" name="branding[%1$s]" value="%3$s" placeholder="%4$s" />%5$s</td></tr>',
+						esc_attr( $key ),
+						esc_html( $label ),
+						esc_attr( (string) $b[ $key ] ),
+						esc_attr( (string) $d[ $key ] ),
+						'' !== $help ? '<p class="description">' . esc_html( $help ) . '</p>' : ''
+					);
+				};
+
+				Layout::card_open( __( 'Names', 'feedback-collector' ) );
+				echo '<table class="form-table" role="presentation">';
+				$text( 'name', __( 'Plugin name', 'feedback-collector' ), __( 'Shown on the Plugins screen, page titles and in Teamwork tasks.', 'feedback-collector' ) );
+				$text( 'product_label', __( 'Header label', 'feedback-collector' ), __( 'Shown beside the logo in the header band.', 'feedback-collector' ) );
+				$text( 'menu_label', __( 'Menu label', 'feedback-collector' ), __( 'The wp-admin sidebar item and the admin-bar toggle.', 'feedback-collector' ) );
+				$text( 'author', __( 'Author', 'feedback-collector' ), __( 'Shown on the Plugins screen.', 'feedback-collector' ) );
+				printf(
+					'<tr><th scope="row"><label for="fbc-b-author_uri">%1$s</label></th><td><input type="url" class="regular-text" id="fbc-b-author_uri" name="branding[author_uri]" value="%2$s" placeholder="%3$s" /></td></tr>',
+					esc_html__( 'Author URL', 'feedback-collector' ),
+					esc_attr( (string) $b['author_uri'] ),
+					esc_attr( (string) $d['author_uri'] )
+				);
+				echo '</table>';
+				Layout::card_close();
+
+				$logo = Branding::logo_url();
+				Layout::card_open( __( 'Logo & colors', 'feedback-collector' ) );
+				echo '<table class="form-table" role="presentation">';
+				printf(
+					'<tr><th scope="row"><label for="fbc-b-logo_url">%1$s</label></th><td><input type="url" class="regular-text" id="fbc-b-logo_url" name="branding[logo_url]" value="%2$s" placeholder="%3$s" /> <button type="button" class="button" id="fbc-b-logo-pick">%4$s</button><p class="description">%5$s</p><div class="fbc-logo-preview" id="fbc-b-logo-preview">%6$s</div></td></tr>',
+					esc_html__( 'Logo', 'feedback-collector' ),
+					esc_attr( (string) $b['logo_url'] ),
+					esc_attr__( 'Clockwork logo', 'feedback-collector' ),
+					esc_html__( 'Choose…', 'feedback-collector' ),
+					esc_html__( 'Sits on the header color below, so use a light logo on a dark header (or change the header color). Leave empty for the Clockwork logo; a different plugin name with no logo shows the header label as text.', 'feedback-collector' ),
+					'' !== $logo ? '<img src="' . esc_url( $logo ) . '" alt="" />' : '<em>' . esc_html__( 'No logo: the header label shows as text', 'feedback-collector' ) . '</em>'
+				);
+				foreach ( array(
+					'primary' => array( __( 'Primary color', 'feedback-collector' ), __( 'Buttons, links, active tabs, pins outline.', 'feedback-collector' ) ),
+					'dark'    => array( __( 'Header color', 'feedback-collector' ), __( 'Header band and the on-page toolbar.', 'feedback-collector' ) ),
+					'accent'  => array( __( 'Accent color', 'feedback-collector' ), __( 'The stripe under the header and small highlights. Text never sits on it.', 'feedback-collector' ) ),
+				) as $key => $def ) {
+					printf(
+						'<tr><th scope="row"><label for="fbc-b-%1$s">%2$s</label></th><td><input type="text" class="small-text code" id="fbc-b-%1$s" name="branding[%1$s]" value="%3$s" pattern="#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?" style="width:7em" /><span class="fbc-swatch" style="background:%3$s"></span><p class="description">%4$s</p></td></tr>',
+						esc_attr( $key ),
+						esc_html( $def[0] ),
+						esc_attr( (string) $b[ $key ] ),
+						esc_html( $def[1] . ' ' . sprintf( /* translators: %s: hex color */ __( 'Default %s.', 'feedback-collector' ), $d[ $key ] ) )
+					);
+				}
+				printf(
+					'<tr><th scope="row">%1$s</th><td><label><input type="checkbox" name="branding[show_credit]" value="1"%2$s /> %3$s</label></td></tr>',
+					esc_html__( 'Credit', 'feedback-collector' ),
+					checked( (bool) $b['show_credit'], true, false ),
+					esc_html__( 'Show “Powered by Clockwork Feedback Collector” at the bottom of these screens when white-labeled', 'feedback-collector' )
+				);
+				echo '</table>';
+				Layout::card_close();
+
+				echo '<p class="submit">';
+				submit_button( __( 'Save branding', 'feedback-collector' ), 'primary', 'submit', false );
+				echo ' <button type="submit" class="button" name="reset" value="1">' . esc_html__( 'Reset to Clockwork defaults', 'feedback-collector' ) . '</button></p>';
+				echo '</form>';
+				?>
+				<script>
+				( function () {
+					var pick = document.getElementById( 'fbc-b-logo-pick' );
+					var input = document.getElementById( 'fbc-b-logo_url' );
+					var preview = document.getElementById( 'fbc-b-logo-preview' );
+					if ( ! pick || ! window.wp || ! wp.media ) { if ( pick ) { pick.style.display = 'none'; } return; }
+					var frame;
+					pick.addEventListener( 'click', function () {
+						frame = frame || wp.media( { title: pick.textContent, library: { type: 'image' }, multiple: false } );
+						frame.off( 'select' ).on( 'select', function () {
+							var url = frame.state().get( 'selection' ).first().get( 'url' );
+							input.value = url;
+							var img = document.createElement( 'img' );
+							img.src = url;
+							img.alt = '';
+							preview.replaceChildren( img );
+						} );
+						frame.open();
+					} );
+				} )();
+				</script>
+				<?php
+			}
+		);
+	}
+
+	/**
+	 * Saves or resets branding.
+	 */
+	public static function handle_branding(): void {
+		check_admin_referer( 'fbc_branding' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'Not allowed.', 'feedback-collector' ), 403 );
+		}
+		if ( ! empty( $_POST['reset'] ) ) {
+			delete_option( Branding::OPTION );
+		} else {
+			$input = isset( $_POST['branding'] ) && is_array( $_POST['branding'] ) ? wp_unslash( $_POST['branding'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Branding::sanitize() sanitizes every field.
+			update_option( Branding::OPTION, Branding::sanitize( $input ), false );
+		}
+		wp_safe_redirect( add_query_arg( 'fbc_saved', 1, admin_url( 'admin.php?page=' . self::SLUG . '-branding' ) ) );
 		exit;
 	}
 

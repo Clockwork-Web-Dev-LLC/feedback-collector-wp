@@ -42,15 +42,11 @@ final class ItemsTable extends \WP_List_Table {
 	public function get_columns(): array {
 		return array(
 			'cb'       => '<input type="checkbox" />',
-			'id'       => '#',
-			'title'    => __( 'Title', 'feedback-collector' ),
+			'title'    => __( 'Feedback', 'feedback-collector' ),
 			'type'     => __( 'Type', 'feedback-collector' ),
 			'status'   => __( 'Status', 'feedback-collector' ),
 			'priority' => __( 'Priority', 'feedback-collector' ),
 			'assignee' => __( 'Assignee', 'feedback-collector' ),
-			'page'     => __( 'Page', 'feedback-collector' ),
-			'reporter' => __( 'Reporter', 'feedback-collector' ),
-			'created'  => __( 'Created', 'feedback-collector' ),
 			'teamwork' => __( 'Teamwork', 'feedback-collector' ),
 		);
 	}
@@ -62,11 +58,9 @@ final class ItemsTable extends \WP_List_Table {
 	 */
 	protected function get_sortable_columns(): array {
 		return array(
-			'id'       => array( 'id', true ),
-			'title'    => array( 'title', false ),
+			'title'    => array( 'id', true ),
 			'status'   => array( 'status', false ),
 			'priority' => array( 'priority', true ),
-			'created'  => array( 'created', true ),
 		);
 	}
 
@@ -196,9 +190,31 @@ final class ItemsTable extends \WP_List_Table {
 	 * @param array<string, mixed> $item Row.
 	 */
 	protected function column_title( array $item ): string {
-		$detail = Admin::item_url( (int) $item['id'] );
-		$view   = Admin::view_on_page_url( $item );
-		$out    = sprintf( '<strong><a class="row-title" href="%s">%s</a></strong>', esc_url( $detail ), esc_html( $item['title'] ) );
+		$detail   = Admin::item_url( (int) $item['id'] );
+		$view     = Admin::view_on_page_url( $item );
+		$reporter = get_userdata( (int) $item['reporter_id'] );
+		$created  = strtotime( $item['created_at'] . ' UTC' );
+		$meta     = array_filter(
+			array(
+				esc_html( $item['page_path'] ),
+				esc_html( (string) $item['breakpoint'] ),
+				$reporter ? esc_html( $reporter->display_name ) : '',
+				sprintf(
+					'<time datetime="%1$s" title="%2$s">%3$s</time>',
+					esc_attr( gmdate( 'c', $created ) ),
+					esc_attr( get_date_from_gmt( $item['created_at'], get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) ) ),
+					/* translators: %s: human time difference */
+					esc_html( sprintf( __( '%s ago', 'feedback-collector' ), human_time_diff( $created ) ) )
+				),
+			)
+		);
+		$out      = sprintf(
+			'<span class="fbc-row-id">#%1$d</span><strong><a class="row-title" href="%2$s">%3$s</a></strong><div class="fbc-row-meta">%4$s</div>',
+			(int) $item['id'],
+			esc_url( $detail ),
+			esc_html( $item['title'] ),
+			implode( ' · ', $meta )
+		);
 		return $out . $this->row_actions(
 			array(
 				'details' => sprintf( '<a href="%s">%s</a>', esc_url( $detail ), esc_html__( 'Details', 'feedback-collector' ) ),
@@ -219,9 +235,9 @@ final class ItemsTable extends \WP_List_Table {
 			case 'id':
 				return '#' . (int) $item['id'];
 			case 'type':
-				return sprintf( '<span class="fbc-badge fbc-type-%1$s">%2$s</span>', esc_attr( $item['type'] ), esc_html( $labels['type'][ $item['type'] ] ?? $item['type'] ) );
+				return Layout::pill( $item['type'], $labels['type'][ $item['type'] ] ?? $item['type'] );
 			case 'status':
-				return sprintf( '<span class="fbc-badge fbc-status-%1$s">%2$s</span>', esc_attr( $item['status'] ), esc_html( $labels['status'][ $item['status'] ] ?? $item['status'] ) );
+				return Layout::pill( $item['status'], $labels['status'][ $item['status'] ] ?? $item['status'] );
 			case 'priority':
 				return esc_html( $labels['priority'][ $item['priority'] ] ?? $item['priority'] );
 			case 'assignee':
@@ -238,6 +254,15 @@ final class ItemsTable extends \WP_List_Table {
 				return (string) apply_filters( 'fbc_teamwork_column', '<span aria-hidden="true">—</span>', $item );
 		}
 		return '';
+	}
+
+	/**
+	 * Plain rows (no zebra striping), so the card reads like Companion's tables.
+	 *
+	 * @return string[]
+	 */
+	protected function get_table_classes(): array {
+		return array( 'widefat', 'fixed', 'fbc-table', $this->_args['plural'] );
 	}
 
 	/**

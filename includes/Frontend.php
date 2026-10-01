@@ -140,6 +140,7 @@ final class Frontend {
 				'postType' => $queried instanceof \WP_Post ? $queried->post_type : '',
 				'theme'    => get_stylesheet(),
 			),
+			'brand'     => Branding::overlay(),
 			'openItem'  => $open,
 		);
 	}
@@ -157,9 +158,9 @@ final class Frontend {
 		$bar->add_node(
 			array(
 				'id'    => 'fbc-toggle',
-				'title' => '<span class="ab-icon dashicons dashicons-format-chat" aria-hidden="true"></span><span class="ab-label">' . esc_html__( 'Feedback', 'feedback-collector' ) . '</span>' . ( $open ? ' <span class="fbc-ab-count">' . (int) $open . '</span>' : '' ),
+				'title' => '<span class="ab-icon dashicons dashicons-format-chat" aria-hidden="true"></span><span class="ab-label">' . esc_html( Branding::text( 'menu_label' ) ) . '</span>' . ( $open ? ' <span class="fbc-ab-count">' . (int) $open . '</span>' : '' ),
 				'href'  => '#fbc-toggle',
-				'meta'  => array( 'title' => __( 'Toggle Feedback mode (Alt+Shift+F)', 'feedback-collector' ) ),
+				'meta'  => array( 'title' => sprintf( /* translators: %s: plugin name */ __( 'Toggle %s (Alt+Shift+F)', 'feedback-collector' ), Branding::text( 'name' ) ) ),
 			)
 		);
 		$bar->add_node(

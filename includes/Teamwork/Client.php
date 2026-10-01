@@ -210,7 +210,7 @@ final class Client {
 			array(
 				'todo-list' => array(
 					'name'        => $name,
-					'description' => __( 'QA feedback pushed from the Feedback Collector WordPress plugin.', 'feedback-collector' ),
+					'description' => sprintf( /* translators: %s: plugin name */ __( 'QA feedback pushed from %s.', 'feedback-collector' ), \FeedbackCollector\Branding::text( 'name' ) ),
 					'private'     => false,
 				),
 			)

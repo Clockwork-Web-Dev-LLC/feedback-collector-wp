@@ -1,11 +1,12 @@
 <?php
 /**
- * Plugin Name:       Feedback Collector
+ * Plugin Name:       Clockwork Feedback Collector
  * Description:       Internal QA feedback for staging sites. Right-click any element to log a bug, tweak, change request or comment, pinned to the page, with optional push to Teamwork.
- * Version:           0.1.0
+ * Version:           0.2.0
  * Requires at least: 6.5
  * Requires PHP:      8.1
- * Author:            Clockwork
+ * Author:            Clockwork Web Dev
+ * Author URI:        https://clockworkwd.com
  * License:           GPL-2.0-or-later
  * Text Domain:       feedback-collector
  *
@@ -16,7 +17,7 @@ namespace FeedbackCollector;
 
 defined( 'ABSPATH' ) || exit;
 
-const VERSION     = '0.1.0';
+const VERSION     = '0.2.0';
 const DB_VERSION  = '2';
 const CAP         = 'fbc_review';
 const PLUGIN_FILE = __FILE__;

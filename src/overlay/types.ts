@@ -60,6 +60,18 @@ export interface Reviewer {
   name: string;
 }
 
+export interface Brand {
+  name: string;
+  label: string;
+  logo: string;
+  primary: string;
+  onPrimary: string;
+  dark: string;
+  onDark: string;
+  accent: string;
+  ink?: string;
+}
+
 export interface Config {
   restUrl: string;
   nonce: string;
@@ -74,6 +86,7 @@ export interface Config {
     priority: Record<Priority, string>;
   };
   page: { postId: number; postType: string; theme: string };
+  brand?: Brand;
   openItem: number;
 }
 

@@ -90,6 +90,21 @@ export class App {
     shadow.append(h('style', { text: css }));
 
     this.root = h('div', { class: 'fbc' });
+    const brand = this.cfg.brand;
+    if (brand) {
+      // Text colors arrive pre-computed by luminance, so white never lands on a light brand color.
+      const vars: Array<[string, string]> = [
+        ['--primary', brand.primary],
+        ['--on-primary', brand.onPrimary],
+        ['--dark', brand.dark],
+        ['--on-dark', brand.onDark],
+        ['--brand-accent', brand.accent],
+        ['--ink-primary', brand.ink ?? ''],
+      ];
+      for (const [prop, value] of vars) {
+        if (value) this.root.style.setProperty(prop, value);
+      }
+    }
     const layer = h('div', { class: 'layer' });
     this.outlineTag = h('span', { class: 'outline-tag' });
     this.outline = h('div', { class: 'outline' }, this.outlineTag);
@@ -687,8 +702,10 @@ export class App {
     const count = this.unresolvedCount();
     const bar = h(
       'div',
-      { class: 'toolbar', role: 'toolbar', 'aria-label': 'Feedback' },
-      h('span', { class: 'brand', text: 'Feedback' }),
+      { class: 'toolbar', role: 'toolbar', 'aria-label': this.cfg.brand?.name ?? 'Feedback' },
+      this.cfg.brand?.logo
+        ? h('span', { class: 'brand', title: this.cfg.brand.name }, h('img', { src: this.cfg.brand.logo, alt: this.cfg.brand.name }))
+        : h('span', { class: 'brand', text: this.cfg.brand?.label ?? 'Feedback' }),
       h('button', {
         type: 'button',
         class: this.pinMode ? 'on' : '',
@@ -760,7 +777,7 @@ export class App {
       h(
         'header',
         {},
-        h('h2', {}, 'Feedback', h('button', { class: 'x', type: 'button', 'aria-label': 'Close list', text: '×', onclick: () => this.closeSidebar() })),
+        h('h2', {}, this.cfg.brand?.label ?? 'Feedback', h('button', { class: 'x', type: 'button', 'aria-label': 'Close list', text: '×', onclick: () => this.closeSidebar() })),
         h('div', { class: 'filters' }, scope, type, status, h('span'), h('label', {}, mine, 'Assigned to me'))
       ),
       h('div', { class: 'list' })

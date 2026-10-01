@@ -11,6 +11,8 @@
 namespace FeedbackCollector\Teamwork;
 
 use FeedbackCollector\Admin\Admin;
+use FeedbackCollector\Admin\Layout;
+use FeedbackCollector\Branding;
 use FeedbackCollector\Items;
 use WP_Error;
 use const FeedbackCollector\CAP;
@@ -307,7 +309,7 @@ final class Teamwork {
 		}
 		$html .= '<li>' . esc_html__( 'Element', 'feedback-collector' ) . ': ' . ( $anchor ? '<code>' . esc_html( (string) ( $anchor['selector'] ?? '' ) ) . '</code>' : esc_html__( 'whole page', 'feedback-collector' ) ) . '</li>';
 		$html .= '<li>' . esc_html__( 'Priority', 'feedback-collector' ) . ': ' . esc_html( $labels['priority'][ $item['priority'] ] ?? $item['priority'] ) . '</li>';
-		$html .= '<li>' . esc_html__( 'Reported by', 'feedback-collector' ) . ': ' . esc_html( $by ? $by->display_name : '' ) . ' (Feedback Collector #' . (int) $item['id'] . ')</li>';
+		$html .= '<li>' . esc_html__( 'Reported by', 'feedback-collector' ) . ': ' . esc_html( $by ? $by->display_name : '' ) . ' (' . esc_html( Branding::text( 'name' ) ) . ' #' . (int) $item['id'] . ')</li>';
 		$html .= '</ul>';
 		if ( ! empty( $ctx['js_errors'] ) ) {
 			$html .= '<p>' . esc_html__( 'JavaScript errors on the page:', 'feedback-collector' ) . '</p><ul>';
@@ -601,8 +603,6 @@ final class Teamwork {
 		$s      = self::settings();
 		$client = self::client();
 
-		echo '<tr><th scope="row" colspan="2"><h2 style="margin:1em 0 0">' . esc_html__( 'Teamwork', 'feedback-collector' ) . '</h2></th></tr>';
-
 		echo '<tr><th scope="row"><label for="fbc-tw-site">' . esc_html__( 'Teamwork site URL', 'feedback-collector' ) . '</label></th><td>';
 		if ( defined( 'FBC_TEAMWORK_SITE' ) ) {
 			echo '<code>' . esc_html( self::site() ) . '</code> <span class="description">' . esc_html__( 'Set by FBC_TEAMWORK_SITE in wp-config.php', 'feedback-collector' ) . '</span>';
@@ -727,7 +727,8 @@ final class Teamwork {
 			return;
 		}
 		$s = self::settings();
-		echo '<h2>' . esc_html__( 'Teamwork tools', 'feedback-collector' ) . '</h2><p>';
+		Layout::card_open( __( 'Teamwork tools', 'feedback-collector' ) );
+		echo '<p>';
 		self::button_form( 'fbc_tw_test', __( 'Test connection', 'feedback-collector' ) );
 		if ( $s['project_id'] ) {
 			echo ' ';
@@ -744,6 +745,7 @@ final class Teamwork {
 			printf( '<div class="notice notice-%s inline"><p>%s</p></div>', esc_attr( $type ), esc_html( sanitize_text_field( wp_unslash( $_GET['fbc_tw_msg'] ) ) ) );
 		}
 		// phpcs:enable
+		Layout::card_close();
 	}
 
 	/**
@@ -905,7 +907,7 @@ final class Teamwork {
 	 */
 	public static function column( string $html, array $item ): string {
 		if ( $item['tw_task_id'] ) {
-			return sprintf( '<a href="%s" target="_blank" rel="noopener">#%d</a>', esc_url( self::site() . '/app/tasks/' . (int) $item['tw_task_id'] ), (int) $item['tw_task_id'] );
+			return sprintf( '<a class="fbc-pill" href="%s" target="_blank" rel="noopener">Task #%d</a>', esc_url( self::site() . '/app/tasks/' . (int) $item['tw_task_id'] ), (int) $item['tw_task_id'] );
 		}
 		switch ( $item['tw_sync_state'] ) {
 			case 'queued':
@@ -923,7 +925,7 @@ final class Teamwork {
 	 * @param array<string, mixed> $item Item.
 	 */
 	public static function detail_box( array $item ): void {
-		echo '<div class="postbox"><h2>' . esc_html__( 'Teamwork', 'feedback-collector' ) . '</h2>';
+		Layout::card_open( __( 'Teamwork', 'feedback-collector' ) );
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		if ( isset( $_GET['fbc_tw_err'] ) ) {
 			echo '<div class="notice notice-error inline"><p>' . esc_html( sanitize_text_field( wp_unslash( $_GET['fbc_tw_err'] ) ) ) . '</p></div>'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -948,7 +950,7 @@ final class Teamwork {
 		} else {
 			printf( '<p><a href="%s">%s</a></p>', esc_url( admin_url( 'admin.php?page=' . Admin::SLUG . '-settings' ) ), esc_html__( 'Connect Teamwork and choose a QA list →', 'feedback-collector' ) );
 		}
-		echo '</div>';
+		Layout::card_close();
 	}
 
 	/**
@@ -958,7 +960,7 @@ final class Teamwork {
 		if ( ! self::client() ) {
 			return;
 		}
-		printf( '<form method="post" action="%s" style="display:inline-block;margin-left:8px;vertical-align:middle">', esc_url( admin_url( 'admin-post.php' ) ) );
+		printf( '<form method="post" action="%s">', esc_url( admin_url( 'admin-post.php' ) ) );
 		wp_nonce_field( 'fbc_tw_sync' );
 		echo '<input type="hidden" name="action" value="fbc_tw_sync" />';
 		submit_button( __( 'Sync with Teamwork', 'feedback-collector' ), 'secondary', 'submit', false );

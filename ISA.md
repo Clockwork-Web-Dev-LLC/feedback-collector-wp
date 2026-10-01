@@ -4,7 +4,7 @@ project: feedback-collector-wp
 effort: E4
 effort_source: classifier
 phase: verify
-progress: 89/155
+progress: 102/168
 mode: interactive
 started: 2026-09-30T00:00:00-07:00
 updated: 2026-10-01T03:30:04.547Z
@@ -301,6 +301,8 @@ Build order: F1 → (F2 ∥ F3 ∥ F4) → F5 → (F6 ∥ F7) → F8 → F9 → 
 - 2026-09-30: **refined:** Scope additions not requested by Aaron (cron sync-back, CSV export, auto-push, JS error capture) are marked pending approval rather than committed to v1.
 - 2026-09-30: **Aaron's decisions.** (1) Sync-back is approved: completing a task in Teamwork marks the WP item Resolved (ISC-142–144, plus a "Sync now" button, ISC-155). M3 is in scope. (2) Use a dedicated QA bot Teamwork user, with the key set as `FBC_TEAMWORK_API_KEY` in wp-config. (3) The plugin runs on staging only and is removed before go-live, so ISC-145 (domain migration) is dropped. ISC-156 adds a warning before removal while unpushed items remain.
 - 2026-10-01: **refined:** Aaron wants the API key entered in the WordPress admin and stored in the DB, with no SSH or wp-config editing. The DB path (encrypted with libsodium, keyed from the auth salt) is now the primary flow, and the wp-config constant is an optional override. Settings detects an undecryptable key after a salt change and asks for it again.
+- 2026-10-01: **Renamed to "Clockwork Feedback Collector" and made white-labelable,** with the Clockwork Companion look and feel per Aaron. Only the display name changed: the folder, file, text domain and REST namespace stay `feedback-collector`, so the plugin didn't deactivate and no identifier carries a brand. The Companion CSS was ported under `.fbc-*` names, not copied as-is: its `.notice{display:none}` would hide every save and Teamwork message, and its `:root` palette would override white-label colors. Companion also loads that CSS on any screen hook containing "clockwork", so Collector dequeues it at priority 100. The list table went from 11 columns to 7 after Aaron flagged it as crowded.
+- 2026-10-01: **Mistake:** the mocked-Teamwork test script TRUNCATEd the feedback tables and left fake Teamwork settings on the shared test site, destroying items #35/#36 from the Chrome pass. The site was reset to empty and the script now records the high-water mark and the settings and restores both on shutdown, deleting only the rows it created.
 - 2026-09-30: **Delegation floor met:** two background research agents (Atarim features, Teamwork API). Forge is deferred to BUILD, where it auto-includes for E4 coding.
 
 ## Changelog
@@ -366,3 +368,18 @@ Test site: local WordPress 7.1.2 on PHP 8.4 / MySQL 26.7 at `http://localhost:88
   - ISC-77, 90: clicking the pin opens the popover; status → Ready for Review persists and logs "changed status from Open to Ready for Review"; Esc closes it.
   - ISC-81: the sidebar lists this page's items.
   - ISC-119: `?fbc_item=35` with Feedback mode off turns the mode on, scrolls (scrollY 371), opens #35's popover, pulses the pin and strips the param from the URL.
+
+### Rebrand + white-label (2026-10-01)
+- [x] ISC-157: Plugin header Name is "Clockwork Feedback Collector", Author "Clockwork Web Dev"; version 0.2.0
+- [x] ISC-158: Admin screens use the Companion-style chrome (header band + logo + label + version, tab strip, cards, pills) under `.fbc-admin` names
+- [x] ISC-159: Anti: Clockwork Companion's `clockwork-companion-admin` stylesheet loads on any Feedback Collector screen (including a menu label containing "Clockwork")
+- [x] ISC-160: Anti: WordPress notices are hidden on Feedback Collector screens (Companion's `.notice{display:none}` not ported)
+- [x] ISC-161: Branding screen saves name, header label, menu label, author, author URL, logo, 3 colors, credit toggle; Reset restores defaults
+- [x] ISC-162: Invalid hex colors fall back to defaults (`sanitize_hex_color`)
+- [x] ISC-163: Text on brand colors is chosen by luminance (light primary → near-black text)
+- [x] ISC-164: Links/tabs use a primary darkened to ≥ 4.5:1 on white
+- [x] ISC-165: Plugins screen shows the white-label name and author; the default name disappears
+- [x] ISC-166: Menu label, page titles, admin-bar toggle and overlay toolbar/sidebar use the brand
+- [x] ISC-167: Menu icon is the Clockwork sparkle on the default brand and a neutral bubble when white-labeled
+- [x] ISC-168: Teamwork task body and task-list description use the brand name
+- [x] ISC-169: List table is 7 columns (title + meta line, no striping); no pill overflows its column at 1,450px

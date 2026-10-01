@@ -18,7 +18,12 @@
   --line: #dcdcde;
   --bg: #fff;
   --soft: #f6f7f7;
-  --accent: #2271b1;
+  --primary: #6953c4;
+  --on-primary: #fff;
+  --dark: #2d2062;
+  --on-dark: #fff;
+  --brand-accent: #7eff83;
+  --accent: var(--primary);
 }
 .layer {
   position: fixed;
@@ -45,7 +50,7 @@ button {
   position: fixed;
   pointer-events: none;
   border: 2px solid var(--accent);
-  background: rgba(34, 113, 177, 0.08);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
   border-radius: 3px;
   transition: all 60ms linear;
   display: none;
@@ -58,7 +63,7 @@ button {
   top: -22px;
   left: -2px;
   background: var(--accent);
-  color: #fff;
+  color: var(--on-primary);
   font-size: 11px;
   padding: 2px 6px;
   border-radius: 3px 3px 0 0;
@@ -101,8 +106,8 @@ button {
   animation: pulse 0.9s ease-out 2;
 }
 @keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(34, 113, 177, 0.7); }
-  100% { box-shadow: 0 0 0 18px rgba(34, 113, 177, 0); }
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--primary) 70%, transparent); }
+  100% { box-shadow: 0 0 0 18px color-mix(in srgb, var(--primary) 0%, transparent); }
 }
 
 /* Cards: menu, composer, popover */
@@ -251,12 +256,12 @@ button {
 .btn.primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
+  color: var(--on-primary);
 }
 .btn.link {
   border: 0;
   background: none;
-  color: var(--accent);
+  color: var(--ink-primary, var(--accent));
   padding: 5px 4px;
 }
 .btn.danger {
@@ -328,16 +333,17 @@ button {
   gap: 4px;
   align-items: center;
   padding: 6px;
-  background: var(--ink);
-  color: #fff;
+  background: var(--dark);
+  color: var(--on-dark);
   border-radius: 10px;
+  border-bottom: 3px solid var(--brand-accent);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
   pointer-events: auto;
 }
 .toolbar button {
   border: 0;
   background: transparent;
-  color: #fff;
+  color: inherit;
   padding: 6px 10px;
   border-radius: 6px;
   font-size: 13px;
@@ -345,7 +351,15 @@ button {
 }
 .toolbar button:hover,
 .toolbar button.on {
-  background: rgba(255, 255, 255, 0.16);
+  background: color-mix(in srgb, var(--on-dark) 14%, transparent);
+}
+.toolbar button.on {
+  box-shadow: inset 0 -3px 0 var(--brand-accent);
+}
+.toolbar .brand img {
+  height: 15px;
+  width: auto;
+  display: block;
 }
 .toolbar .brand {
   font-weight: 700;
@@ -480,8 +494,8 @@ button {
   top: 44px;
   left: 50%;
   transform: translateX(-50%);
-  background: var(--ink);
-  color: #fff;
+  background: var(--dark);
+  color: var(--on-dark);
   border-radius: 6px;
   padding: 8px 12px;
   font-size: 13px;
@@ -494,8 +508,8 @@ button {
 }
 .banner button {
   border: 0;
-  background: rgba(255, 255, 255, 0.2);
-  color: #fff;
+  background: color-mix(in srgb, var(--on-dark) 20%, transparent);
+  color: inherit;
   border-radius: 4px;
   padding: 3px 8px;
 }
@@ -504,8 +518,8 @@ button {
   left: 50%;
   bottom: 76px;
   transform: translateX(-50%);
-  background: var(--ink);
-  color: #fff;
+  background: var(--dark);
+  color: var(--on-dark);
   border-radius: 6px;
   padding: 8px 14px;
   font-size: 13px;
@@ -521,7 +535,7 @@ button {
   left: 50%;
   transform: translateX(-50%);
   background: var(--accent);
-  color: #fff;
+  color: var(--on-primary);
   border-radius: 6px;
   padding: 6px 12px;
   font-size: 13px;

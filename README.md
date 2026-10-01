@@ -1,4 +1,4 @@
-# Feedback Collector
+# Clockwork Feedback Collector
 
 Internal QA for **staging** WordPress sites. A teammate turns on Feedback mode, right-clicks the thing that's wrong, and picks **Bug**, **Tweak**, **Change Request** or **Comment**. The feedback is pinned to that element with the page, breakpoint, browser and JS errors captured automatically. Items can be pushed to a Teamwork QA task list, and completing a task in Teamwork marks the item Resolved here.
 
@@ -21,6 +21,23 @@ Internal QA for **staging** WordPress sites. A teammate turns on Feedback mode, 
   - Items whose element is hidden at the current breakpoint are listed separately.
   - Items whose element can't be found anymore are listed as **Orphaned**, with a Re-anchor button.
 - **Feedback** in wp-admin holds the full list: filters, search, sorting, bulk status changes, a detail screen with all captured context, and **View on page**, which opens the page with the pin open.
+
+## Branding (white-label)
+
+**Feedback → Branding** controls every name, logo and color the plugin shows:
+- the Plugins-screen name, author and URL
+- the menu label, page titles and header band
+- the on-page toolbar
+- the "Reported by … (Name #id)" line in Teamwork tasks
+
+Defaults are Clockwork: logo, purple `#6953C4`, header `#2D2062`, lime accent `#7EFF83`. The look matches Clockwork Companion.
+
+- **Colors:** text on any brand color is picked by contrast, so a light brand color never gets white text. Links and tabs use a darkened version of the primary color that reaches WCAG AA on white.
+- **Logo:** the logo sits on the header color, so use a light logo on a dark header. With a custom name and no logo, the header shows the label as text, and the menu icon switches from the Clockwork sparkle to a neutral bubble.
+- **Credit:** an optional "Powered by Clockwork Feedback Collector" line shows when white-labeled.
+- **In code:** the `fbc_branding` filter can set any value, and overrides what's saved.
+
+Internal identifiers stay neutral and never change with branding: the `feedback-collector` folder, text domain and REST namespace, and the `fbc_` tables, options and capability. Clockwork Companion's admin stylesheet is kept off these screens even when the menu label contains "Clockwork".
 
 ## Teamwork
 
