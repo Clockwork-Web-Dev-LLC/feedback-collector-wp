@@ -302,7 +302,7 @@ final class Admin {
 				$rows = array(
 					__( 'Page', 'feedback-collector' )     => '<a href="' . esc_url( Items::page_url( $item ) ) . '" target="_blank" rel="noopener">' . esc_html( $item['page_path'] ) . '</a>',
 					__( 'Page title', 'feedback-collector' ) => esc_html( $item['page_title'] ),
-					__( 'Breakpoint', 'feedback-collector' ) => esc_html( trim( ( $ctx['breakpoint'] ?? '' ) . ' · ' . ( $ctx['viewport_w'] ?? '?' ) . '×' . ( $ctx['viewport_h'] ?? '?' ) . ' @' . ( $ctx['dpr'] ?? 1 ) . 'x', ' ·' ) ),
+					__( 'Breakpoint', 'feedback-collector' ) => esc_html( trim( ( $ctx['breakpoint'] ?? '' ) . ' · ' . ( $ctx['viewport_w'] ?? '?' ) . '×' . ( $ctx['viewport_h'] ?? '?' ) . ' @' . ( $ctx['dpr'] ?? 1 ) . 'x', ' ·' ) . ( ! empty( $ctx['preview'] ) ? ' · ' . $ctx['preview'] . ' ' . __( 'device preview', 'feedback-collector' ) : '' ) ),
 					__( 'Browser', 'feedback-collector' )  => esc_html( trim( ( $ctx['browser'] ?? '' ) . ' · ' . ( $ctx['os'] ?? '' ), ' ·' ) ),
 					__( 'Element', 'feedback-collector' )  => $anchor ? '<code>' . esc_html( $anchor['selector'] ?? '' ) . '</code>' : esc_html__( 'Whole page', 'feedback-collector' ),
 					__( 'Element text', 'feedback-collector' ) => esc_html( $anchor['text'] ?? '' ),

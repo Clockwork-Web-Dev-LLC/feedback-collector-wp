@@ -17,6 +17,8 @@ export interface Context {
   post_type: string;
   theme: string;
   js_errors: string[];
+  /** Device-preview label (e.g. "Phone 390×844") when filed inside the preview frame. */
+  preview?: string;
 }
 
 export interface Comment {

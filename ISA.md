@@ -4,7 +4,7 @@ project: feedback-collector-wp
 effort: E4
 effort_source: classifier
 phase: verify
-progress: 128/200
+progress: 130/200
 mode: interactive
 started: 2026-09-30T00:00:00-07:00
 updated: 2026-10-01T03:30:04.547Z
@@ -427,11 +427,12 @@ Test site: local WordPress 7.1.2 on PHP 8.4 / MySQL 26.7 at `http://localhost:88
 - [x] ISC-196: Saving flattens to the stored screenshot; Fabric's text input works inside the shadow root (Esc/click-outside don't close mid-typing)
 
 ### Phase B: Breakpoint preview
-- [ ] ISC-197: A device preview (phone/tablet/desktop) shows the page in a same-origin iframe; the overlay runs inside (window.name flag) and the parent's toolbar and pins pause
-- [ ] ISC-198: Items filed in the preview record the frame's width and breakpoint; there's a breakpoint filter in the sidebar and admin
+- [x] ISC-197: A device preview (phone/tablet/desktop) shows the page in a same-origin iframe; the overlay runs inside (window.name flag) and the parent's toolbar and pins pause
+- [x] ISC-198: Items filed in the preview record the frame's width and breakpoint; there's a breakpoint filter in the sidebar and admin
 
 ### Phase C/M: Comments + mentions (after live Teamwork test)
 - [ ] ISC-199: WordPress replies post to the Teamwork task ("From {name} via …"); Teamwork comments sync onto the item; dedupe by tw_comment_id
 - [ ] ISC-200: @mentions autocomplete from the assignee source, are stored as tokens and rendered as text nodes; mentioned people are notified
 - **Screenshots, 2026-10-01 (real Chrome):** right-click → capture took ~1.1s, producing a 1600×891 JPEG (85–89KB) with no overlay and no admin bar. SnapDOM's 'viewport' clip came out shifted by WP's 32px html margin; it's now an explicit page rect plus body offset, and the marker lands on the clicked link (verified from the saved file). 21 WP checks: validation, random names, index.php, multipart create, stored before fbc_item_created, bad image keeps the item, not-an-upload refused, replace/delete endpoints, file deleted with item, Teamwork pendingFiles (mock). ISC-194: display verified in the admin; Teamwork attachment verified against the mock only, pending the live test.
 - **Annotation, 2026-10-01 (real Chrome):** Composer → Annotate opened the Fabric editor (93KB gz, lazy). In the saved upload: arrow, box, blur (pixelated patch over the heading), highlight; full 1600×891. Text tool: hidden textarea mounted inside the shadow root; Esc while typing exited text editing without closing the editor or composer. Fabric 7's center-origin default first misplaced the background; fixed with top-left `FabricObject.ownDefaults`.
+- **Device preview, 2026-10-01 (real Chrome):** Devices → phone frame: innerWidth 390/innerHeight 844 (scaled to fit), admin bar hidden in the frame, overlay running inside (window.name + same-origin check), the parent's toolbar and pins paused. Filing inside saved #581: breakpoint mobile, viewport 390, preview "Phone 390×844", with a 390×844 screenshot and the marker on the link. Closing restores and reloads. Framing headers: Pressable none, SpinupWP SAMEORIGIN (OK); a DENY host gets the "Open in a window" fallback.

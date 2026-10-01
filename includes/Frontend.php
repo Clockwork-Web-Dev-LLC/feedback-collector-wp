@@ -24,6 +24,7 @@ final class Frontend {
 		add_action( 'wp_enqueue_scripts', array( self::class, 'enqueue' ) );
 		add_action( 'wp_head', array( self::class, 'early_error_collector' ), 1 );
 		add_action( 'admin_bar_menu', array( self::class, 'admin_bar' ), 90 );
+		add_filter( 'show_admin_bar', array( self::class, 'hide_admin_bar_in_preview' ), 99 );
 	}
 
 	/**
@@ -52,6 +53,17 @@ final class Frontend {
 		}
 		// phpcs:enable
 		return false;
+	}
+
+	/**
+	 * The device preview frame shows the page the way a visitor's phone would: no admin bar.
+	 * (The overlay also hides it with CSS after in-frame navigation drops the query arg.)
+	 *
+	 * @param bool $show Whether WordPress would show the bar.
+	 */
+	public static function hide_admin_bar_in_preview( bool $show ): bool {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		return isset( $_GET['fbc_preview'] ) ? false : $show;
 	}
 
 	/**

@@ -97,6 +97,13 @@ $check( 'list by page path finds the item', in_array( $id, array_column( $d['ite
 [ , $d ] = $call( 'GET', '/items', null, array( 'page_path' => '/some-other-page/' ) );
 $check( 'Anti: item does not leak onto other pages', ! in_array( $id, array_column( $d['items'], 'id' ), true ) );
 
+// Breakpoint filter + device-preview label.
+[ $s, $d ] = $call( 'POST', '/items', array( 'title' => 'phone item', 'type' => 'bug', 'page_path' => '/rest-test-page/', 'context' => array( 'breakpoint' => 'mobile', 'viewport_w' => 390, 'preview' => 'Phone 390×844 <b>x</b>' ) ) );
+$phone = (int) $d['id'];
+$check( 'device-preview label stored, tags stripped', 'Phone 390×844 x' === $d['context']['preview'] );
+[ , $d ] = $call( 'GET', '/items', null, array( 'page_path' => '/rest-test-page/', 'breakpoint' => 'mobile' ) );
+$check( 'breakpoint filter returns only mobile items', array( $phone ) === array_column( $d['items'], 'id' ) );
+
 // Thread.
 [ $s, $d ] = $call( 'POST', "/items/$id/comments", array( 'body' => 'reply' ) );
 $check( 'reply → 201 and appended', 201 === $s && 'reply' === end( $d['comments'] )['body'] );

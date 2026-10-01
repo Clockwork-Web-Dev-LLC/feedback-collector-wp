@@ -83,7 +83,17 @@ export function captureContext(cfg: Config): Context {
     post_type: cfg.page.postType,
     theme: cfg.page.theme,
     js_errors: (window.__fbcErrors ?? []).slice(-20),
+    preview: previewLabel(),
   };
+}
+
+/** The device label of the preview frame this page is in (set on the iframe by the parent), or ''. */
+export function previewLabel(): string {
+  try {
+    return window.self !== window.top ? (window.frameElement?.getAttribute('data-device') ?? '') : '';
+  } catch {
+    return '';
+  }
 }
 
 /** Path relative to the WordPress home, normalized with a trailing slash. */

@@ -150,6 +150,9 @@ final class Rest {
 		if ( $request->get_param( 'round' ) ) {
 			$args['round'] = absint( $request->get_param( 'round' ) );
 		}
+		if ( $request->get_param( 'breakpoint' ) ) {
+			$args['breakpoint'] = sanitize_key( (string) $request->get_param( 'breakpoint' ) );
+		}
 
 		$result = Items::query( $args );
 		return new WP_REST_Response(
@@ -559,6 +562,8 @@ final class Rest {
 			'post_type'  => sanitize_key( (string) ( $c['post_type'] ?? '' ) ),
 			'theme'      => sanitize_key( (string) ( $c['theme'] ?? '' ) ),
 			'js_errors'  => $errors,
+			// Set when filed from the device preview (a phone/tablet/laptop frame), not a real device.
+			'preview'    => mb_substr( sanitize_text_field( (string) ( $c['preview'] ?? '' ) ), 0, 60 ),
 		);
 	}
 

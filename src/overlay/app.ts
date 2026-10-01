@@ -9,6 +9,12 @@ import type { Config, Item, ItemStatus, ItemType, Priority } from './types';
 const TYPES: ItemType[] = ['bug', 'tweak', 'change', 'comment'];
 const STORAGE_KEY = 'fbc:mode';
 const CORNER_KEY = 'fbc:corner';
+export const PREVIEW_FRAME_NAME = 'fbc-preview';
+const DEVICES: Array<{ id: string; label: string; w: number; h: number }> = [
+  { id: 'phone', label: 'Phone', w: 390, h: 844 },
+  { id: 'tablet', label: 'Tablet', w: 820, h: 1180 },
+  { id: 'laptop', label: 'Laptop', w: 1280, h: 800 },
+];
 const EDGE = 16;
 const SIDEBAR_WIDTH = 360;
 
@@ -35,6 +41,7 @@ interface SidebarFilters {
   status: 'unresolved' | '' | ItemStatus;
   mine: boolean;
   round: number; // 0 = all rounds
+  bp: '' | 'mobile' | 'tablet' | 'desktop';
 }
 
 export class App {
@@ -55,7 +62,7 @@ export class App {
   private pinMode: PinModeRequest | null = null;
   private states = new Map<number, PinState>();
   private allItems: Item[] | null = null;
-  private filters: SidebarFilters = { scope: 'page', type: '', status: 'unresolved', mine: false, round: 0 };
+  private filters: SidebarFilters = { scope: 'page', type: '', status: 'unresolved', mine: false, round: 0, bp: '' };
   private pagePath: string;
   private framePending = false;
   private refreshTimer = 0;
@@ -66,6 +73,9 @@ export class App {
   private dragging = false;
   private ghost: HTMLDivElement | null = null;
   private pendingShot: Promise<Blob | null> | null = null;
+  /** True inside our own device-preview iframe. */
+  private readonly inPreview = window.self !== window.top && window.name === PREVIEW_FRAME_NAME;
+  private previewEl: HTMLElement | null = null;
 
   constructor(private cfg: Config) {
     this.api = new Api(cfg);
@@ -84,6 +94,16 @@ export class App {
       if (corner && CORNERS.includes(corner)) this.corner = corner;
     } catch {
       stored = false;
+    }
+    if (this.inPreview) {
+      // Inside the device preview: always in Feedback mode, and no admin bar, even after
+      // navigating within the frame (which drops the ?fbc_preview arg the server keys on).
+      const style = document.createElement('style');
+      style.textContent = '#wpadminbar{display:none!important}html{margin-top:0!important}';
+      document.head.append(style);
+      this.corner = 'bl';
+      void this.setMode(true);
+      return;
     }
     if (this.cfg.openItem || stored) {
       void this.setMode(true);
@@ -161,10 +181,13 @@ export class App {
 
   async setMode(on: boolean): Promise<void> {
     this.mode = on;
-    try {
-      window.localStorage.setItem(STORAGE_KEY, on ? '1' : '0');
-    } catch {
-      /* storage unavailable: mode simply isn't remembered */
+    if (!this.inPreview) {
+      // The preview frame shares localStorage with the parent; it must not toggle the parent's mode.
+      try {
+        window.localStorage.setItem(STORAGE_KEY, on ? '1' : '0');
+      } catch {
+        /* storage unavailable: mode simply isn't remembered */
+      }
     }
     document.querySelector('#wp-admin-bar-fbc-toggle')?.classList.toggle('fbc-on', on);
 
@@ -383,6 +406,11 @@ export class App {
     if (e.altKey && e.shiftKey && e.code === 'KeyF' && !typing) {
       e.preventDefault();
       void this.setMode(!this.mode);
+      return;
+    }
+    if (e.key === 'Escape' && this.previewEl) {
+      e.preventDefault();
+      this.closePreview();
       return;
     }
     if (e.key === 'Escape' && this.mode) {
@@ -744,7 +772,10 @@ export class App {
       { class: 'card popover', role: 'dialog', 'aria-label': `Feedback #${item.id}` },
       h('div', { class: 'head' }, h('span', { class: 'chip' }, h('span', { class: `dot ${item.type}` }), `${labels.type[item.type]} #${item.id}`), h('button', { class: 'x', type: 'button', 'aria-label': 'Close', text: '×', onclick: () => this.closeCard() })),
       h('div', { class: 't', style: 'font-weight:700;font-size:15px;margin-bottom:4px', text: item.title }),
-      h('div', { class: 'meta', text: `Round ${item.round} · ${item.reporter_name} · ${relativeTime(item.created_at)}${item.breakpoint ? ` · ${item.breakpoint}` : ''}` }),
+      h('div', { class: 'meta', text: `Round ${item.round} · ${item.reporter_name} · ${relativeTime(item.created_at)}` }),
+      item.breakpoint
+        ? h('div', { class: 'meta bp-line' }, h('span', { class: 'chip', text: item.breakpoint }), ` ${item.context?.viewport_w ?? '?'}px wide${item.context?.preview ? ` · ${item.context.preview} preview` : ''}`)
+        : null,
       item.tw_task_url
         ? h('div', { class: 'meta' }, h('a', { href: item.tw_task_url, target: '_blank', rel: 'noopener', text: `Teamwork task #${item.tw_task_id} ↗` }), item.status === 'resolved' ? ' · completed' : ' · status syncs from Teamwork')
         : null,
@@ -904,6 +935,7 @@ export class App {
             : this.enterPinMode({ hint: 'Click any element to add feedback', done: (el, x, y) => this.openTypeMenu(el, x, y) }),
       }),
       h('button', { type: 'button', text: 'Page note', onclick: () => this.openComposer('comment', null, window.innerWidth / 2 - 170, 120) }),
+      this.inPreview ? null : h('button', { type: 'button', title: 'Preview this page at phone, tablet and laptop sizes', text: 'Devices', onclick: () => this.openPreview('phone') }),
       h('button', { type: 'button', class: this.sidebar ? 'on' : '', onclick: () => (this.sidebar ? this.closeSidebar() : this.openSidebar()) }, h('span', { class: 'label', text: 'List' }), count ? h('span', { class: 'count', text: String(count) }) : null),
       h('button', {
         type: 'button',
@@ -919,6 +951,8 @@ export class App {
       h('button', { type: 'button', title: 'Exit Feedback mode (Alt+Shift+F)', 'aria-label': 'Exit Feedback mode', text: '×', onclick: () => void this.setMode(false) })
     );
     const wasPlaced = !!this.toolbar;
+    // Stays hidden while the device preview covers the page (re-renders must not unhide it).
+    bar.hidden = !!this.previewEl;
     if (this.toolbar) this.toolbar.replaceWith(bar);
     else this.root.append(bar);
     this.toolbar = bar;
@@ -929,6 +963,96 @@ export class App {
 
   private updateToolbarCount(): void {
     this.renderToolbar();
+  }
+
+  // ---------------------------------------------------------------- device preview
+
+  /**
+   * Shows this page in a phone/tablet/laptop-sized same-origin iframe. The overlay runs inside
+   * (see main.ts), so feedback filed there records that width and breakpoint. The parent's
+   * pins and toolbar pause meanwhile, and refresh on close.
+   */
+  private openPreview(deviceId: string, rotated = false): void {
+    const device = DEVICES.find((d) => d.id === deviceId) ?? DEVICES[0];
+    const w = rotated ? device.h : device.w;
+    const hgt = rotated ? device.w : device.h;
+    const label = `${device.label} ${w}×${hgt}`;
+
+    this.closeCard();
+    this.exitPinMode();
+    const reuse = this.previewEl?.querySelector<HTMLIFrameElement>('iframe');
+    const url = new URL(reuse?.contentWindow?.location.href ?? window.location.href);
+    url.searchParams.delete('fbc_item');
+    url.searchParams.set('fbc_preview', '1');
+
+    this.previewEl?.remove();
+    const frame = h('iframe', { name: PREVIEW_FRAME_NAME, title: `${label} preview`, 'data-device': label, src: url.toString() });
+    frame.style.width = `${w}px`;
+    frame.style.height = `${hgt}px`;
+    const holder = h('div', { class: 'preview-device' }, frame);
+    const stage = h('div', { class: 'preview-stage' }, holder);
+    const blocked = h('div', { class: 'preview-blocked', hidden: true });
+
+    const deviceButtons = DEVICES.map((d) =>
+      h('button', { type: 'button', 'aria-pressed': String(d.id === device.id), text: `${d.label} ${d.w}`, onclick: () => this.openPreview(d.id, d.id === device.id ? rotated : false) })
+    );
+    const openWindow = () => {
+      window.open(url.toString(), PREVIEW_FRAME_NAME, `width=${w},height=${hgt},resizable=yes,scrollbars=yes`);
+    };
+    const bar = h(
+      'div',
+      { class: 'preview-bar', role: 'toolbar', 'aria-label': 'Device preview' },
+      h('strong', { text: 'Device preview' }),
+      h('div', { class: 'preview-devices' }, ...deviceButtons),
+      h('button', { type: 'button', title: 'Rotate', text: '⟲ Rotate', onclick: () => this.openPreview(device.id, !rotated) }),
+      h('span', { class: 'preview-label', text: label }),
+      h('span', { class: 'annotator-spacer' }),
+      h('button', { type: 'button', text: 'Open in a window', onclick: openWindow }),
+      h('button', { type: 'button', class: 'preview-close', text: 'Done', onclick: () => this.closePreview() })
+    );
+    const wrap = h('div', { class: 'preview', role: 'dialog', 'aria-label': `Device preview: ${label}` }, bar, stage, blocked);
+    this.previewEl = wrap;
+    this.root.append(wrap);
+
+    // Scale the device to fit; the iframe keeps its true CSS width, so breakpoints are real.
+    const fit = () => {
+      const avail = stage.getBoundingClientRect();
+      const scale = Math.min(1, (avail.width - 32) / w, (avail.height - 32) / hgt);
+      holder.style.width = `${Math.round(w * scale)}px`;
+      holder.style.height = `${Math.round(hgt * scale)}px`;
+      frame.style.transform = `scale(${scale})`;
+    };
+    requestAnimationFrame(fit);
+
+    // Hosts sending X-Frame-Options: DENY leave an empty frame; offer the window instead.
+    frame.addEventListener('load', () => {
+      let ok = false;
+      try {
+        ok = !!frame.contentDocument && frame.contentDocument.location.href !== 'about:blank';
+      } catch {
+        ok = false;
+      }
+      if (!ok) {
+        blocked.hidden = false;
+        blocked.replaceChildren(h('p', { text: 'This site can’t be shown in a frame here.' }), h('button', { type: 'button', class: 'btn primary', text: `Open ${label} in a window`, onclick: openWindow }));
+      }
+    });
+
+    // Pause the page underneath.
+    this.pinsLayer.hidden = true;
+    if (this.toolbar) this.toolbar.hidden = true;
+    this.closeSidebar();
+  }
+
+  private closePreview(): void {
+    if (!this.previewEl) return;
+    this.previewEl.remove();
+    this.previewEl = null;
+    this.pinsLayer.hidden = false;
+    if (this.toolbar) this.toolbar.hidden = false;
+    // Pick up anything filed inside the preview.
+    this.loaded = false;
+    void this.loadItems();
   }
 
   // ---------------------------------------------------------------- toolbar placement
@@ -987,7 +1111,7 @@ export class App {
   private setCorner(corner: Corner): void {
     this.corner = corner;
     try {
-      window.localStorage.setItem(CORNER_KEY, corner);
+      if (!this.inPreview) window.localStorage.setItem(CORNER_KEY, corner);
     } catch {
       /* not remembered in private windows; still moves */
     }
@@ -1086,6 +1210,12 @@ export class App {
         void this.renderSidebarList();
       },
     });
+    const bp = select('bp', [['', 'All breakpoints'], ['mobile', 'Mobile'], ['tablet', 'Tablet'], ['desktop', 'Desktop']], f.bp, {
+      onchange: () => {
+        f.bp = bp.value as SidebarFilters['bp'];
+        void this.renderSidebarList();
+      },
+    });
     const mine = h('input', {
       type: 'checkbox',
       onchange: () => {
@@ -1102,7 +1232,7 @@ export class App {
         'header',
         {},
         h('h2', {}, this.cfg.brand?.label ?? 'Feedback', h('button', { class: 'x', type: 'button', 'aria-label': 'Close list', text: '×', onclick: () => this.closeSidebar() })),
-        h('div', { class: 'filters' }, scope, type, status, round, h('label', {}, mine, 'Assigned to me'))
+        h('div', { class: 'filters' }, scope, type, status, round, bp, h('label', {}, mine, 'Assigned to me'))
       ),
       h('div', { class: 'list' })
     );
@@ -1121,6 +1251,7 @@ export class App {
     const f = this.filters;
     if (f.type && item.type !== f.type) return false;
     if (f.round && item.round !== f.round) return false;
+    if (f.bp && item.breakpoint !== f.bp) return false;
     if (f.status === 'unresolved' && item.status === 'resolved') return false;
     if (f.status && f.status !== 'unresolved' && item.status !== f.status) return false;
     if (f.mine && (!this.cfg.assignees.me || item.assignee_id !== this.cfg.assignees.me)) return false;

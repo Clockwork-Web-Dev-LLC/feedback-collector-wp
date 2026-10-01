@@ -94,6 +94,7 @@ final class ItemsTable extends \WP_List_Table {
 			'page_path'   => isset( $_GET['fbc_page'] ) ? sanitize_text_field( wp_unslash( $_GET['fbc_page'] ) ) : '',
 			'search'      => isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '',
 			'round'       => isset( $_GET['fbc_round'] ) && absint( $_GET['fbc_round'] ) ? (string) absint( $_GET['fbc_round'] ) : '',
+			'breakpoint'  => isset( $_GET['fbc_bp'] ) ? sanitize_key( wp_unslash( $_GET['fbc_bp'] ) ) : '',
 		);
 		// phpcs:enable
 	}
@@ -169,6 +170,16 @@ final class ItemsTable extends \WP_List_Table {
 			$rounds[ (string) $round ] = sprintf( __( 'Round %d', 'feedback-collector' ), $round );
 		}
 		$this->dropdown( 'fbc_round', __( 'All rounds', 'feedback-collector' ), $rounds, $f['round'] );
+		$this->dropdown(
+			'fbc_bp',
+			__( 'All breakpoints', 'feedback-collector' ),
+			array(
+				'mobile'  => __( 'Mobile', 'feedback-collector' ),
+				'tablet'  => __( 'Tablet', 'feedback-collector' ),
+				'desktop' => __( 'Desktop', 'feedback-collector' ),
+			),
+			$f['breakpoint']
+		);
 
 		submit_button( __( 'Filter', 'feedback-collector' ), '', 'filter_action', false );
 		echo '</div>';

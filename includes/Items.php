@@ -170,6 +170,10 @@ final class Items {
 			$where[]  = 'round = %d';
 			$params[] = (int) $args['round'];
 		}
+		if ( ! empty( $args['breakpoint'] ) && in_array( $args['breakpoint'], array( 'mobile', 'tablet', 'desktop' ), true ) ) {
+			$where[]  = 'breakpoint = %s';
+			$params[] = $args['breakpoint'];
+		}
 		if ( ! empty( $args['search'] ) ) {
 			$like     = '%' . $wpdb->esc_like( (string) $args['search'] ) . '%';
 			$where[]  = '(title LIKE %s OR description LIKE %s)';
