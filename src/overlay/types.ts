@@ -1,0 +1,96 @@
+import type { Anchor } from './anchor';
+
+export type ItemType = 'bug' | 'tweak' | 'change' | 'comment';
+export type ItemStatus = 'open' | 'in_progress' | 'ready_for_review' | 'resolved';
+export type Priority = 'low' | 'medium' | 'high' | 'critical';
+export type Breakpoint = 'mobile' | 'tablet' | 'desktop';
+
+export interface Context {
+  viewport_w: number;
+  viewport_h: number;
+  dpr: number;
+  breakpoint: Breakpoint;
+  browser: string;
+  os: string;
+  user_agent: string;
+  post_id: number;
+  post_type: string;
+  theme: string;
+  js_errors: string[];
+}
+
+export interface Comment {
+  id: number;
+  kind: 'comment' | 'activity';
+  body: string;
+  user_id: number;
+  user_name: string;
+  created_at: string;
+}
+
+export interface Item {
+  id: number;
+  type: ItemType;
+  status: ItemStatus;
+  priority: Priority;
+  title: string;
+  description: string;
+  page_path: string;
+  page_query: string;
+  page_title: string;
+  page_url: string;
+  anchor: Anchor | null;
+  context: Context | null;
+  breakpoint: Breakpoint | '';
+  reporter_id: number;
+  reporter_name: string;
+  assignee_id: number;
+  assignee_name: string;
+  tw_task_id: number;
+  tw_sync_state: string;
+  created_at: string;
+  updated_at: string;
+  can_delete: boolean;
+  comments?: Comment[];
+}
+
+export interface Reviewer {
+  id: number;
+  name: string;
+}
+
+export interface Config {
+  restUrl: string;
+  nonce: string;
+  homePath: string;
+  adminUrl: string;
+  user: { id: number; name: string; isAdmin: boolean };
+  reviewers: Reviewer[];
+  labels: {
+    type: Record<ItemType, string>;
+    status: Record<ItemStatus, string>;
+    priority: Record<Priority, string>;
+  };
+  page: { postId: number; postType: string; theme: string };
+  openItem: number;
+}
+
+export interface NewItem {
+  type: ItemType;
+  title: string;
+  description: string;
+  priority: Priority;
+  assignee_id: number;
+  page_path: string;
+  page_query: string;
+  page_title: string;
+  anchor: Anchor | null;
+  context: Context;
+}
+
+declare global {
+  interface Window {
+    fbcConfig?: Config;
+    __fbcErrors?: string[];
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "name": "feedback-collector",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "bun build src/overlay/main.ts --outfile dist/overlay.js --minify --target browser --format iife",
+    "watch": "bun build src/overlay/main.ts --outfile dist/overlay.js --target browser --format iife --watch",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@happy-dom/global-registrator": "^20.14.5",
+    "bun-types": "^1.4.2",
+    "happy-dom": "^20.14.5",
+    "typescript": "^7.0.2"
+  }
+}
