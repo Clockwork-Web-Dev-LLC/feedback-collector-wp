@@ -167,6 +167,10 @@ export class App {
     window.addEventListener('resize', () => {
       const widthChanged = window.innerWidth !== this.lastWidth;
       this.lastWidth = window.innerWidth;
+      if (this.card?.classList.contains('popover') || this.card?.classList.contains('composer')) {
+        this.card.style.maxHeight = `${Math.max(160, window.innerHeight - this.topOffset() - 24)}px`;
+        this.moveCard(this.card, this.card.offsetLeft, this.card.offsetTop);
+      }
       if (widthChanged) this.scheduleRefresh(80);
       else this.schedulePosition();
     });
@@ -564,14 +568,60 @@ export class App {
     card.style.left = '0px';
     card.style.top = '0px';
     card.style.visibility = 'hidden';
+    // Never taller than the space below the admin bar, so the whole card always fits.
+    card.style.maxHeight = `${Math.max(160, window.innerHeight - this.topOffset() - 24)}px`;
     this.root.append(card);
-    const w = card.offsetWidth;
-    const hgt = card.offsetHeight;
-    const left = Math.max(12, Math.min(x + 8, window.innerWidth - w - 12));
-    const top = Math.max(this.topOffset() + 12, Math.min(y + 8, window.innerHeight - hgt - 12));
-    card.style.left = `${left}px`;
-    card.style.top = `${top}px`;
+    this.moveCard(card, x + 8, y + 8);
     card.style.visibility = '';
+    // Screenshots load after placement and grow the card: keep it fully on screen as it resizes.
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(() => {
+        if (!card.isConnected) return ro.disconnect();
+        this.moveCard(card, card.offsetLeft, card.offsetTop);
+      });
+      ro.observe(card);
+    }
+    card.addEventListener('load', () => this.moveCard(card, card.offsetLeft, card.offsetTop), true);
+    const head = card.querySelector<HTMLElement>(':scope > .head');
+    if (head) {
+      head.classList.add('drag');
+      head.title = 'Drag to move';
+      head.addEventListener('pointerdown', (e) => this.startCardDrag(card, e));
+    }
+  }
+
+  /** Places a card at (left, top), clamped so all of it stays on screen and below the admin bar. */
+  private moveCard(card: HTMLElement, left: number, top: number): void {
+    const minTop = this.topOffset() + 12;
+    const maxLeft = Math.max(12, window.innerWidth - card.offsetWidth - 12);
+    const maxTop = Math.max(minTop, window.innerHeight - card.offsetHeight - 12);
+    card.style.left = `${Math.round(Math.max(12, Math.min(left, maxLeft)))}px`;
+    card.style.top = `${Math.round(Math.max(minTop, Math.min(top, maxTop)))}px`;
+  }
+
+  /** Drags a card by its header; the card can't be pushed off screen. */
+  private startCardDrag(card: HTMLElement, e: PointerEvent): void {
+    if (e.button !== 0 || (e.target as Element).closest('button, a, input, select, textarea')) return;
+    e.preventDefault();
+    const head = e.currentTarget as HTMLElement;
+    const dx = e.clientX - card.offsetLeft;
+    const dy = e.clientY - card.offsetTop;
+    try {
+      head.setPointerCapture(e.pointerId);
+    } catch {
+      // Synthetic or already-released pointer: dragging still works while over the header.
+    }
+    card.classList.add('dragging');
+    const move = (ev: PointerEvent) => this.moveCard(card, ev.clientX - dx, ev.clientY - dy);
+    const end = () => {
+      card.classList.remove('dragging');
+      head.removeEventListener('pointermove', move);
+      head.removeEventListener('pointerup', end);
+      head.removeEventListener('pointercancel', end);
+    };
+    head.addEventListener('pointermove', move);
+    head.addEventListener('pointerup', end);
+    head.addEventListener('pointercancel', end);
   }
 
   private openTypeMenu(el: Element, x: number, y: number): void {

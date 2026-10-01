@@ -56,6 +56,7 @@ final class Teamwork {
 			add_action( 'admin_post_fbc_tw_test', array( self::class, 'handle_test' ) );
 			add_action( 'admin_post_fbc_tw_create_list', array( self::class, 'handle_create_list' ) );
 			add_action( 'admin_post_fbc_tw_push', array( self::class, 'handle_push' ) );
+			add_action( 'admin_post_fbc_tw_create_and_push', array( self::class, 'handle_create_and_push' ) );
 			add_action( 'admin_post_fbc_tw_sync', array( self::class, 'handle_sync' ) );
 		}
 	}
@@ -962,6 +963,29 @@ final class Teamwork {
 	}
 
 	/**
+	 * Detail screen: creates the QA list for this item's round, then pushes the item to it.
+	 */
+	public static function handle_create_and_push(): void {
+		$id = isset( $_POST['id'] ) ? absint( $_POST['id'] ) : 0;
+		check_admin_referer( 'fbc_tw_create_and_push' );
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'Not allowed.', 'feedback-collector' ), 403 );
+		}
+		$item   = Items::get( $id );
+		$round  = $item ? (int) $item['round'] : Rounds::current();
+		$result = self::list_for_round( $round ) ? true : self::create_round_list( $round );
+		if ( ! is_wp_error( $result ) ) {
+			$result = self::push( $id );
+		}
+		$url = Admin::item_url( $id );
+		if ( is_wp_error( $result ) ) {
+			$url = add_query_arg( 'fbc_tw_err', rawurlencode( $result->get_error_message() ), $url );
+		}
+		wp_safe_redirect( $url );
+		exit;
+	}
+
+	/**
 	 * "Sync with Teamwork now".
 	 */
 	public static function handle_sync(): void {
@@ -1041,31 +1065,65 @@ final class Teamwork {
 		if ( isset( $_GET['fbc_tw_err'] ) ) {
 			echo '<div class="notice notice-error inline"><p>' . esc_html( sanitize_text_field( wp_unslash( $_GET['fbc_tw_err'] ) ) ) . '</p></div>'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		}
+		$s        = self::settings();
+		$round    = (int) $item['round'];
+		$list     = self::list_for_round( $round );
+		$settings = admin_url( 'admin.php?page=' . Admin::SLUG . '-settings' );
+
 		if ( $item['tw_task_id'] ) {
+			// Pushed: the main action is going straight to the task.
+			$list_name = self::list_name_for_round( $round );
 			printf(
-				'<p><a class="button" href="%s" target="_blank" rel="noopener">%s</a></p><p class="description">%s</p>',
+				'<p><a class="button button-primary button-large" href="%1$s" target="_blank" rel="noopener">%2$s</a></p><p class="description">%3$s</p><p class="description">%4$s</p>',
 				esc_url( self::site() . '/app/tasks/' . (int) $item['tw_task_id'] ),
-				/* translators: %d: task ID */
-				esc_html( sprintf( __( 'Open task #%d', 'feedback-collector' ), (int) $item['tw_task_id'] ) ),
+				esc_html__( 'Open in Teamwork ↗', 'feedback-collector' ),
+				esc_html(
+					$list_name
+						/* translators: 1: task ID, 2: task list name */
+						? sprintf( __( 'Task #%1$d in “%2$s”.', 'feedback-collector' ), (int) $item['tw_task_id'], $list_name )
+						/* translators: %d: task ID */
+						: sprintf( __( 'Task #%d.', 'feedback-collector' ), (int) $item['tw_task_id'] )
+				),
 				esc_html__( 'Completing this task in Teamwork marks this item Resolved here.', 'feedback-collector' )
 			);
-		} elseif ( self::ready() ) {
+		} elseif ( ! self::client() ) {
+			printf( '<p class="description">%s</p><p><a class="button" href="%s">%s</a></p>', esc_html__( 'Not connected to Teamwork yet.', 'feedback-collector' ), esc_url( $settings ), esc_html__( 'Connect Teamwork', 'feedback-collector' ) );
+		} elseif ( ! $s['project_id'] ) {
+			printf( '<p class="description">%s</p><p><a class="button" href="%s">%s</a></p>', esc_html__( 'Teamwork is connected. Choose which project QA feedback goes to.', 'feedback-collector' ), esc_url( $settings ), esc_html__( 'Choose a project', 'feedback-collector' ) );
+		} else {
 			if ( 'error' === $item['tw_sync_state'] ) {
 				echo '<div class="notice notice-error inline"><p>' . esc_html( (string) $item['tw_sync_error'] ) . '</p></div>';
 			}
-			$round = (int) $item['round'];
-			$name  = self::list_name_for_round( $round );
-			echo '<p class="description">' . esc_html(
-				$name
-					/* translators: 1: round number, 2: task list name */
-					? sprintf( __( 'Round %1$d → pushes to “%2$s”.', 'feedback-collector' ), $round, $name )
+			$project = (string) $s['project_name'];
+			if ( $list ) {
+				/* translators: 1: round number, 2: task list name */
+				echo '<p class="description">' . esc_html( sprintf( __( 'Not in Teamwork yet. Round %1$d → “%2$s”.', 'feedback-collector' ), $round, self::list_name_for_round( $round ) ) ) . '</p><p>';
+				self::button_form( 'fbc_tw_push', 'error' === $item['tw_sync_state'] ? __( 'Retry push', 'feedback-collector' ) : __( 'Push to Teamwork', 'feedback-collector' ), array( 'id' => (int) $item['id'] ), 'primary' );
+				echo '</p>';
+			} else {
+				// Connected with a project, but this item's round has no QA list: fix both in one click.
+				echo '<p class="description">' . esc_html(
+					sprintf(
+						/* translators: 1: project name, 2: round number */
+						__( 'Connected to %1$s, but Round %2$d doesn’t have a QA list yet.', 'feedback-collector' ),
+						'' !== $project ? $project : __( 'your project', 'feedback-collector' ),
+						$round
+					)
+				) . '</p><p>';
+				if ( ! current_user_can( 'manage_options' ) ) {
+					echo esc_html__( 'Ask an administrator to create it in Settings.', 'feedback-collector' ) . '</p>';
+					Layout::card_close();
+					return;
+				}
+				self::button_form(
+					'fbc_tw_create_and_push',
 					/* translators: %d: round number */
-					: sprintf( __( 'Round %d has no Teamwork list yet.', 'feedback-collector' ), $round )
-			) . '</p><p>';
-			self::button_form( 'fbc_tw_push', 'error' === $item['tw_sync_state'] ? __( 'Retry push', 'feedback-collector' ) : __( 'Push to Teamwork', 'feedback-collector' ), array( 'id' => (int) $item['id'] ), 'primary' );
-			echo '</p>';
-		} else {
-			printf( '<p><a href="%s">%s</a></p>', esc_url( admin_url( 'admin.php?page=' . Admin::SLUG . '-settings' ) ), esc_html__( 'Connect Teamwork and choose a QA list →', 'feedback-collector' ) );
+					sprintf( __( 'Create Round %d QA list & push', 'feedback-collector' ), $round ),
+					array( 'id' => (int) $item['id'] ),
+					'primary'
+				);
+				echo '</p>';
+			}
 		}
 		Layout::card_close();
 	}

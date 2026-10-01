@@ -191,6 +191,21 @@ button {
   gap: 8px;
   margin-bottom: 10px;
 }
+.head.drag {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  margin: -14px -14px 10px;
+  padding: 14px 14px 8px;
+}
+.card.dragging,
+.card.dragging .head.drag {
+  cursor: grabbing;
+  user-select: none;
+}
+.card.dragging {
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.26);
+}
 .head .x {
   margin-left: auto;
   border: 0;
