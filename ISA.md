@@ -4,7 +4,7 @@ project: feedback-collector-wp
 effort: E4
 effort_source: classifier
 phase: verify
-progress: 68/155
+progress: 62/155
 mode: interactive
 started: 2026-09-30T00:00:00-07:00
 updated: 2026-10-01T03:30:04.547Z
@@ -205,19 +205,19 @@ Deliver a deactivatable WordPress plugin, "Feedback Collector". Reviewers with t
 - [ ] ISC-128: "Create QA list" calls v1 `POST /projects/{id}/tasklists.json`, named "QA – Round N – YYYY-MM-DD"
 - [ ] ISC-129: Returned `TASKLISTID` is stored as the active QA list
 - [ ] ISC-130: Option to pick an existing task list instead of creating one
-- [x] ISC-131: Push creates a v3 task in the active QA list
+- [DEFERRED-VERIFY] ISC-131: Push creates a v3 task in the active QA list
 - [x] ISC-132: Task name format is `[Type] Title`
 - [x] ISC-133: Task description (HTML) includes description, deep link to the pin, page URL, breakpoint and viewport, browser and OS, selector, reporter, JS errors
-- [x] ISC-134: Task tagged with its type (tag created if missing, IDs cached)
-- [x] ISC-135: Priority mapped: Critical/High → high, Medium → medium, Low → low
-- [x] ISC-136: Assignee mapped by matching email against project people; unmatched → unassigned with a note
-- [x] ISC-137: Teamwork task ID and URL stored on the item and linked in admin
+- [DEFERRED-VERIFY] ISC-134: Task tagged with its type (tag created if missing, IDs cached)
+- [DEFERRED-VERIFY] ISC-135: Priority mapped: Critical/High → high, Medium → medium, Low → low
+- [DEFERRED-VERIFY] ISC-136: Assignee mapped by matching email against project people; unmatched → unassigned with a note
+- [DEFERRED-VERIFY] ISC-137: Teamwork task ID and URL stored on the item and linked in admin
 - [x] ISC-138: Anti: pushing an already-pushed item creates a second Teamwork task
 - [x] ISC-139: API failure marks the item `sync_error` with the message, and a Retry action exists
 - [x] ISC-140: On 429, pushes back off until `X-Rate-Limit-Reset`; a 100-item bulk push completes with no item lost
 - [ ] ISC-141: "Auto-push new items" setting (default off) pushes on creation
 - [ ] ISC-142: WP-Cron job every 15 min polls the QA list with `updatedAfter`; completed tasks → Resolved
-- [x] ISC-143: Reopened tasks in Teamwork → Open in WordPress
+- [DEFERRED-VERIFY] ISC-143: Reopened tasks in Teamwork → Open in WordPress
 - [x] ISC-144: Anti: sync-back changes the status of an item that was never pushed
 
 ### Compatibility and experience

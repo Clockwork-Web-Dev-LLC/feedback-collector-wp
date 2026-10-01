@@ -64,6 +64,7 @@ export interface Config {
   restUrl: string;
   nonce: string;
   homePath: string;
+  pagePath?: string;
   adminUrl: string;
   user: { id: number; name: string; isAdmin: boolean };
   reviewers: Reviewer[];

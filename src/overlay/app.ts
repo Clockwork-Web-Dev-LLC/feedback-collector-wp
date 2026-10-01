@@ -58,7 +58,7 @@ export class App {
 
   constructor(private cfg: Config) {
     this.api = new Api(cfg);
-    this.pagePath = currentPagePath(cfg.homePath);
+    this.pagePath = cfg.pagePath ?? currentPagePath(cfg.homePath);
   }
 
   init(): void {

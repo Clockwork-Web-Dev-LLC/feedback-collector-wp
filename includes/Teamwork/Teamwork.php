@@ -295,7 +295,7 @@ final class Teamwork {
 		$ctx    = is_array( $item['context'] ) ? $item['context'] : array();
 		$anchor = is_array( $item['anchor'] ) ? $item['anchor'] : array();
 		$link   = Admin::view_on_page_url( $item );
-		$page   = home_url( $item['page_path'] ) . ( $item['page_query'] ? '?' . $item['page_query'] : '' );
+		$page   = Items::page_url( $item );
 		$by     = get_userdata( (int) $item['reporter_id'] );
 
 		$html  = '' !== $item['description'] ? '<p>' . nl2br( esc_html( $item['description'] ) ) . '</p>' : '';

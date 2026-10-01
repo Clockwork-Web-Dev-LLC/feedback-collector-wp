@@ -63,20 +63,57 @@ final class Items {
 	}
 
 	/**
-	 * Normalizes a URL path so the same page always hashes the same.
-	 *
-	 * @param string $path Raw path, possibly a full URL.
+	 * Query vars that select which content WordPress renders. On sites without
+	 * pretty permalinks every page shares the path "/", so these identify the page.
 	 */
-	public static function normalize_path( string $path ): string {
-		$parsed = wp_parse_url( $path, PHP_URL_PATH );
-		$path   = is_string( $parsed ) ? $parsed : '/';
+	private const ROUTING_VARS = array( 'p', 'page_id', 'attachment_id', 'name', 'pagename', 'post_type', 'cat', 'category_name', 'tag', 'taxonomy', 'term', 'author', 'author_name', 'm', 'year', 'monthnum', 'day', 'paged', 'page', 's', 'product', 'product_cat', 'product_tag' );
+
+	/**
+	 * Builds the page key that items are stored and looked up by: the path relative to
+	 * the site home, plus any routing query vars (sorted), e.g. "/services/" or "/?page_id=2".
+	 * Other query args (utm_*, ref, …) are ignored so they don't split a page's feedback.
+	 *
+	 * @param string $url Raw path or URL, optionally with a query string.
+	 */
+	public static function normalize_path( string $url ): string {
+		$parsed = wp_parse_url( $url );
+		$path   = is_array( $parsed ) && isset( $parsed['path'] ) ? (string) $parsed['path'] : '/';
 		$home   = wp_parse_url( home_url( '/' ), PHP_URL_PATH );
 		$home   = is_string( $home ) ? untrailingslashit( $home ) : '';
 		if ( '' !== $home && str_starts_with( $path, $home ) ) {
 			$path = substr( $path, strlen( $home ) );
 		}
+		if ( str_ends_with( $path, '/index.php' ) ) {
+			$path = substr( $path, 0, -strlen( 'index.php' ) );
+		}
 		$path = '/' . ltrim( $path, '/' );
-		return '/' === $path ? '/' : trailingslashit( $path );
+		$path = '/' === $path ? '/' : trailingslashit( $path );
+
+		$routing = array();
+		if ( is_array( $parsed ) && ! empty( $parsed['query'] ) ) {
+			wp_parse_str( (string) $parsed['query'], $query );
+			foreach ( self::ROUTING_VARS as $var ) {
+				if ( isset( $query[ $var ] ) && is_scalar( $query[ $var ] ) && '' !== (string) $query[ $var ] ) {
+					$routing[ $var ] = sanitize_text_field( (string) $query[ $var ] );
+				}
+			}
+			ksort( $routing );
+		}
+		return $routing ? $path . '?' . http_build_query( $routing ) : $path;
+	}
+
+	/**
+	 * Full front-end URL of an item's page, including its original query string.
+	 *
+	 * @param array<string, mixed> $item Item.
+	 */
+	public static function page_url( array $item ): string {
+		$url = home_url( (string) $item['page_path'] );
+		if ( ! empty( $item['page_query'] ) ) {
+			wp_parse_str( (string) $item['page_query'], $extra );
+			$url = add_query_arg( array_map( 'rawurlencode', array_filter( $extra, 'is_scalar' ) ), $url );
+		}
+		return $url;
 	}
 
 	/**

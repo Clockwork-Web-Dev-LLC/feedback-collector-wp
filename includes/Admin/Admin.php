@@ -100,7 +100,7 @@ final class Admin {
 	 * @param array<string, mixed> $item Item.
 	 */
 	public static function view_on_page_url( array $item ): string {
-		$url = home_url( $item['page_path'] ) . ( $item['page_query'] ? '?' . $item['page_query'] : '' );
+		$url = Items::page_url( $item );
 		return add_query_arg( 'fbc_item', (int) $item['id'], $url );
 	}
 
@@ -251,7 +251,7 @@ final class Admin {
 		echo '</div>';
 
 		$rows = array(
-			__( 'Page', 'feedback-collector' )         => '<a href="' . esc_url( home_url( $item['page_path'] ) ) . '" target="_blank" rel="noopener">' . esc_html( $item['page_path'] . ( $item['page_query'] ? '?' . $item['page_query'] : '' ) ) . '</a>',
+			__( 'Page', 'feedback-collector' )         => '<a href="' . esc_url( Items::page_url( $item ) ) . '" target="_blank" rel="noopener">' . esc_html( $item['page_path'] . ( $item['page_query'] ? '?' . $item['page_query'] : '' ) ) . '</a>',
 			__( 'Page title', 'feedback-collector' )   => esc_html( $item['page_title'] ),
 			__( 'Breakpoint', 'feedback-collector' )   => esc_html( trim( ( $ctx['breakpoint'] ?? '' ) . ' · ' . ( $ctx['viewport_w'] ?? '?' ) . '×' . ( $ctx['viewport_h'] ?? '?' ) . ' @' . ( $ctx['dpr'] ?? 1 ) . 'x', ' ·' ) ),
 			__( 'Browser', 'feedback-collector' )      => esc_html( $ctx['browser'] ?? '' ),

@@ -356,7 +356,7 @@ final class Rest {
 			'page_path'     => $item['page_path'],
 			'page_query'    => $item['page_query'],
 			'page_title'    => $item['page_title'],
-			'page_url'      => home_url( $item['page_path'] ) . ( $item['page_query'] ? '?' . $item['page_query'] : '' ),
+			'page_url'      => Items::page_url( $item ),
 			'anchor'        => $item['anchor'],
 			'context'       => $item['context'],
 			'breakpoint'    => $item['breakpoint'],

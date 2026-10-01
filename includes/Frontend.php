@@ -120,6 +120,7 @@ final class Frontend {
 			'restUrl'   => esc_url_raw( rest_url( Rest::NS ) ),
 			'nonce'     => wp_create_nonce( 'wp_rest' ),
 			'homePath'  => (string) wp_parse_url( home_url( '/' ), PHP_URL_PATH ),
+			'pagePath'  => Items::normalize_path( isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '/' ),
 			'adminUrl'  => esc_url_raw( admin_url( 'admin.php?page=feedback-collector' ) ),
 			'user'      => array(
 				'id'      => (int) $user->ID,
