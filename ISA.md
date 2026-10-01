@@ -24,9 +24,11 @@ A teammate turns on Feedback mode from the admin bar, right-clicks the misaligne
 
 - **Client / guest reviewers.** v1 is for the internal team only. Every reviewer has a WordPress login, so there are no magic links or guest accounts.
 - **Non-WordPress sites (Astro/Vercel builds).** v1 is a WordPress plugin. The REST contract is documented so a future standalone overlay could reuse it, but that port is not built here.
-- **Two-way comment sync with Teamwork.** v1 pushes tasks and pulls back completed/reopened status only. Replies stay in WordPress.
+- ~~Two-way comment sync with Teamwork.~~ Moved into scope 2026-10-01 (see Decisions).
 - **Teamwork webhooks.** These are paid-plan only and unreachable on staging or local sites behind auth. v1 polls with WP-Cron instead.
-- **Screenshot annotation (draw/arrow/markup).** Optional screenshot capture is a feature-flagged stretch item. Annotation is not.
+- ~~Screenshot annotation.~~ Moved into scope 2026-10-01 (see Decisions).
+- **Keyboard shortcuts for filing/stepping (B/T/C/N, J/K, R).** Declined by Aaron for now.
+- **Re-editing a saved annotation.** v1 stores only the flattened image.
 - **Kanban boards, page-approval workflows, AI guidance, email notifications.** Teamwork already owns notifications and boards.
 - **Multisite network-level dashboards.** Per-site activation only.
 
@@ -305,6 +307,7 @@ Build order: F1 → (F2 ∥ F3 ∥ F4) → F5 → (F6 ∥ F7) → F8 → F9 → 
 - 2026-10-01: **Mistake:** the mocked-Teamwork test script TRUNCATEd the feedback tables and left fake Teamwork settings on the shared test site, destroying items #35/#36 from the Chrome pass. The site was reset to empty and the script now records the high-water mark and the settings and restores both on shutdown, deleting only the rows it created.
 - 2026-10-01: **Assignees from Teamwork by default** (Aaron). Picking the Teamwork person directly replaces silent email matching. After a push the assignee is read-only in WordPress, the same "Teamwork owns it" rule as status. The `taskOptions.notify` field name came from Teamwork's API conventions and isn't in the public docs; confirm it during the live round trip.
 - 2026-10-01: **Mistake caught by tests:** phpcbf's `WordPress.WP.CapitalPDangit` auto-fix rewrote the identifier string 'wordpress' to 'WordPress', which broke the assignee source. The sniff is now excluded in phpcs.xml.dist.
+- 2026-10-01: **refined:** Aaron approved screenshots, annotation (Fabric.js, MIT, chosen over marker.js linkware for white-label), QA rounds, breakpoint preview, two-way Teamwork comments and @mentions. He declined shortcuts; digest, lazy-content retry, pre-launch checklist and CSV are still unanswered. Build order: rounds, then screenshots, then annotation, then breakpoint preview, then comments and mentions after the live Teamwork test.
 - 2026-09-30: **Delegation floor met:** two background research agents (Atarim features, Teamwork API). Forge is deferred to BUILD, where it auto-includes for E4 coding.
 
 ## Changelog
@@ -403,3 +406,30 @@ Test site: local WordPress 7.1.2 on PHP 8.4 / MySQL 26.7 at `http://localhost:88
 - [x] ISC-181: The sidebar, hints, banner and popovers stay below the admin bar; toasts sit on the edge opposite the toolbar
 - [x] ISC-182: A right-corner toolbar slides left when the sidebar opens, so the sidebar never covers it
 - [x] ISC-183: Arrow keys on the grip move between corners; motion respects prefers-reduced-motion
+
+### Phase R: QA rounds
+- [ ] ISC-184: Items store a `round` (existing items backfilled to 1); new items get the current round
+- [ ] ISC-185: The current round lives in its own option, used by both the "Create QA list" and "Start next round" flows (one counter)
+- [ ] ISC-186: "Start Round N+1" works without Teamwork; with Teamwork it also creates and activates "QA – Round N+1"
+- [ ] ISC-187: Push routes each item to its own round's task list (round → list map), not the latest list
+- [ ] ISC-188: The admin list and sidebar filter by round; the admin header shows the current round and a per-round summary
+
+### Phase S: Screenshots
+- [ ] ISC-189: Capture happens at right-click time, with the overlay hidden and a pin marker drawn on the image at the click point
+- [ ] ISC-190: The screenshot uploads in the same multipart POST /items request; JPEG/WebP, ≤ 1600px wide, ≤ ~1MB
+- [ ] ISC-191: The server validates a real image, caps the size, uses random filenames in uploads/fbc-screenshots with index.php, and deletes the file with its item and on uninstall
+- [ ] ISC-192: Anti: input/textarea values appear in the screenshot (masked in the clone; amends ISC-60)
+- [ ] ISC-193: The capture library loads only when needed (separate dist/capture.js)
+- [ ] ISC-194: The screenshot shows in the popover and the admin detail screen, and attaches to the Teamwork task via pendingFiles at create
+
+### Phase A: Annotation
+- [ ] ISC-195: The annotator (Fabric.js, separate dist/annotator.js) opens on the captured image: arrow, box, highlight, pen, text, blur, undo, color
+- [ ] ISC-196: Saving flattens to the stored screenshot; Fabric's text input works inside the shadow root (Esc/click-outside don't close mid-typing)
+
+### Phase B: Breakpoint preview
+- [ ] ISC-197: A device preview (phone/tablet/desktop) shows the page in a same-origin iframe; the overlay runs inside (window.name flag) and the parent's toolbar and pins pause
+- [ ] ISC-198: Items filed in the preview record the frame's width and breakpoint; there's a breakpoint filter in the sidebar and admin
+
+### Phase C/M: Comments + mentions (after live Teamwork test)
+- [ ] ISC-199: WordPress replies post to the Teamwork task ("From {name} via …"); Teamwork comments sync onto the item; dedupe by tw_comment_id
+- [ ] ISC-200: @mentions autocomplete from the assignee source, are stored as tokens and rendered as text nodes; mentioned people are notified
