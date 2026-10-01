@@ -34,6 +34,7 @@ final class Admin {
 		add_action( 'admin_post_fbc_settings', array( self::class, 'handle_settings' ) );
 		add_action( 'admin_post_fbc_branding', array( self::class, 'handle_branding' ) );
 		add_action( 'admin_post_fbc_start_round', array( self::class, 'handle_start_round' ) );
+		add_action( 'admin_post_fbc_purge', array( self::class, 'handle_purge' ) );
 		// Late, so Clockwork Companion's stylesheet is already enqueued and can be removed.
 		add_action( 'admin_enqueue_scripts', array( Layout::class, 'enqueue' ), 100 );
 		add_filter( 'all_plugins', array( Branding::class, 'plugins_list' ) );
@@ -349,6 +350,13 @@ final class Admin {
 					echo self::select( 'assignee_id', $people, (string) Assignees::selected( $item ) ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- select() escapes.
 					if ( '' !== $assignees['error'] ) {
 						echo '<br /><span class="description">' . esc_html( $assignees['error'] ) . '</span>';
+					} elseif ( ! empty( $assignees['fallback'] ) ) {
+						printf(
+							'<br /><span class="description">%s <a href="%s">%s</a></span>',
+							esc_html__( 'Showing WordPress users until Teamwork is connected.', 'feedback-collector' ),
+							esc_url( admin_url( 'admin.php?page=' . self::SLUG . '-settings' ) ),
+							esc_html__( 'Connect Teamwork', 'feedback-collector' )
+						);
 					}
 				}
 				echo '</p>';
@@ -504,6 +512,7 @@ final class Admin {
 				submit_button();
 				echo '</form>';
 				do_action( 'fbc_settings_after' );
+				self::render_remove_card();
 			}
 		);
 	}
@@ -651,6 +660,63 @@ final class Admin {
 				<?php
 			}
 		);
+	}
+
+	/**
+	 * "Remove all data" card at the bottom of Settings (the done-with-QA cleanup).
+	 */
+	private static function render_remove_card(): void {
+		$inv = \FeedbackCollector\Cleanup::inventory();
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( isset( $_GET['fbc_purge_error'] ) ) {
+			echo '<div class="notice notice-error"><p>' . esc_html__( 'Type DELETE in the box to confirm.', 'feedback-collector' ) . '</p></div>';
+		}
+		Layout::card_open( __( 'Remove all data', 'feedback-collector' ) );
+		echo '<p>' . esc_html__( 'Done with QA on this site? This deletes everything the plugin created, then deactivates it so you can delete it from the Plugins screen:', 'feedback-collector' ) . '</p><ul class="ul-disc">';
+		/* translators: 1: item count, 2: reply count */
+		echo '<li>' . esc_html( sprintf( __( '%1$d feedback items and %2$d replies (the database tables)', 'feedback-collector' ), $inv['items'], $inv['comments'] ) ) . '</li>';
+		/* translators: %d: screenshot count */
+		echo '<li>' . esc_html( sprintf( __( '%d screenshots in uploads/fbc-screenshots', 'feedback-collector' ), $inv['screenshots'] ) ) . '</li>';
+		echo '<li>' . esc_html__( 'All settings (including the Teamwork key and branding), cached Teamwork data, scheduled sync jobs, and the reviewer capability on every role', 'feedback-collector' ) . '</li></ul>';
+		echo '<p class="description">' . esc_html__( 'Tasks already in Teamwork are not touched.', 'feedback-collector' ) . '</p>';
+		if ( $inv['unpushed'] ) {
+			echo '<div class="fbc-callout">' . esc_html(
+				sprintf(
+					/* translators: %d: count */
+					_n( '%d unresolved item has not been pushed to Teamwork and will be lost.', '%d unresolved items have not been pushed to Teamwork and will be lost.', $inv['unpushed'], 'feedback-collector' ),
+					$inv['unpushed']
+				)
+			) . '</div>';
+		}
+		printf( '<form method="post" action="%s" class="fbc-remove-form">', esc_url( admin_url( 'admin-post.php' ) ) );
+		wp_nonce_field( 'fbc_purge' );
+		echo '<input type="hidden" name="action" value="fbc_purge" />';
+		printf(
+			'<p><label for="fbc-purge-confirm">%1$s</label><br /><input type="text" id="fbc-purge-confirm" name="confirm" autocomplete="off" class="regular-text" placeholder="DELETE" /></p>',
+			esc_html__( 'Type DELETE to confirm. This cannot be undone.', 'feedback-collector' )
+		);
+		submit_button( __( 'Remove all data and deactivate', 'feedback-collector' ), 'delete fbc-danger', 'submit', false );
+		echo '</form>';
+		Layout::card_close();
+	}
+
+	/**
+	 * Removes all plugin data, then deactivates the plugin.
+	 */
+	public static function handle_purge(): void {
+		check_admin_referer( 'fbc_purge' );
+		if ( ! current_user_can( 'manage_options' ) || ! current_user_can( 'activate_plugins' ) ) {
+			wp_die( esc_html__( 'Not allowed.', 'feedback-collector' ), 403 );
+		}
+		$confirm = isset( $_POST['confirm'] ) ? trim( sanitize_text_field( wp_unslash( $_POST['confirm'] ) ) ) : '';
+		if ( 'DELETE' !== $confirm ) {
+			wp_safe_redirect( add_query_arg( 'fbc_purge_error', 1, admin_url( 'admin.php?page=' . self::SLUG . '-settings' ) ) );
+			exit;
+		}
+		\FeedbackCollector\Cleanup::purge();
+		deactivate_plugins( plugin_basename( PLUGIN_FILE ) );
+		wp_safe_redirect( admin_url( 'plugins.php?deactivate=true' ) );
+		exit;
 	}
 
 	/**

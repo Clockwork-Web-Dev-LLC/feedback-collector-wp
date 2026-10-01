@@ -85,7 +85,7 @@ export interface Config {
   pagePath?: string;
   adminUrl: string;
   user: { id: number; name: string; isAdmin: boolean };
-  assignees: { source: 'teamwork' | 'wordpress'; people: Reviewer[]; error: string; me: number };
+  assignees: { source: 'teamwork' | 'wordpress'; people: Reviewer[]; error: string; me: number; fallback?: boolean };
   labels: {
     type: Record<ItemType, string>;
     status: Record<ItemStatus, string>;

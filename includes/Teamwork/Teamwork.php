@@ -389,9 +389,11 @@ final class Teamwork {
 		$page   = Items::page_url( $item );
 		$by     = get_userdata( (int) $item['reporter_id'] );
 
-		$html  = '' !== $item['description'] ? '<p>' . nl2br( esc_html( $item['description'] ) ) . '</p>' : '';
+		// The page URL leads, in full, so it's visible in Teamwork lists and notifications too.
+		$html  = '<p><strong>' . esc_html__( 'Page URL', 'feedback-collector' ) . ':</strong> <a href="' . esc_url( $page ) . '">' . esc_html( $page ) . '</a></p>';
+		$html .= '' !== $item['description'] ? '<p>' . nl2br( esc_html( $item['description'] ) ) . '</p>' : '';
 		$html .= '<p><strong><a href="' . esc_url( $link ) . '">' . esc_html__( 'Open the pin on the page →', 'feedback-collector' ) . '</a></strong></p><ul>';
-		$html .= '<li>' . esc_html__( 'Page', 'feedback-collector' ) . ': <a href="' . esc_url( $page ) . '">' . esc_html( $item['page_path'] ) . '</a></li>';
+		$html .= '<li>' . esc_html__( 'Page title', 'feedback-collector' ) . ': ' . esc_html( (string) $item['page_title'] ) . '</li>';
 		if ( $ctx ) {
 			$html .= '<li>' . esc_html__( 'Breakpoint', 'feedback-collector' ) . ': ' . esc_html( sprintf( '%s · %d×%d @%sx', $ctx['breakpoint'] ?? '', $ctx['viewport_w'] ?? 0, $ctx['viewport_h'] ?? 0, $ctx['dpr'] ?? 1 ) ) . '</li>';
 			$html .= '<li>' . esc_html__( 'Browser', 'feedback-collector' ) . ': ' . esc_html( trim( ( $ctx['browser'] ?? '' ) . ' · ' . ( $ctx['os'] ?? '' ), ' ·' ) ) . '</li>';

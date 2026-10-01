@@ -71,6 +71,8 @@ check( 'name is [Type] Title', '[Tweak] CTA button misaligned' === ( $p['name'] 
 check( 'HTML description content type', 'HTML' === ( $p['descriptionContentType'] ?? '' ) );
 check( 'description escapes user HTML', str_contains( $p['description'] ?? '', '&lt;b&gt;two&lt;/b&gt;' ) );
 check( 'description has deep link to pin', str_contains( $p['description'] ?? '', 'fbc_item=' . $id ) );
+$full_url = home_url( '/services/' );
+check( 'description leads with the full page URL as visible text', str_starts_with( (string) $p['description'], '<p><strong>Page URL:</strong> <a href="' . esc_url( $full_url ) . '">' . esc_html( $full_url ) . '</a></p>' ) );
 check( 'description has breakpoint+browser+selector+errors', str_contains( $p['description'], '1440×900' ) && str_contains( $p['description'], 'Chrome 154' ) && str_contains( $p['description'], '#cta' ) && str_contains( $p['description'], 'TypeError' ) );
 check( 'critical maps to high', 'high' === ( $p['priority'] ?? '' ) );
 check( 'type tag attached (created + cached)', array( 77 ) === ( $p['tagIds'] ?? null ) && 77 === (int) Teamwork::settings()['tags']['tweak'] );

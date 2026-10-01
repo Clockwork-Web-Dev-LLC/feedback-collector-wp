@@ -4,7 +4,7 @@ project: feedback-collector-wp
 effort: E4
 effort_source: classifier
 phase: verify
-progress: 130/200
+progress: 136/206
 mode: interactive
 started: 2026-09-30T00:00:00-07:00
 updated: 2026-10-01T03:30:04.547Z
@@ -436,3 +436,11 @@ Test site: local WordPress 7.1.2 on PHP 8.4 / MySQL 26.7 at `http://localhost:88
 - **Screenshots, 2026-10-01 (real Chrome):** right-click → capture took ~1.1s, producing a 1600×891 JPEG (85–89KB) with no overlay and no admin bar. SnapDOM's 'viewport' clip came out shifted by WP's 32px html margin; it's now an explicit page rect plus body offset, and the marker lands on the clicked link (verified from the saved file). 21 WP checks: validation, random names, index.php, multipart create, stored before fbc_item_created, bad image keeps the item, not-an-upload refused, replace/delete endpoints, file deleted with item, Teamwork pendingFiles (mock). ISC-194: display verified in the admin; Teamwork attachment verified against the mock only, pending the live test.
 - **Annotation, 2026-10-01 (real Chrome):** Composer → Annotate opened the Fabric editor (93KB gz, lazy). In the saved upload: arrow, box, blur (pixelated patch over the heading), highlight; full 1600×891. Text tool: hidden textarea mounted inside the shadow root; Esc while typing exited text editing without closing the editor or composer. Fabric 7's center-origin default first misplaced the background; fixed with top-left `FabricObject.ownDefaults`.
 - **Device preview, 2026-10-01 (real Chrome):** Devices → phone frame: innerWidth 390/innerHeight 844 (scaled to fit), admin bar hidden in the frame, overlay running inside (window.name + same-origin check), the parent's toolbar and pins paused. Filing inside saved #581: breakpoint mobile, viewport 390, preview "Phone 390×844", with a 390×844 screenshot and the marker on the link. Closing restores and reloads. Framing headers: Pressable none, SpinupWP SAMEORIGIN (OK); a DENY host gets the "Open in a window" fallback.
+
+### Polish round (2026-10-01)
+- [x] ISC-201: The right-clicked element stays outlined (locked) through the menu and composer, follows scroll, and clears on cancel/save (boot test)
+- [x] ISC-202: The Teamwork task description leads with the full page URL as visible link text (mock test)
+- [x] ISC-203: Settings → "Remove all data" (type DELETE) purges tables, options, fbc_tw_* transients, cron hooks, the fbc_review cap and the screenshots folder, then deactivates; uninstall uses the same Cleanup::purge(). Verified on the real test site: 0 tables, 0 options or transients, 0 cron, 0 cap, folder gone; then restored from backup.
+- [x] ISC-204: When Teamwork is preferred but not connected, the assignee pickers say so (composer hint + admin link)
+- [x] ISC-205: Device preview is three icon buttons (Mobile 390 / Tablet 820 / Desktop 1440) on the toolbar and in the preview switcher (Chrome: frame widths 820 → 1440 → 390)
+- [x] ISC-206: Anti: a test suite contacts a real Teamwork account (rest.php now blocks HTTP and forces WordPress-user assignees)

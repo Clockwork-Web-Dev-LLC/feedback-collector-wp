@@ -358,3 +358,22 @@ describe('annotation', () => {
     delete window.FBCAnnotator;
   });
 });
+
+describe('selection outline', () => {
+  it('keeps the right-clicked element outlined through menu and composer, clears on cancel', async () => {
+    const app = new App(cfg());
+    app.init();
+    await app.setMode(true);
+    const outline = () => shadow()?.querySelector('.outline') as HTMLElement;
+    document.getElementById('cta')?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 150, clientY: 210 }));
+    expect(outline().classList.contains('on')).toBe(true);
+    expect(outline().classList.contains('locked')).toBe(true);
+    expect(outline().style.left).toBe('100px'); // the CTA's stubbed rect
+    (shadow()?.querySelector('.menu button') as HTMLButtonElement).click();
+    expect(shadow()?.querySelector('form.composer')).not.toBeNull();
+    expect(outline().classList.contains('on')).toBe(true); // still selected in the composer
+    const cancel = [...(shadow()?.querySelectorAll('form.composer button') ?? [])].find((b) => b.textContent === 'Cancel') as HTMLButtonElement;
+    cancel.click();
+    expect(outline().classList.contains('on')).toBe(false);
+  });
+});

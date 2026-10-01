@@ -11,14 +11,20 @@
 use FeedbackCollector\Items;
 
 global $wpdb;
-$fbc_max_id = (int) $wpdb->get_var( 'SELECT COALESCE(MAX(id),0) FROM ' . Items::table() );
-$fbc_users  = array();
+$fbc_max_id   = (int) $wpdb->get_var( 'SELECT COALESCE(MAX(id),0) FROM ' . Items::table() );
+$fbc_users    = array();
+$fbc_backup_s = get_option( 'fbc_assignee_source', null );
+// Never touch a real Teamwork account from a test: block all outbound HTTP, and use
+// WordPress users as assignees even if this site has Teamwork connected.
+add_filter( 'pre_http_request', static fn() => new WP_Error( 'fbc_test_offline', 'Network disabled in tests' ) );
+update_option( 'fbc_assignee_source', 'wordpress' );
 register_shutdown_function(
-	static function () use ( $fbc_max_id, &$fbc_users ) {
+	static function () use ( $fbc_max_id, &$fbc_users, $fbc_backup_s ) {
 		global $wpdb;
 		foreach ( $wpdb->get_col( $wpdb->prepare( 'SELECT id FROM ' . Items::table() . ' WHERE id > %d', $fbc_max_id ) ) as $id ) {
 			Items::delete( (int) $id );
 		}
+		null === $fbc_backup_s ? delete_option( 'fbc_assignee_source' ) : update_option( 'fbc_assignee_source', $fbc_backup_s );
 		require_once ABSPATH . 'wp-admin/includes/user.php';
 		foreach ( $fbc_users as $uid ) {
 			wp_delete_user( $uid );
@@ -58,7 +64,6 @@ $make_user = static function ( string $role ) use ( &$fbc_users ): int {
 };
 
 wp_set_current_user( 1 );
-delete_option( 'fbc_assignee_source' ); // Teamwork not connected here, so WordPress users are the source.
 
 // Validation.
 [ $s ] = $call( 'POST', '/items', array( 'title' => '', 'type' => 'bug' ) );
@@ -89,7 +94,7 @@ $check( 'anchor offset clamped to 1', 1.0 === (float) $d['anchor']['offsetX'] );
 $check( 'invalid status → 400', 400 === $s );
 [ $s, $d ] = $call( 'PATCH', "/items/$id", array( 'status' => 'in_progress', 'assignee_id' => 1 ) );
 $check( 'valid status + assignee → 200', 200 === $s && 'in_progress' === $d['status'] );
-$check( 'status and assignee changes logged as activity', 2 === count( array_filter( $d['comments'], static fn( $c ) => 'activity' === $c['kind'] ) ) );
+$check( 'status and assignee changes logged as activity', 2 === count( array_filter( (array) ( $d['comments'] ?? array() ), static fn( $c ) => 'activity' === $c['kind'] ) ) );
 
 // Page scoping.
 [ , $d ] = $call( 'GET', '/items', null, array( 'page_path' => '/rest-test-page/' ) );

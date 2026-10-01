@@ -58,6 +58,12 @@ button {
 .outline.on {
   display: block;
 }
+/* The element a menu or composer is open for: stays put, no hover easing. */
+.outline.locked {
+  transition: none;
+  border-width: 2px;
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 18%, transparent);
+}
 .outline-tag {
   position: absolute;
   top: -22px;
@@ -799,4 +805,31 @@ select {
   border-radius: 8px;
   padding: 18px;
   text-align: center;
+}
+
+/* Device icons (toolbar + preview switcher) */
+.icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+}
+.toolbar .devices {
+  display: inline-flex;
+  gap: 0;
+  padding: 0 2px;
+  margin: 0 2px;
+  border-left: 1px solid color-mix(in srgb, var(--on-dark) 22%, transparent);
+  border-right: 1px solid color-mix(in srgb, var(--on-dark) 22%, transparent);
+}
+.toolbar .icon-btn {
+  padding: 6px 7px;
+}
+.preview-bar .icon-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.preview-bar .icon-label {
+  font-size: 12px;
 }

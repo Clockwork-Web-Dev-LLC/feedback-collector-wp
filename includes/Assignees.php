@@ -92,9 +92,11 @@ final class Assignees {
 			);
 		}
 		return array(
-			'source' => 'wordpress',
-			'people' => Rest::reviewer_list(),
-			'error'  => '',
+			'source'   => 'wordpress',
+			'people'   => Rest::reviewer_list(),
+			'error'    => '',
+			// Teamwork is preferred but not connected yet: WordPress users stand in, and the UI says so.
+			'fallback' => 'teamwork' === self::preference(),
 		);
 	}
 

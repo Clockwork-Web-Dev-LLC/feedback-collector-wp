@@ -232,3 +232,8 @@ body.wp-admin { overflow-x: hidden; }
 /* Screenshot on the detail screen */
 .fbc-shot { display: block; border: 1px solid var(--fbc-border); border-radius: 6px; overflow: hidden; background: #f6f7f7; }
 .fbc-shot img { display: block; width: 100%; height: auto; }
+
+/* "Remove all data" */
+.fbc-admin .button.fbc-danger { background: #b91c1c; border-color: #b91c1c; color: #fff; }
+.fbc-admin .button.fbc-danger:hover, .fbc-admin .button.fbc-danger:focus { background: #991b1b; border-color: #991b1b; color: #fff; }
+.fbc-admin .ul-disc { list-style: disc; padding-left: 20px; }

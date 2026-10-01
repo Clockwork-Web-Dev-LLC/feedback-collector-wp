@@ -4,6 +4,7 @@ import type { Anchor } from './anchor';
 import { Api } from './api';
 import { breakpoint, captureContext, currentPagePath, currentQuery } from './capture';
 import { h, relativeTime, select } from './dom';
+import { deviceIcon } from './icons';
 import type { Config, Item, ItemStatus, ItemType, Priority } from './types';
 
 const TYPES: ItemType[] = ['bug', 'tweak', 'change', 'comment'];
@@ -11,9 +12,9 @@ const STORAGE_KEY = 'fbc:mode';
 const CORNER_KEY = 'fbc:corner';
 export const PREVIEW_FRAME_NAME = 'fbc-preview';
 const DEVICES: Array<{ id: string; label: string; w: number; h: number }> = [
-  { id: 'phone', label: 'Phone', w: 390, h: 844 },
+  { id: 'phone', label: 'Mobile', w: 390, h: 844 },
   { id: 'tablet', label: 'Tablet', w: 820, h: 1180 },
-  { id: 'laptop', label: 'Laptop', w: 1280, h: 800 },
+  { id: 'desktop', label: 'Desktop', w: 1440, h: 900 },
 ];
 const EDGE = 16;
 const SIDEBAR_WIDTH = 360;
@@ -76,6 +77,8 @@ export class App {
   /** True inside our own device-preview iframe. */
   private readonly inPreview = window.self !== window.top && window.name === PREVIEW_FRAME_NAME;
   private previewEl: HTMLElement | null = null;
+  /** Element the open menu/composer is about; stays outlined until the card closes. */
+  private selectedEl: Element | null = null;
 
   constructor(private cfg: Config) {
     this.api = new Api(cfg);
@@ -321,6 +324,7 @@ export class App {
       this.framePending = false;
       this.positionPins();
       this.positionChrome();
+      if (this.selectedEl) this.hideOutline(); // keeps the locked outline on its element while scrolling
     });
   }
 
@@ -388,6 +392,10 @@ export class App {
       this.hideOutline();
       return;
     }
+    this.drawOutline(target);
+  }
+
+  private drawOutline(target: Element): void {
     const r = target.getBoundingClientRect();
     Object.assign(this.outline.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
     const id = target.id ? `#${target.id}` : '';
@@ -434,8 +442,14 @@ export class App {
     return null;
   }
 
+  /** Hides the hover outline, unless an element is selected (menu/composer open for it): that one stays outlined. */
   private hideOutline(): void {
-    this.outline.classList.remove('on');
+    if (this.selectedEl?.isConnected) {
+      this.drawOutline(this.selectedEl);
+      this.outline.classList.add('locked');
+      return;
+    }
+    this.outline.classList.remove('on', 'locked');
   }
 
   private enterPinMode(req: PinModeRequest): void {
@@ -533,13 +547,18 @@ export class App {
     }
   }
 
-  private closeCard(): void {
+  /** Closes the open card. Selection survives only when one card replaces another (menu → composer). */
+  private closeCard(keepSelection = false): void {
     this.card?.remove();
     this.card = null;
+    if (!keepSelection) {
+      this.selectedEl = null;
+      this.hideOutline();
+    }
   }
 
   private showCard(card: HTMLElement, x: number, y: number): void {
-    this.closeCard();
+    this.closeCard(true);
     this.hideOutline();
     this.card = card;
     card.style.left = '0px';
@@ -558,6 +577,8 @@ export class App {
   private openTypeMenu(el: Element, x: number, y: number): void {
     // Capture now, while the page still looks the way the reviewer is reporting it.
     this.pendingShot = this.startCapture({ x, y });
+    // Keep the right-clicked element outlined while the menu and composer are open.
+    this.selectedEl = el;
     const labels = this.cfg.labels.type;
     const choose = (type: ItemType) => this.openComposer(type, el, x, y);
     const buttons = TYPES.map((type, i) =>
@@ -587,6 +608,7 @@ export class App {
   }
 
   private openComposer(type: ItemType, el: Element | null, x: number, y: number): void {
+    this.selectedEl = el; // a whole-page note has nothing to keep outlined
     let anchor: Anchor | null = null;
     if (el) {
       anchor = this.safeAnchor(el, x, y);
@@ -668,6 +690,9 @@ export class App {
       h('label', { class: 'field' }, h('span', { text: 'Description' }), desc),
       h('div', { class: 'row' }, h('label', { class: 'field' }, h('span', { text: 'Type' }), typeSelect), h('label', { class: 'field' }, h('span', { text: 'Priority' }), priority)),
       h('label', { class: 'field' }, h('span', { text: this.assigneeLabel() }), assignee),
+      this.cfg.assignees.fallback
+        ? h('div', { class: 'meta hint', text: 'Showing WordPress users until Teamwork is connected (Feedback → Settings). Then this lists your Teamwork project members.' })
+        : null,
       shotBox,
       h('div', { class: 'actions' }, h('button', { class: 'btn link', type: 'button', text: 'Cancel', onclick: () => this.closeCard() }), submit)
     );
@@ -935,7 +960,15 @@ export class App {
             : this.enterPinMode({ hint: 'Click any element to add feedback', done: (el, x, y) => this.openTypeMenu(el, x, y) }),
       }),
       h('button', { type: 'button', text: 'Page note', onclick: () => this.openComposer('comment', null, window.innerWidth / 2 - 170, 120) }),
-      this.inPreview ? null : h('button', { type: 'button', title: 'Preview this page at phone, tablet and laptop sizes', text: 'Devices', onclick: () => this.openPreview('phone') }),
+      this.inPreview
+        ? null
+        : h(
+            'span',
+            { class: 'devices', role: 'group', 'aria-label': 'Preview at a device size' },
+            ...DEVICES.map((d) =>
+              h('button', { type: 'button', class: 'icon-btn', title: `Preview as ${d.label} (${d.w}px)`, 'aria-label': `Preview as ${d.label}, ${d.w} pixels wide`, onclick: () => this.openPreview(d.id) }, deviceIcon(d.id))
+            )
+          ),
       h('button', { type: 'button', class: this.sidebar ? 'on' : '', onclick: () => (this.sidebar ? this.closeSidebar() : this.openSidebar()) }, h('span', { class: 'label', text: 'List' }), count ? h('span', { class: 'count', text: String(count) }) : null),
       h('button', {
         type: 'button',
@@ -994,7 +1027,19 @@ export class App {
     const blocked = h('div', { class: 'preview-blocked', hidden: true });
 
     const deviceButtons = DEVICES.map((d) =>
-      h('button', { type: 'button', 'aria-pressed': String(d.id === device.id), text: `${d.label} ${d.w}`, onclick: () => this.openPreview(d.id, d.id === device.id ? rotated : false) })
+      h(
+        'button',
+        {
+          type: 'button',
+          class: 'icon-btn',
+          'aria-pressed': String(d.id === device.id),
+          title: `${d.label} (${d.w}px)`,
+          'aria-label': `${d.label}, ${d.w} pixels wide`,
+          onclick: () => this.openPreview(d.id, d.id === device.id ? rotated : false),
+        },
+        deviceIcon(d.id),
+        h('span', { class: 'icon-label', text: d.label })
+      )
     );
     const openWindow = () => {
       window.open(url.toString(), PREVIEW_FRAME_NAME, `width=${w},height=${hgt},resizable=yes,scrollbars=yes`);
