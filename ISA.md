@@ -351,3 +351,17 @@ Test site: local WordPress 7.1.2 on PHP 8.4 / MySQL 26.7 at `http://localhost:88
 - **DEFERRED-VERIFY (follow-up FBC-BROWSER-1):** every overlay-interaction ISC (21–69 UI parts, 73–77, 80–87, 90, 103, 119–120, 147–149). The real-Chrome pass is blocked because the Interceptor extension isn't connected to its daemon ("no extensions connected" after restarting a stale daemon). It needs a reload at `chrome://extensions`.
 - **Not yet verified, no live credentials:** ISC-123 (Test connection), 124 (encrypted-option fallback round trip), 126–130 (settings UI against real Teamwork), 141 (auto-push), 142 (cron schedule registers once credentials exist), 155 (Sync now over HTTP). These need a QA-bot API key and a sandbox project.
 - **Not built (pending approval):** ISC-121 CSV export. ISC-57 (JS error capture) and ISC-141 (auto-push, default off) were built; say if you'd rather they go.
+- **Real-Chrome pass (FBC-BROWSER-1), 2026-10-01**, using Interceptor 1.0.19 against `localhost:8899` with pretty permalinks, logged in as admin. Interceptor's screenshots don't render the Shadow-DOM overlay, so evidence is DOM state and geometry from the live tab.
+  - ISC-16, 17, 21: the overlay host mounts on `<body>`, fixed and full-viewport, z-index 2147483000; `fbcConfig.pagePath` = `/sample-page/`.
+  - ISC-23, 24: the admin-bar toggle turns the toolbar on and sets `fbc:mode` = 1; the toggle's background is `rgb(34,113,177)` after the late-inline-CSS fix.
+  - ISC-27: a trusted right-click on a link opens the menu with Bug, Tweak, Change Request, Comment and "Note for the whole page".
+  - ISC-32: a toolbar Page note saved #36 with `anchor` NULL.
+  - ISC-33, 34: the composer opens next to the element, and Title plus Description submit.
+  - ISC-44, 46, 47, 50, 51, 53, 54, 58: row #35 stores tag `a`, text "your dashboard", viewport 1651, desktop, Chrome 154, post 2. OS is "macOS 26.7" via UA Client Hints, a fix for Chrome's frozen "10.15.7".
+  - ISC-61, 62: pin "35" renders, with its tip at (1001,949) inside the link box 925–1079 × 935–965 (the click was at 1002,950).
+  - ISC-68, 69: after inserting a 240 px banner above it, the pin stays inside the link; after scrolling 300 px it still does; after inserting a same-tag decoy sibling, it still does.
+  - ISC-73, 74: with the link at display:none the pin is removed and the sidebar shows "1 at other breakpoints"; once shown again it moves back under "On this page".
+  - ISC-75, 87: a fake-anchor item is listed under "Orphaned — element not found".
+  - ISC-77, 90: clicking the pin opens the popover; status → Ready for Review persists and logs "changed status from Open to Ready for Review"; Esc closes it.
+  - ISC-81: the sidebar lists this page's items.
+  - ISC-119: `?fbc_item=35` with Feedback mode off turns the mode on, scrolls (scrollY 371), opens #35's popover, pulses the pin and strips the param from the URL.

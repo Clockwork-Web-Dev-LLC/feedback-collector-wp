@@ -87,6 +87,12 @@ final class Frontend {
 			)
 		);
 		wp_add_inline_script( 'fbc-overlay', 'window.fbcConfig = ' . wp_json_encode( self::config() ) . ';', 'before' );
+		// Attached here, during wp_enqueue_scripts, because by the time admin_bar_menu runs
+		// the admin-bar stylesheet has already been printed and late inline CSS is dropped.
+		wp_add_inline_style(
+			'admin-bar',
+			'#wpadminbar #wp-admin-bar-fbc-toggle .ab-icon:before{top:3px}#wpadminbar #wp-admin-bar-fbc-toggle.fbc-on>.ab-item{background:#2271b1;color:#fff}#wpadminbar .fbc-ab-count{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:#d63638;color:#fff;font-size:11px;line-height:18px;text-align:center}'
+		);
 	}
 
 	/**
@@ -163,10 +169,6 @@ final class Frontend {
 				'title'  => esc_html__( 'All feedback', 'feedback-collector' ),
 				'href'   => admin_url( 'admin.php?page=feedback-collector' ),
 			)
-		);
-		wp_add_inline_style(
-			'admin-bar',
-			'#wpadminbar #wp-admin-bar-fbc-toggle .ab-icon:before{top:3px}#wpadminbar #wp-admin-bar-fbc-toggle.fbc-on>.ab-item{background:#2271b1;color:#fff}#wpadminbar .fbc-ab-count{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:#d63638;color:#fff;font-size:11px;line-height:18px;text-align:center}'
 		);
 	}
 }

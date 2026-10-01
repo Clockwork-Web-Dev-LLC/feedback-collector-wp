@@ -1,7 +1,8 @@
 import { App } from './app';
-import { installErrorCollector } from './capture';
+import { installErrorCollector, prefetchPlatform } from './capture';
 
 installErrorCollector();
+prefetchPlatform();
 
 function start(): void {
   const cfg = window.fbcConfig;

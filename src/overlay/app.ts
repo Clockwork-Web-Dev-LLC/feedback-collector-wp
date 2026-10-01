@@ -255,7 +255,8 @@ export class App {
         this.pinsLayer.append(pin);
       }
       const resolved = s.item.status === 'resolved';
-      s.pin.className = `pin ${s.item.type}${resolved ? ' resolved' : ''}`;
+      const pulsing = s.pin.classList.contains('pulse');
+      s.pin.className = `pin ${s.item.type}${resolved ? ' resolved' : ''}${pulsing ? ' pulse' : ''}`;
       s.pin.textContent = resolved ? '✓' : String(s.item.id);
       s.pin.title = `#${s.item.id} ${s.item.title}`;
     }

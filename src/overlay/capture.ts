@@ -36,6 +36,38 @@ export function parseOs(ua: string): string {
   return 'Unknown';
 }
 
+interface UaDataHighEntropy {
+  platform?: string;
+  platformVersion?: string;
+}
+interface NavigatorUaData {
+  getHighEntropyValues(hints: string[]): Promise<UaDataHighEntropy>;
+}
+
+let preciseOs: string | null = null;
+
+/**
+ * Chromium freezes the OS version in the user-agent string (every Mac reports 10.15.7),
+ * so ask User-Agent Client Hints for the real one. Resolves in the background at startup;
+ * until then, or in browsers without it, the UA-string parse is used.
+ */
+export function prefetchPlatform(): void {
+  const uaData = (navigator as Navigator & { userAgentData?: NavigatorUaData }).userAgentData;
+  if (!uaData) return;
+  uaData
+    .getHighEntropyValues(['platform', 'platformVersion'])
+    .then(({ platform, platformVersion }) => {
+      if (!platform || !platformVersion) return;
+      const [major, minor] = platformVersion.split('.');
+      if (platform === 'macOS') preciseOs = `macOS ${major}.${minor ?? '0'}`;
+      else if (platform === 'Windows') preciseOs = Number(major) >= 13 ? 'Windows 11' : 'Windows 10';
+      else if (platform === 'Android' || platform === 'Chrome OS' || platform === 'Linux') preciseOs = `${platform} ${platformVersion}`.trim();
+    })
+    .catch(() => {
+      /* fall back to the UA string */
+    });
+}
+
 /** Collects context automatically. Never reads form field values. */
 export function captureContext(cfg: Config): Context {
   const ua = navigator.userAgent;
@@ -45,7 +77,7 @@ export function captureContext(cfg: Config): Context {
     dpr: Math.round((window.devicePixelRatio || 1) * 100) / 100,
     breakpoint: breakpoint(),
     browser: parseBrowser(ua),
-    os: parseOs(ua),
+    os: preciseOs ?? parseOs(ua),
     user_agent: ua,
     post_id: cfg.page.postId,
     post_type: cfg.page.postType,
