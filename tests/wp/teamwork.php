@@ -35,7 +35,7 @@ wp_clear_scheduled_hook( Teamwork::QUEUE_HOOK );
 update_option( 'fbc_teamwork', array( 'site' => 'https://clockwork.teamwork.com', 'project_id' => 100, 'project_name' => 'Demo', 'tasklist_id' => 200, 'tasklist_name' => 'QA – Round 1', 'round' => 1, 'tags' => array() ) );
 delete_transient( 'fbc_tw_people_100' );
 
-$mock = array( 'calls' => array(), 'next_task' => 9000, 'limit_after' => null, 'creates' => 0, 'tasks' => array(), 'fail_create' => false, 'auth' => array() );
+$mock = array( 'calls' => array(), 'next_task' => 9000, 'limit_after' => null, 'creates' => 0, 'tasks' => array(), 'fail_create' => false, 'auth' => array(), 'comments' => array() );
 
 add_filter( 'pre_http_request', function ( $pre, $args, $url ) {
 	global $mock;
@@ -59,6 +59,13 @@ add_filter( 'pre_http_request', function ( $pre, $args, $url ) {
 	if ( '/projects/api/v3/projects/999/tasks.json' === $path ) return $json( 403, array( 'errors' => array( array( 'detail' => 'no access to project' ) ) ) );
 	// Any other project (e.g. real items already on this site): nothing changed. Never a real request.
 	if ( preg_match( '#^/projects/api/v3/projects/\d+/tasks\.json$#', (string) $path ) ) return $json( 200, array( 'tasks' => array(), 'meta' => array( 'page' => array( 'hasMore' => false ) ) ) );
+	if ( 'POST' === $args['method'] && preg_match( '#^/projects/api/v3/tasks/(\d+)/comments\.json$#', (string) $path ) ) {
+		$mock['last_comment_payload'] = json_decode( $args['body'], true );
+		return $json( 201, array( 'comment' => array( 'id' => 88881 ) ) );
+	}
+	if ( 'GET' === $args['method'] && preg_match( '#^/projects/api/v3/tasks/(\d+)/comments\.json$#', (string) $path ) ) {
+		return $json( 200, array( 'comments' => $mock['comments'] ?? array(), 'meta' => array( 'page' => array( 'hasMore' => false ) ) ) );
+	}
 	if ( 'POST' === $args['method'] && '/projects/100/tasklists.json' === $path ) return $json( 201, array( 'TASKLISTID' => '301', 'STATUS' => 'OK' ) );
 	return $json( 404, array( 'message' => 'unmocked ' . $path ) );
 }, 10, 3 );
@@ -192,3 +199,28 @@ Teamwork::save_settings();
 $_POST = array();
 check( 'switching back to hourly reschedules once', 'hourly' === wp_get_schedule( Teamwork::SYNC_HOOK ) && 1 === count( array_filter( _get_cron_array(), static fn( $hooks ) => isset( $hooks[ Teamwork::SYNC_HOOK ] ) ) ) );
 check( 'status text shows last and next sync', str_contains( Teamwork::sync_status_text(), 'Last synced' ) && str_contains( Teamwork::sync_status_text(), 'next in' ) );
+
+// 10. Comment sync (push and pull)
+$c_id  = Items::add_comment( $id, 'Please check mobile responsiveness' );
+$c_row = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM %i WHERE id = %d', Items::comments_table(), $c_id ), ARRAY_A );
+check( 'pushing WP reply creates comment in Teamwork', 88881 === (int) $c_row['tw_comment_id'] );
+check( 'pushed comment includes author and branding prefix', str_contains( $mock['last_comment_payload']['comment']['body'] ?? '', 'Clockwork' ) );
+
+$mock['comments'] = array(
+	array(
+		'id'     => 88882,
+		'body'   => 'Fixed in staging',
+		'author' => array(
+			'firstName' => 'Bob',
+			'lastName'  => 'Dev',
+		),
+	),
+);
+$synced_count = Teamwork::sync_task_comments( $client, $id, 9001 );
+$thread       = Items::comments( $id );
+$tw_comment   = end( $thread );
+check( 'pulling comment from Teamwork adds comment to WP thread', $synced_count >= 1 && 88882 === (int) $tw_comment['tw_comment_id'] );
+check( 'pulled comment attributes author', str_contains( $tw_comment['body'], 'Bob Dev via Teamwork' ) );
+
+$second_sync = Teamwork::sync_task_comments( $client, $id, 9001 );
+check( 'comment sync is idempotent (does not duplicate)', 0 === $second_sync );

@@ -405,4 +405,39 @@ final class Client {
 	public function task_url( int $task_id ): string {
 		return $this->site . '/app/tasks/' . $task_id;
 	}
+
+	/**
+	 * Creates a comment on a task.
+	 *
+	 * @param int    $task_id Task ID.
+	 * @param string $body    Comment text.
+	 * @param bool   $notify  Whether to notify task followers/assignees.
+	 * @return int|WP_Error Teamwork comment ID.
+	 */
+	public function create_task_comment( int $task_id, string $body, bool $notify = true ): int|WP_Error {
+		$payload = array(
+			'comment'        => array(
+				'body' => $body,
+			),
+			'commentOptions' => array(
+				'notify' => $notify,
+			),
+		);
+		$data = $this->request( 'POST', "/projects/api/v3/tasks/{$task_id}/comments.json", array(), $payload );
+		if ( is_wp_error( $data ) ) {
+			return $data;
+		}
+		$id = (int) ( $data['comment']['id'] ?? $data['commentId'] ?? $data['COMMENTID'] ?? 0 );
+		return $id ?: new WP_Error( 'fbc_tw_api', __( 'Teamwork did not return a comment ID.', 'feedback-collector' ) );
+	}
+
+	/**
+	 * Comments on a task.
+	 *
+	 * @param int $task_id Task ID.
+	 * @return array<int, array<string, mixed>>|WP_Error
+	 */
+	public function task_comments( int $task_id ): array|WP_Error {
+		return $this->paginate( "/projects/api/v3/tasks/{$task_id}/comments.json", 'comments' );
+	}
 }

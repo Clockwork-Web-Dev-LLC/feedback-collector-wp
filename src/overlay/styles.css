@@ -244,15 +244,15 @@ button {
   padding: 6px 8px;
   background-color: #fff;
 }
-/* Own chevron instead of the browser arrow: inset 12px from the edge, same in every browser. */
+/* Own chevron instead of the browser arrow: inset 10px from the edge, same in every browser. */
 select {
   appearance: none;
   -webkit-appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%2350575e' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: right 12px center;
+  background-position: right 10px center;
   background-size: 10px 6px;
-  padding-right: 32px !important;
+  padding-right: 30px !important;
   cursor: pointer;
 }
 .field textarea {
@@ -350,6 +350,48 @@ select {
 .thread .body {
   white-space: pre-wrap;
   word-break: break-word;
+}
+.thread .mention,
+.desc .mention {
+  display: inline-block;
+  padding: 1px 5px;
+  background: rgba(105, 83, 196, 0.12);
+  color: var(--ink-primary, #6953c4);
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 0.95em;
+}
+.mention-container {
+  position: relative;
+}
+.mention-menu {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 4px);
+  z-index: 1000;
+  background: #ffffff;
+  border: 1px solid #dcdcde;
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  max-height: 160px;
+  overflow-y: auto;
+  min-width: 160px;
+  max-width: 240px;
+  padding: 4px 0;
+}
+.mention-item {
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  color: #1d2327;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mention-item:hover,
+.mention-item.is-active {
+  background: var(--accent, #6953c4);
+  color: var(--on-primary, #ffffff);
 }
 .notice {
   background: #fcf9e8;

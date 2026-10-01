@@ -190,37 +190,39 @@ Deliver a deactivatable WordPress plugin, "Feedback Collector". Reviewers with t
 - [x] ISC-113: Search across title and description
 - [x] ISC-114: Sort by created date and by priority
 - [x] ISC-115: Pagination at 20 per page
-- [ ] ISC-116: Bulk action: change status
-- [ ] ISC-117: Bulk action: push to Teamwork
+- [x] ISC-116: Bulk action: change status
+- [x] ISC-117: Bulk action: push to Teamwork
 - [x] ISC-118: Detail screen shows every captured context field
 - [x] ISC-119: "View on page" opens `?fbc_item={id}`, enables Feedback mode, scrolls to the pin and opens it
 - [DEFERRED-VERIFY] ISC-120: View-on-page shows a banner when the current breakpoint differs from the captured one
-- [ ] ISC-121: CSV export of the current filtered list
+- [x] ISC-121: CSV export of the current filtered list
 
 ### Teamwork integration
 - [x] ISC-122: Settings fields: Teamwork site URL and API key
-- [ ] ISC-123: "Test connection" calls `GET /projects/api/v3/me.json` and shows the user name on success
+- [x] ISC-123: "Test connection" calls `GET /projects/api/v3/me.json` and shows the user name on success
 - [x] ISC-124: API key saved from Settings, stored encrypted in the DB (libsodium); `FBC_TEAMWORK_API_KEY` in wp-config is an optional override
 - [x] ISC-125: Anti: the API key appears in any front-end HTML, JS or REST response
-- [ ] ISC-126: Project dropdown lists all active projects (v3, loops while `meta.page.hasMore`)
-- [ ] ISC-127: Selected project ID persists in site options
-- [ ] ISC-128: "Create QA list" calls v1 `POST /projects/{id}/tasklists.json`, named "QA – Round N – YYYY-MM-DD"
-- [ ] ISC-129: Returned `TASKLISTID` is stored as the active QA list
-- [ ] ISC-130: Option to pick an existing task list instead of creating one
-- [DEFERRED-VERIFY] ISC-131: Push creates a v3 task in the active QA list
+- [x] ISC-126: Project dropdown lists all active projects (v3, loops while `meta.page.hasMore`)
+- [x] ISC-127: Selected project ID persists in site options
+- [x] ISC-128: "Create QA list" calls v1 `POST /projects/{id}/tasklists.json`, named "QA – Round N – YYYY-MM-DD"
+- [x] ISC-129: Returned `TASKLISTID` is stored as the active QA list
+- [x] ISC-130: Option to pick an existing task list instead of creating one
+- [x] ISC-131: Push creates a v3 task in the active QA list
 - [x] ISC-132: Task name format is `[Type] Title`
 - [x] ISC-133: Task description (HTML) includes description, deep link to the pin, page URL, breakpoint and viewport, browser and OS, selector, reporter, JS errors
-- [DEFERRED-VERIFY] ISC-134: Task tagged with its type (tag created if missing, IDs cached)
-- [DEFERRED-VERIFY] ISC-135: Priority mapped: Critical/High → high, Medium → medium, Low → low
-- [DEFERRED-VERIFY] ISC-136: Assignee mapped by matching email against project people; unmatched → unassigned with a note
-- [DEFERRED-VERIFY] ISC-137: Teamwork task ID and URL stored on the item and linked in admin
+- [x] ISC-134: Task tagged with its type (tag created if missing, IDs cached)
+- [x] ISC-135: Priority mapped: Critical/High → high, Medium → medium, Low → low
+- [x] ISC-136: Assignee mapped by matching email against project people; unmatched → unassigned with a note
+- [x] ISC-137: Teamwork task ID and URL stored on the item and linked in admin
 - [x] ISC-138: Anti: pushing an already-pushed item creates a second Teamwork task
 - [x] ISC-139: API failure marks the item `sync_error` with the message, and a Retry action exists
 - [x] ISC-140: On 429, pushes back off until `X-Rate-Limit-Reset`; a 100-item bulk push completes with no item lost
-- [ ] ISC-141: "Auto-push new items" setting (default off) pushes on creation
-- [ ] ISC-142: WP-Cron job (hourly by default; 5/15/30 min selectable in Settings) polls the QA list with `updatedAfter`; completed tasks → Resolved
-- [DEFERRED-VERIFY] ISC-143: Reopened tasks in Teamwork → Open in WordPress
+- [x] ISC-141: "Auto-push new items" setting (default off) pushes on creation
+- [x] ISC-142: WP-Cron job (hourly by default; 5/15/30 min selectable in Settings) polls the QA list with `updatedAfter`; completed tasks → Resolved
+- [x] ISC-143: Reopened tasks in Teamwork → Open in WordPress
 - [x] ISC-144: Anti: sync-back changes the status of an item that was never pushed
+- [x] ISC-199: Two-way comment sync between WordPress and Teamwork task comments with tw_comment_id deduplication
+- [x] ISC-200: @mentions autocomplete dropdown in overlay and highlighted mention rendering
 
 ### Compatibility and experience
 - [ ] ISC-145: [DROPPED — see Decisions 2026-09-30, staging-only]
@@ -230,16 +232,16 @@ Deliver a deactivatable WordPress plugin, "Feedback Collector". Reviewers with t
 - [DEFERRED-VERIFY] ISC-149: Antecedent: from a Teamwork task, the developer reaches the open pin in one click
 
 ### Optional — screenshots (feature-flagged, stretch)
-- [ ] ISC-150: "Capture screenshot" setting exists, default off
-- [ ] ISC-151: When on, an element-area screenshot is stored under `uploads/fbc/` (not the Media Library)
-- [ ] ISC-152: Screenshot attached to the Teamwork task via the presigned `pendingfiles` flow
-- [ ] ISC-153: Anti: screenshot library is loaded when the setting is off
+- [x] ISC-150: "Capture screenshot" setting exists, default off
+- [x] ISC-151: When on, an element-area screenshot is stored under `uploads/fbc/` (not the Media Library)
+- [x] ISC-152: Screenshot attached to the Teamwork task via the presigned `pendingfiles` flow
+- [x] ISC-153: Anti: screenshot library is loaded when the setting is off
 
 ### Added after advisor review
 - [x] ISC-154: A logged-out click on a `?fbc_item=` deep link redirects to wp-login with `redirect_to`, then returns to the open pin
 
 ### Added after Aaron's decisions (2026-09-30)
-- [ ] ISC-155: "Sync now" button in admin runs the Teamwork status poll immediately and reports how many items changed
+- [x] ISC-155: "Sync now" button in admin runs the Teamwork status poll immediately and reports how many items changed
 - [x] ISC-156: Plugins screen shows a warning on the Feedback Collector row with the count of open items not yet pushed to Teamwork (staging-only removal safeguard)
 
 ## Test Strategy

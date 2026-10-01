@@ -98,9 +98,11 @@ final class Install {
 				user_id bigint(20) unsigned NOT NULL DEFAULT 0,
 				kind varchar(20) NOT NULL DEFAULT 'comment',
 				body longtext NOT NULL,
+				tw_comment_id bigint(20) unsigned NOT NULL DEFAULT 0,
 				created_at datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
 				PRIMARY KEY  (id),
-				KEY item_id (item_id)
+				KEY item_id (item_id),
+				KEY tw_comment_id (tw_comment_id)
 			) {$charset};"
 		);
 	}

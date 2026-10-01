@@ -79,10 +79,36 @@ export class App {
   private previewEl: HTMLElement | null = null;
   /** Element the open menu/composer is about; stays outlined until the card closes. */
   private selectedEl: Element | null = null;
+  private unbinds: Array<() => void> = [];
+  private cardCleanup: (() => void) | null = null;
 
   constructor(private cfg: Config) {
     this.api = new Api(cfg);
     this.pagePath = cfg.pagePath ?? currentPagePath(cfg.homePath);
+  }
+
+  /** Cleans up all listeners, observers, timers and DOM elements. */
+  destroy(): void {
+    if (this.cardCleanup) {
+      this.cardCleanup();
+      this.cardCleanup = null;
+    }
+    for (const u of this.unbinds) u();
+    this.unbinds = [];
+    if (this.mutationObserver) {
+      this.mutationObserver.disconnect();
+      this.mutationObserver = null;
+    }
+    if (this.refreshTimer) {
+      window.clearTimeout(this.refreshTimer);
+      this.refreshTimer = 0;
+    }
+    this.host?.remove();
+  }
+
+  private listen(target: EventTarget, type: string, listener: EventListenerOrEventListenerObject, options?: boolean | AddEventListenerOptions): void {
+    target.addEventListener(type, listener, options);
+    this.unbinds.push(() => target.removeEventListener(type, listener, options));
   }
 
   init(): void {
@@ -156,15 +182,15 @@ export class App {
   }
 
   private bindGlobalEvents(): void {
-    document.addEventListener('contextmenu', (e) => this.onContextMenu(e), true);
-    document.addEventListener('mousemove', (e) => this.onMouseMove(e), { capture: true, passive: true });
+    this.listen(document, 'contextmenu', ((e: MouseEvent) => this.onContextMenu(e)) as EventListener, true);
+    this.listen(document, 'mousemove', ((e: MouseEvent) => this.onMouseMove(e)) as EventListener, { capture: true, passive: true });
     for (const type of ['pointerdown', 'mousedown', 'mouseup', 'click']) {
-      document.addEventListener(type, (e) => this.onPinModeEvent(e as MouseEvent), true);
+      this.listen(document, type, ((e: MouseEvent) => this.onPinModeEvent(e)) as EventListener, true);
     }
-    document.addEventListener('mousedown', (e) => this.onOutsideMouseDown(e), false);
-    document.addEventListener('keydown', (e) => this.onKeyDown(e), true);
-    window.addEventListener('scroll', () => this.schedulePosition(), { passive: true, capture: true });
-    window.addEventListener('resize', () => {
+    this.listen(document, 'mousedown', ((e: MouseEvent) => this.onOutsideMouseDown(e)) as EventListener, false);
+    this.listen(document, 'keydown', ((e: KeyboardEvent) => this.onKeyDown(e)) as EventListener, true);
+    this.listen(window, 'scroll', (() => this.schedulePosition()) as EventListener, { passive: true, capture: true });
+    this.listen(window, 'resize', (() => {
       const widthChanged = window.innerWidth !== this.lastWidth;
       this.lastWidth = window.innerWidth;
       if (this.card?.classList.contains('popover') || this.card?.classList.contains('composer')) {
@@ -173,15 +199,17 @@ export class App {
       }
       if (widthChanged) this.scheduleRefresh(80);
       else this.schedulePosition();
-    });
+    }) as EventListener);
   }
 
   private bindAdminBar(): void {
     const link = document.querySelector<HTMLAnchorElement>('#wp-admin-bar-fbc-toggle > a');
-    link?.addEventListener('click', (e) => {
-      e.preventDefault();
-      void this.setMode(!this.mode);
-    });
+    if (link) {
+      this.listen(link, 'click', ((e: MouseEvent) => {
+        e.preventDefault();
+        void this.setMode(!this.mode);
+      }) as EventListener);
+    }
   }
 
   // ---------------------------------------------------------------- mode
@@ -560,6 +588,10 @@ export class App {
 
   /** Closes the open card. Selection survives only when one card replaces another (menu → composer). */
   private closeCard(keepSelection = false): void {
+    if (this.cardCleanup) {
+      this.cardCleanup();
+      this.cardCleanup = null;
+    }
     this.card?.remove();
     this.card = null;
     if (!keepSelection) {
@@ -797,7 +829,7 @@ export class App {
     title.focus();
   }
 
-  private async openPopover(id: number, at?: { x: number; y: number }): Promise<void> {
+  async openPopover(id: number, at?: { x: number; y: number }): Promise<void> {
     let item: Item;
     try {
       item = await this.api.getItem(id);
@@ -833,12 +865,15 @@ export class App {
       onchange: () => void save({ priority: priority.value as Priority }),
     });
 
-    const reply = h('textarea', { placeholder: 'Reply…', rows: 2 });
+    const reply = h('textarea', { placeholder: 'Reply… (type @ to mention)', rows: 2 }) as HTMLTextAreaElement;
+    const replyField = h('label', { class: 'field mention-container' }, reply);
+    const cleanupMentions = this.setupMentions(reply, replyField);
+
     const thread = h(
       'ul',
       { class: 'thread' },
       ...(item.comments ?? []).map((c) =>
-        h('li', { class: c.kind }, h('span', { class: 'who', text: c.user_name }), h('span', { class: 'when', text: relativeTime(c.created_at) }), h('div', { class: 'body', text: c.body }))
+        h('li', { class: c.kind }, h('span', { class: 'who', text: c.user_name }), h('span', { class: 'when', text: relativeTime(c.created_at) }), this.renderMentionText('body', c.body))
       )
     );
 
@@ -865,7 +900,7 @@ export class App {
           : null,
       mismatch,
       orphan,
-      item.description ? h('p', { class: 'desc', text: item.description }) : null,
+      item.description ? this.renderMentionText('desc', item.description) : null,
       item.screenshot_url
         ? h(
             'div',
@@ -906,7 +941,7 @@ export class App {
           )
         : h('label', { class: 'field' }, h('span', { text: this.assigneeLabel() }), assignee),
       thread,
-      h('label', { class: 'field' }, reply),
+      replyField,
       h(
         'div',
         { class: 'actions' },
@@ -929,6 +964,145 @@ export class App {
       )
     );
     this.showCard(card, x, y);
+    this.cardCleanup = cleanupMentions;
+  }
+
+  private renderMentionText(containerClass: string, text: string): HTMLElement {
+    const el = h('div', { class: containerClass });
+    const people = this.cfg.assignees?.people ?? [];
+    const escaped = people
+      .map((p) => p.name.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+      .filter((n) => n.length > 0)
+      .sort((a, b) => b.length - a.length);
+    const pattern = escaped.length
+      ? new RegExp(`(@(?:${escaped.join('|')}|[A-Za-z0-9_.-]+))`, 'g')
+      : /(@[A-Za-z0-9_.-]+)/g;
+    const parts = text.split(pattern);
+    for (const part of parts) {
+      if (part.startsWith('@')) {
+        el.append(h('span', { class: 'mention', text: part }));
+      } else if (part) {
+        el.append(document.createTextNode(part));
+      }
+    }
+    return el;
+  }
+
+  private setupMentions(textarea: HTMLTextAreaElement, container: HTMLElement): () => void {
+    const people = this.cfg.assignees?.people ?? [];
+    if (!people.length) return () => {};
+
+    let menu: HTMLDivElement | null = null;
+    let selectedIndex = 0;
+    let matchStart = -1;
+    let filtered: Array<{ id: number; name: string }> = [];
+
+    const closeMenu = () => {
+      menu?.remove();
+      menu = null;
+      matchStart = -1;
+      filtered = [];
+    };
+
+    const insertMention = (person: { id: number; name: string }) => {
+      const val = textarea.value;
+      const before = val.slice(0, matchStart);
+      const after = val.slice(textarea.selectionEnd);
+      const insert = `@${person.name} `;
+      textarea.value = `${before}${insert}${after}`;
+      const newPos = before.length + insert.length;
+      textarea.setSelectionRange(newPos, newPos);
+      textarea.focus();
+      closeMenu();
+    };
+
+    const renderMenu = () => {
+      if (!menu) {
+        menu = h('div', { class: 'mention-menu', role: 'listbox' }) as HTMLDivElement;
+        container.append(menu);
+      }
+      menu.innerHTML = '';
+      if (!filtered.length) {
+        closeMenu();
+        return;
+      }
+      filtered.forEach((p, idx) => {
+        const item = h('div', {
+          class: `mention-item${idx === selectedIndex ? ' is-active' : ''}`,
+          role: 'option',
+          text: p.name,
+          onclick: (e: Event) => {
+            e.preventDefault();
+            e.stopPropagation();
+            insertMention(p);
+          },
+        });
+        menu?.append(item);
+      });
+    };
+
+    const onInput = () => {
+      const pos = typeof textarea.selectionStart === 'number' && textarea.selectionStart > 0
+        ? textarea.selectionStart
+        : textarea.value.length;
+      const val = textarea.value.slice(0, pos);
+      const lastAt = val.lastIndexOf('@');
+      if (lastAt === -1 || (lastAt > 0 && !/\s/.test(val[lastAt - 1]))) {
+        closeMenu();
+        return;
+      }
+      const query = val.slice(lastAt + 1).toLowerCase();
+      if (query.includes('\n')) {
+        closeMenu();
+        return;
+      }
+      matchStart = lastAt;
+      filtered = people.filter((p) => p.name.toLowerCase().includes(query)).slice(0, 5);
+      selectedIndex = 0;
+      if (filtered.length) {
+        renderMenu();
+      } else {
+        closeMenu();
+      }
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!menu) return;
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        selectedIndex = (selectedIndex + 1) % filtered.length;
+        renderMenu();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        selectedIndex = (selectedIndex - 1 + filtered.length) % filtered.length;
+        renderMenu();
+      } else if (e.key === 'Enter' || e.key === 'Tab') {
+        if (filtered[selectedIndex]) {
+          e.preventDefault();
+          insertMention(filtered[selectedIndex]);
+        }
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        closeMenu();
+      }
+    };
+
+    textarea.addEventListener('input', onInput);
+    textarea.addEventListener('keydown', onKeyDown);
+    const onDocClick = (e: Event) => {
+      if (menu && !menu.contains(e.target as Node) && e.target !== textarea) {
+        closeMenu();
+      }
+    };
+    document.addEventListener('click', onDocClick);
+
+    return () => {
+      closeMenu();
+      textarea.removeEventListener('input', onInput);
+      textarea.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('click', onDocClick);
+    };
   }
 
   private reanchor(id: number): void {

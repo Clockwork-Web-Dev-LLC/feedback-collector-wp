@@ -45,6 +45,20 @@ function makeItem(over: Partial<Item>): Item {
 const shadow = () => document.getElementById(OVERLAY_HOST_ID)?.shadowRoot ?? null;
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
+let activeApps: App[] = [];
+function createApp(config = cfg()): App {
+  const a = new App(config);
+  activeApps.push(a);
+  return a;
+}
+
+afterEach(() => {
+  for (const a of activeApps) a.destroy();
+  activeApps = [];
+  delete window.FBCCapture;
+  delete window.FBCAnnotator;
+});
+
 beforeEach(() => {
   document.getElementById('wpadminbar')?.remove();
   document.body.innerHTML = '<main><section><h2>Services</h2><a id="cta" href="/contact/">Book a demo</a></section></main>';
@@ -64,6 +78,12 @@ beforeEach(() => {
     if (method === 'GET' && url.includes('/items&') ) {
       return new Response(JSON.stringify({ items: serverItems, total: serverItems.length }), { status: 200 });
     }
+    const itemMatch = url.match(/\/items\/(\d+)/);
+    if (method === 'GET' && itemMatch) {
+      const id = Number(itemMatch[1]);
+      const found = serverItems.find((i) => i.id === id) ?? makeItem({ id });
+      return new Response(JSON.stringify(found), { status: 200 });
+    }
     if (method === 'POST' && url.endsWith('/items')) {
       const b = body as Partial<Item>;
       const item = makeItem({ id: 42, type: b.type, title: b.title, anchor: b.anchor ?? null, page_path: b.page_path });
@@ -79,7 +99,7 @@ afterEach(() => {
 
 describe('overlay boot', () => {
   it('mounts a shadow host and stays inert until Feedback mode is on', async () => {
-    const app = new App(cfg());
+    const app = createApp(cfg());
     app.init();
     expect(shadow()).not.toBeNull();
     expect(shadow()?.querySelector('.toolbar')).toBeNull();
@@ -91,7 +111,7 @@ describe('overlay boot', () => {
   });
 
   it('right-click → type menu → composer → POST with anchor, page key and context', async () => {
-    const app = new App(cfg());
+    const app = createApp(cfg());
     app.init();
     await app.setMode(true);
     expect(shadow()?.querySelector('.toolbar')).not.toBeNull();
@@ -133,7 +153,7 @@ describe('overlay boot', () => {
   });
 
   it('empty title is blocked client-side (no POST)', async () => {
-    const app = new App(cfg());
+    const app = createApp(cfg());
     app.init();
     await app.setMode(true);
     document.getElementById('cta')?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 150, clientY: 210 }));
@@ -146,7 +166,7 @@ describe('overlay boot', () => {
   });
 
   it('Alt+right-click passes through to the native menu', async () => {
-    const app = new App(cfg());
+    const app = createApp(cfg());
     app.init();
     await app.setMode(true);
     const ev = new MouseEvent('contextmenu', { bubbles: true, cancelable: true, altKey: true });
@@ -160,7 +180,7 @@ describe('overlay boot', () => {
       makeItem({ id: 5, type: 'change', anchor: { id: 'cta', selector: '#cta', xpath: '', text: 'Book a demo', tag: 'a', offsetX: 0.5, offsetY: 0.5, docX: 0, docY: 0 } }),
       makeItem({ id: 6, anchor: { id: 'gone', selector: '#gone', xpath: '/html/body/div[9]', text: 'Missing', tag: 'button', offsetX: 0.5, offsetY: 0.5, docX: 0, docY: 0 } }),
     ];
-    const app = new App(cfg());
+    const app = createApp(cfg());
     app.init();
     await app.setMode(true);
     const pins = [...(shadow()?.querySelectorAll('.pin') ?? [])].map((p) => p.textContent);
@@ -171,7 +191,7 @@ describe('overlay boot', () => {
 
   it('Alt+Shift+F toggles mode but not while typing in an input', async () => {
     document.body.insertAdjacentHTML('beforeend', '<input id="q" />');
-    const app = new App(cfg());
+    const app = createApp(cfg());
     app.init();
     const input = document.getElementById('q') as HTMLInputElement;
     input.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, altKey: true, shiftKey: true, code: 'KeyF', key: 'Ï' }));
@@ -187,7 +207,7 @@ describe('pin reloads', () => {
   it('reloading items (e.g. after closing device preview) never duplicates pins, and drops removed ones', async () => {
     const anchor = { id: 'cta', selector: '#cta', xpath: '', text: 'Book a demo', tag: 'a', offsetX: 0.5, offsetY: 0.5, docX: 0, docY: 0 };
     serverItems = [makeItem({ id: 5, anchor }), makeItem({ id: 9, anchor })];
-    const app = new App(cfg());
+    const app = createApp(cfg());
     app.init();
     await app.setMode(true);
     const pins = () => [...(shadow()?.querySelectorAll('.pin') ?? [])].map((p) => p.textContent);
@@ -216,7 +236,7 @@ describe('toolbar placement', () => {
   const px = (v: string) => Number.parseFloat(v);
 
   it('defaults to the bottom-right corner', async () => {
-    const app = new App(cfg());
+    const app = createApp(cfg());
     app.init();
     await app.setMode(true);
     expect(toolbar().dataset.corner).toBe('br');
@@ -225,7 +245,7 @@ describe('toolbar placement', () => {
 
   it('drag snaps to the nearest corner, persists, and never sits under the admin bar', async () => {
     adminBar(32);
-    const app = new App(cfg());
+    const app = createApp(cfg());
     app.init();
     await app.setMode(true);
     const grip = toolbar().querySelector('.grip') as HTMLElement;
@@ -244,7 +264,7 @@ describe('toolbar placement', () => {
   it('restores the saved corner on the next page load', async () => {
     window.localStorage.setItem('fbc:corner', 'tr');
     adminBar(46); // the taller mobile admin bar
-    const app = new App(cfg());
+    const app = createApp(cfg());
     app.init();
     await app.setMode(true);
     expect(toolbar().dataset.corner).toBe('tr');
@@ -252,7 +272,7 @@ describe('toolbar placement', () => {
   });
 
   it('arrow keys on the grip move between corners', async () => {
-    const app = new App(cfg());
+    const app = createApp(cfg());
     app.init();
     await app.setMode(true);
     const grip = () => toolbar().querySelector('.grip') as HTMLElement;
@@ -263,7 +283,7 @@ describe('toolbar placement', () => {
   });
 
   it('a right-corner toolbar moves aside when the sidebar opens', async () => {
-    const app = new App(cfg());
+    const app = createApp(cfg());
     app.init();
     await app.setMode(true);
     const before = px(toolbar().style.left);
@@ -274,7 +294,7 @@ describe('toolbar placement', () => {
 
   it('keeps the sidebar and hints below the admin bar', async () => {
     adminBar(32);
-    const app = new App(cfg());
+    const app = createApp(cfg());
     app.init();
     await app.setMode(true);
     const root = shadow()?.querySelector('.fbc') as HTMLElement;
@@ -291,7 +311,7 @@ describe('screenshots', () => {
         return new Blob([new Uint8Array([0xff, 0xd8, 0xff])], { type: 'image/jpeg' });
       },
     };
-    const app = new App({ ...cfg(), shots: true, assetsUrl: 'http://localhost:8899/wp-content/plugins/feedback-collector/dist/' });
+    const app = createApp({ ...cfg(), shots: true, assetsUrl: 'http://localhost:8899/wp-content/plugins/feedback-collector/dist/' });
     app.init();
     await app.setMode(true);
     document.getElementById('cta')?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 150, clientY: 210 }));
@@ -317,7 +337,7 @@ describe('screenshots', () => {
 
   it('Remove screenshot sends the item without one', async () => {
     window.FBCCapture = { captureViewport: async () => new Blob([new Uint8Array([1])], { type: 'image/jpeg' }) };
-    const app = new App({ ...cfg(), shots: true, assetsUrl: 'x/' });
+    const app = createApp({ ...cfg(), shots: true, assetsUrl: 'x/' });
     app.init();
     await app.setMode(true);
     document.getElementById('cta')?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 150, clientY: 210 }));
@@ -353,7 +373,7 @@ describe('annotation', () => {
         });
       },
     };
-    const app = new App({ ...cfg(), shots: true, assetsUrl: 'x/' });
+    const app = createApp({ ...cfg(), shots: true, assetsUrl: 'x/' });
     app.init();
     await app.setMode(true);
     document.getElementById('cta')?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 150, clientY: 210 }));
@@ -382,7 +402,7 @@ describe('annotation', () => {
 
 describe('selection outline', () => {
   it('keeps the right-clicked element outlined through menu and composer, clears on cancel', async () => {
-    const app = new App(cfg());
+    const app = createApp(cfg());
     app.init();
     await app.setMode(true);
     const outline = () => shadow()?.querySelector('.outline') as HTMLElement;
@@ -398,3 +418,58 @@ describe('selection outline', () => {
     expect(outline().classList.contains('on')).toBe(false);
   });
 });
+
+describe('app lifecycle and mentions', () => {
+  it('destroy() unmounts host and unbinds listeners', async () => {
+    const app = createApp(cfg());
+    app.init();
+    await app.setMode(true);
+    expect(document.getElementById(OVERLAY_HOST_ID)).not.toBeNull();
+    app.destroy();
+    expect(document.getElementById(OVERLAY_HOST_ID)).toBeNull();
+  });
+
+  it('popover renders @mentions wrapped in .mention tags and autocompletes', async () => {
+    serverItems = [
+      makeItem({
+        id: 10,
+        title: 'Mentions test',
+        description: 'Hello @Admin, please check this.',
+        comments: [
+          { id: 1, kind: 'comment', body: 'CC @Admin for review', user_id: 2, user_name: 'Bob', created_at: new Date().toISOString() },
+        ],
+      }),
+    ];
+    const app = createApp(cfg());
+    app.init();
+    await app.setMode(true);
+    await app.openPopover(10, { x: 50, y: 50 });
+    const card = shadow()?.querySelector('.card.popover') as HTMLElement;
+    expect(card).not.toBeNull();
+
+    // Mentions in description and comments rendered as span.mention
+    const descMentions = card.querySelectorAll('.desc .mention');
+    expect(descMentions.length).toBe(1);
+    expect(descMentions[0].textContent).toBe('@Admin');
+
+    const commentMentions = card.querySelectorAll('.thread .mention');
+    expect(commentMentions.length).toBe(1);
+    expect(commentMentions[0].textContent).toBe('@Admin');
+
+    // Autocomplete typing @ in reply textarea
+    const reply = card.querySelector('textarea') as HTMLTextAreaElement;
+    expect(reply).not.toBeNull();
+    reply.value = 'Hey @Ad';
+    reply.setSelectionRange(7, 7);
+    reply.dispatchEvent(new Event('input', { bubbles: true }));
+    await tick();
+
+    const menu = card.querySelector('.mention-menu');
+    expect(menu).not.toBeNull();
+    const item = menu?.querySelector('.mention-item') as HTMLElement;
+    expect(item?.textContent).toBe('Admin');
+    item.click();
+    expect(reply.value).toBe('Hey @Admin ');
+  });
+});
+

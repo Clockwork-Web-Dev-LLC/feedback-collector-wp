@@ -353,25 +353,32 @@ final class Items {
 	/**
 	 * Adds a reply or activity entry to an item's thread.
 	 *
-	 * @param int      $item_id Item ID.
-	 * @param string   $body    Comment body (already sanitized).
-	 * @param string   $kind    'comment' or 'activity'.
-	 * @param int|null $user_id Author; null means the current user, 0 means Teamwork sync.
+	 * @param int      $item_id       Item ID.
+	 * @param string   $body          Comment body (already sanitized).
+	 * @param string   $kind          'comment' or 'activity'.
+	 * @param int|null $user_id       Author; null means the current user, 0 means Teamwork sync.
+	 * @param int      $tw_comment_id Teamwork comment ID when synced from Teamwork.
 	 */
-	public static function add_comment( int $item_id, string $body, string $kind = 'comment', ?int $user_id = null ): int {
+	public static function add_comment( int $item_id, string $body, string $kind = 'comment', ?int $user_id = null, int $tw_comment_id = 0 ): int {
 		global $wpdb;
+		$author_id = $user_id ?? get_current_user_id();
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		$ok = $wpdb->insert(
 			self::comments_table(),
 			array(
-				'item_id'    => $item_id,
-				'user_id'    => $user_id ?? get_current_user_id(),
-				'kind'       => 'activity' === $kind ? 'activity' : 'comment',
-				'body'       => $body,
-				'created_at' => current_time( 'mysql', true ),
+				'item_id'       => $item_id,
+				'user_id'       => $author_id,
+				'kind'          => 'activity' === $kind ? 'activity' : 'comment',
+				'body'          => $body,
+				'tw_comment_id' => $tw_comment_id,
+				'created_at'    => current_time( 'mysql', true ),
 			)
 		);
-		return $ok ? (int) $wpdb->insert_id : 0;
+		$insert_id = $ok ? (int) $wpdb->insert_id : 0;
+		if ( $insert_id ) {
+			do_action( 'fbc_comment_created', $insert_id, $item_id, $body, $author_id, $kind, $tw_comment_id );
+		}
+		return $insert_id;
 	}
 
 	/**
@@ -388,12 +395,13 @@ final class Items {
 			static function ( array $row ): array {
 				$user = get_userdata( (int) $row['user_id'] );
 				return array(
-					'id'         => (int) $row['id'],
-					'kind'       => $row['kind'],
-					'body'       => $row['body'],
-					'user_id'    => (int) $row['user_id'],
-					'user_name'  => $user ? $user->display_name : ( 0 === (int) $row['user_id'] ? 'Teamwork' : __( 'Unknown', 'feedback-collector' ) ),
-					'created_at' => mysql_to_rfc3339( $row['created_at'] ),
+					'id'            => (int) $row['id'],
+					'kind'          => $row['kind'],
+					'body'          => $row['body'],
+					'user_id'       => (int) $row['user_id'],
+					'tw_comment_id' => (int) ( $row['tw_comment_id'] ?? 0 ),
+					'user_name'     => $user ? $user->display_name : ( 0 === (int) $row['user_id'] ? 'Teamwork' : __( 'Unknown', 'feedback-collector' ) ),
+					'created_at'    => mysql_to_rfc3339( $row['created_at'] ),
 				);
 			},
 			$rows ?: array()

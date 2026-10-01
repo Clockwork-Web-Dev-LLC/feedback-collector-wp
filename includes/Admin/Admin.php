@@ -35,6 +35,7 @@ final class Admin {
 		add_action( 'admin_post_fbc_branding', array( self::class, 'handle_branding' ) );
 		add_action( 'admin_post_fbc_start_round', array( self::class, 'handle_start_round' ) );
 		add_action( 'admin_post_fbc_purge', array( self::class, 'handle_purge' ) );
+		add_action( 'admin_post_fbc_export_csv', array( self::class, 'handle_export_csv' ) );
 		// Late, so Clockwork Companion's stylesheet is already enqueued and can be removed.
 		add_action( 'admin_enqueue_scripts', array( Layout::class, 'enqueue' ), 100 );
 		add_filter( 'all_plugins', array( Branding::class, 'plugins_list' ) );
@@ -754,6 +755,117 @@ final class Admin {
 			update_option( Branding::OPTION, Branding::sanitize( $input ), false );
 		}
 		wp_safe_redirect( add_query_arg( 'fbc_saved', 1, admin_url( 'admin.php?page=' . self::SLUG . '-branding' ) ) );
+		exit;
+	}
+
+	/**
+	 * Exports feedback items as a CSV file matching active filters.
+	 */
+	public static function handle_export_csv(): void {
+		check_admin_referer( 'fbc_export_csv' );
+		if ( ! current_user_can( CAP ) ) {
+			wp_die( esc_html__( 'Not allowed.', 'feedback-collector' ), 403 );
+		}
+
+		$filters = array_filter( ItemsTable::filters(), static fn( $v ) => '' !== $v );
+		if ( isset( $filters['assignee_id'] ) && 'teamwork' === Assignees::source() ) {
+			$filters['tw_assignee_id'] = $filters['assignee_id'];
+			unset( $filters['assignee_id'] );
+		}
+
+		$filename = sprintf( 'feedback-export-%s.csv', gmdate( 'Y-m-d-His' ) );
+
+		header( 'Content-Type: text/csv; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
+		header( 'Pragma: no-cache' );
+		header( 'Expires: 0' );
+
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen
+		$out = fopen( 'php://output', 'w' );
+		if ( false === $out ) {
+			exit;
+		}
+
+		// UTF-8 BOM for Microsoft Excel compatibility.
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		fwrite( $out, "\xEF\xBB\xBF" );
+
+		fputcsv(
+			$out,
+			array(
+				'#',
+				'Round',
+				'Type',
+				'Status',
+				'Priority',
+				'Title',
+				'Description',
+				'Page Path',
+				'Page URL',
+				'Breakpoint',
+				'Viewport',
+				'Browser',
+				'OS',
+				'Reporter',
+				'Assignee',
+				'Teamwork Task ID',
+				'Teamwork Task URL',
+				'Created At',
+				'Updated At',
+			)
+		);
+
+		$paged = 1;
+		do {
+			$query_args = array_merge(
+				$filters,
+				array(
+					'orderby'  => 'id',
+					'order'    => 'asc',
+					'per_page' => 500,
+					'paged'    => $paged,
+				)
+			);
+			$result = Items::query( $query_args );
+
+			foreach ( $result['items'] as $item ) {
+				$reporter      = get_userdata( (int) $item['reporter_id'] );
+				$reporter_name = $reporter ? $reporter->display_name : ( (string) ( $item['reporter_email'] ?? '' ) );
+				$assignee_name = Assignees::name( $item );
+				$tw_task_id    = (int) ( $item['tw_task_id'] ?? 0 );
+				$tw_url        = $tw_task_id > 0 ? (string) apply_filters( 'fbc_teamwork_task_url', '', $tw_task_id ) : '';
+
+				fputcsv(
+					$out,
+					array(
+						(int) $item['id'],
+						(int) $item['round'],
+						(string) $item['type'],
+						(string) $item['status'],
+						(string) $item['priority'],
+						(string) $item['title'],
+						(string) $item['description'],
+						(string) $item['page_path'],
+						Items::page_url( $item ),
+						(string) ( $item['breakpoint'] ?? '' ),
+						(string) ( $item['viewport'] ?? '' ),
+						(string) ( $item['browser'] ?? '' ),
+						(string) ( $item['os'] ?? '' ),
+						$reporter_name,
+						$assignee_name,
+						$tw_task_id > 0 ? $tw_task_id : '',
+						$tw_url,
+						(string) $item['created_at'],
+						(string) $item['updated_at'],
+					)
+				);
+			}
+
+			$paged++;
+		} while ( count( $result['items'] ) === 500 && ( ( $paged - 1 ) * 500 ) < $result['total'] );
+
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+		fclose( $out );
 		exit;
 	}
 

@@ -87,14 +87,23 @@ final class ItemsTable extends \WP_List_Table {
 	 */
 	public static function filters(): array {
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended
+		$get = static function ( string $key1, string $key2 = '' ): string {
+			if ( isset( $_GET[ $key1 ] ) ) {
+				return (string) wp_unslash( $_GET[ $key1 ] );
+			}
+			if ( '' !== $key2 && isset( $_GET[ $key2 ] ) ) {
+				return (string) wp_unslash( $_GET[ $key2 ] );
+			}
+			return '';
+		};
 		return array(
-			'type'        => isset( $_GET['fbc_type'] ) ? sanitize_key( wp_unslash( $_GET['fbc_type'] ) ) : '',
-			'status'      => isset( $_GET['fbc_status'] ) ? sanitize_key( wp_unslash( $_GET['fbc_status'] ) ) : '',
-			'assignee_id' => isset( $_GET['fbc_assignee'] ) && '' !== $_GET['fbc_assignee'] ? (string) absint( $_GET['fbc_assignee'] ) : '',
-			'page_path'   => isset( $_GET['fbc_page'] ) ? sanitize_text_field( wp_unslash( $_GET['fbc_page'] ) ) : '',
-			'search'      => isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '',
-			'round'       => isset( $_GET['fbc_round'] ) && absint( $_GET['fbc_round'] ) ? (string) absint( $_GET['fbc_round'] ) : '',
-			'breakpoint'  => isset( $_GET['fbc_bp'] ) ? sanitize_key( wp_unslash( $_GET['fbc_bp'] ) ) : '',
+			'type'        => sanitize_key( $get( 'fbc_type', 'type' ) ),
+			'status'      => sanitize_key( $get( 'fbc_status', 'status' ) ),
+			'assignee_id' => '' !== $get( 'fbc_assignee', 'assignee_id' ) ? (string) absint( $get( 'fbc_assignee', 'assignee_id' ) ) : '',
+			'page_path'   => sanitize_text_field( $get( 'fbc_page', 'page_path' ) ),
+			'search'      => sanitize_text_field( $get( 's', 'search' ) ),
+			'round'       => absint( $get( 'fbc_round', 'round' ) ) ? (string) absint( $get( 'fbc_round', 'round' ) ) : '',
+			'breakpoint'  => sanitize_key( $get( 'fbc_bp', 'breakpoint' ) ),
 		);
 		// phpcs:enable
 	}
@@ -182,6 +191,20 @@ final class ItemsTable extends \WP_List_Table {
 		);
 
 		submit_button( __( 'Filter', 'feedback-collector' ), '', 'filter_action', false );
+
+		$export_url = add_query_arg(
+			array_merge(
+				array( 'action' => 'fbc_export_csv' ),
+				array_filter( self::filters(), static fn( $v ) => '' !== $v ),
+				array( '_wpnonce' => wp_create_nonce( 'fbc_export_csv' ) )
+			),
+			admin_url( 'admin-post.php' )
+		);
+		printf(
+			' <a href="%s" class="button button-secondary fbc-export-csv">%s</a>',
+			esc_url( $export_url ),
+			esc_html__( 'Export CSV', 'feedback-collector' )
+		);
 		echo '</div>';
 	}
 

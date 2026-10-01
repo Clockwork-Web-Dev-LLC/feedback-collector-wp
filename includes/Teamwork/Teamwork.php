@@ -41,6 +41,8 @@ final class Teamwork {
 		add_action( self::QUEUE_HOOK, array( self::class, 'process_queue' ) );
 		add_action( 'fbc_item_created', array( self::class, 'maybe_auto_push' ) );
 		add_filter( 'fbc_present_item', array( self::class, 'present' ), 10, 2 );
+		add_filter( 'fbc_teamwork_task_url', array( self::class, 'task_url' ), 10, 2 );
+		add_action( 'fbc_comment_created', array( self::class, 'handle_comment_created' ), 10, 6 );
 		add_action( 'init', array( self::class, 'ensure_schedule' ) );
 
 		if ( is_admin() ) {
@@ -714,6 +716,7 @@ final class Teamwork {
 					continue;
 				}
 				++$checked;
+				self::sync_task_comments( $client, (int) $row['id'], (int) $task['id'] );
 				$completed = 'completed' === ( $task['status'] ?? '' ) || ! empty( $task['completedAt'] );
 				$target    = null;
 				if ( $completed && 'resolved' !== $row['status'] ) {
@@ -1214,6 +1217,103 @@ final class Teamwork {
 				return '<span class="dashicons dashicons-warning" style="color:#d63638" title="' . esc_attr( (string) $item['tw_sync_error'] ) . '"></span>';
 		}
 		return $html;
+	}
+
+	/**
+	 * Browser URL for a Teamwork task.
+	 *
+	 * @param string $url     Existing URL.
+	 * @param int    $task_id Teamwork task ID.
+	 */
+	public static function task_url( string $url, int $task_id ): string {
+		$site = self::site();
+		return $site && $task_id > 0 ? untrailingslashit( $site ) . '/app/tasks/' . $task_id : $url;
+	}
+
+	/**
+	 * Pushes a newly created WordPress comment to its linked Teamwork task.
+	 *
+	 * @param int    $comment_id    New comment ID.
+	 * @param int    $item_id       Item ID.
+	 * @param string $body          Comment text.
+	 * @param int    $user_id       Author ID (0 = sync).
+	 * @param string $kind          'comment' or 'activity'.
+	 * @param int    $tw_comment_id Existing Teamwork comment ID if synced.
+	 */
+	public static function handle_comment_created( int $comment_id, int $item_id, string $body, int $user_id, string $kind, int $tw_comment_id = 0 ): void {
+		if ( 'comment' !== $kind || $tw_comment_id > 0 || 0 === $user_id ) {
+			return;
+		}
+
+		$item = Items::get( $item_id );
+		if ( ! $item || empty( $item['tw_task_id'] ) ) {
+			return;
+		}
+
+		$client = self::client();
+		if ( ! $client ) {
+			return;
+		}
+
+		$user   = get_userdata( $user_id );
+		$author = $user ? $user->display_name : __( 'A reviewer', 'feedback-collector' );
+		$brand  = Branding::text( 'name' );
+		/* translators: 1: author name, 2: branding name, 3: comment body */
+		$tw_body = sprintf( "From %1\$s via %2\$s:\n\n%3\$s", $author, $brand, $body );
+
+		$res = $client->create_task_comment( (int) $item['tw_task_id'], $tw_body );
+		if ( ! is_wp_error( $res ) && $res > 0 ) {
+			global $wpdb;
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery
+			$wpdb->update( Items::comments_table(), array( 'tw_comment_id' => $res ), array( 'id' => $comment_id ) );
+		}
+	}
+
+	/**
+	 * Syncs comments from a Teamwork task to an item's thread.
+	 *
+	 * @param Client $client  Client.
+	 * @param int    $item_id Item ID.
+	 * @param int    $task_id Teamwork task ID.
+	 */
+	public static function sync_task_comments( Client $client, int $item_id, int $task_id ): int {
+		global $wpdb;
+		$comments = $client->task_comments( $task_id );
+		if ( is_wp_error( $comments ) || empty( $comments ) ) {
+			return 0;
+		}
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$existing     = $wpdb->get_col( $wpdb->prepare( 'SELECT tw_comment_id FROM %i WHERE item_id = %d AND tw_comment_id > 0', Items::comments_table(), $item_id ) );
+		$existing_ids = array_flip( array_map( 'intval', $existing ?: array() ) );
+
+		$added = 0;
+		foreach ( $comments as $c ) {
+			$c_id = (int) ( $c['id'] ?? 0 );
+			if ( ! $c_id || isset( $existing_ids[ $c_id ] ) ) {
+				continue;
+			}
+
+			$text = trim( (string) ( $c['body'] ?? $c['text'] ?? '' ) );
+			if ( '' === $text ) {
+				continue;
+			}
+
+			// If this comment was pushed by us previously, ignore if marked with prefix.
+			$brand = Branding::text( 'name' );
+			if ( str_starts_with( $text, 'From ' ) && str_contains( $text, 'via ' . $brand . ":\n\n" ) ) {
+				continue;
+			}
+
+			$author_name = trim( (string) ( $c['author']['firstName'] ?? $c['user']['firstName'] ?? $c['postedBy']['firstName'] ?? '' ) . ' ' . (string) ( $c['author']['lastName'] ?? $c['user']['lastName'] ?? $c['postedBy']['lastName'] ?? '' ) );
+			/* translators: 1: author name, 2: comment body */
+			$body = $author_name ? sprintf( "[%s via Teamwork]\n\n%s", $author_name, $text ) : sprintf( "[Teamwork]\n\n%s", $text );
+
+			Items::add_comment( $item_id, $body, 'comment', 0, $c_id );
+			$existing_ids[ $c_id ] = true;
+			++$added;
+		}
+		return $added;
 	}
 
 	/**
