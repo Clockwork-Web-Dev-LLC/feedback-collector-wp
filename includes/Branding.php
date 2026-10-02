@@ -161,7 +161,7 @@ final class Branding {
 		$b = self::get();
 		return array(
 			'name'      => (string) $b['name'],
-			'label'     => (string) $b['menu_label'],
+			'label'     => '' !== (string) $b['product_label'] ? (string) $b['product_label'] : (string) $b['menu_label'],
 			'logo'      => self::logo_url(),
 			'primary'   => (string) $b['primary'],
 			'onPrimary' => self::text_on( (string) $b['primary'] ),
