@@ -23,18 +23,25 @@ final class Branding {
 	 * @return array<string, string|bool>
 	 */
 	public static function defaults(): array {
+		$default_logo = '';
+		if ( defined( 'PLUGIN_FILE' ) && function_exists( 'plugins_url' ) ) {
+			$default_logo = plugins_url( 'assets/clockwork-logo.png', PLUGIN_FILE );
+		} elseif ( defined( 'FBC_URL' ) ) {
+			$default_logo = FBC_URL . 'assets/clockwork-logo.png';
+		}
+
 		return array(
 			'name'          => 'Clockwork Feedback Collector',
 			'menu_label'    => 'Feedback',
 			'product_label' => 'Feedback Collector',
 			'author'        => 'Clockwork Web Dev',
 			'author_uri'    => 'https://clockworkwd.com',
-			'logo_url'      => '', // Optional. Without one, the header label shows as small text.
+			'logo_url'      => $default_logo,
 			'primary'       => '#6953C4',
 			'dark'          => '#2D2062',
 			'accent'        => '#7EFF83',
 			'show_credit'   => true,
-			'enabled'       => false, // Custom branding off: the defaults above apply, whatever is saved.
+			'enabled'       => true, // Custom branding on by default with Clockwork branding.
 		);
 	}
 
@@ -88,12 +95,11 @@ final class Branding {
 	public static function is_default(): bool {
 		$d = self::defaults();
 		$b = self::get();
-		return $b['name'] === $d['name'] && '' === $b['logo_url'];
+		return $b['name'] === $d['name'] && ( $b['logo_url'] === $d['logo_url'] || '' === $b['logo_url'] );
 	}
 
 	/**
-	 * The uploaded logo, if any. By default there is none and the product label
-	 * ("Feedback Collector") shows as small text instead.
+	 * The active logo URL. By default this is the bundled Clockwork logo.
 	 */
 	public static function logo_url(): string {
 		return self::text( 'logo_url' );
