@@ -26,6 +26,9 @@ final class Plugin {
 		if ( is_admin() ) {
 			Admin\Admin::register();
 		}
+		if ( defined( 'WP_CLI' ) && WP_CLI ) {
+			Cli\FeedbackCommand::register();
+		}
 	}
 
 	/**

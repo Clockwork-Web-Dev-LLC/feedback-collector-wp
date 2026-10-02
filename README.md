@@ -84,6 +84,89 @@ Push items from the detail screen, or select several in the list and use **Bulk 
 - A reopened task marks it **Open** again.
 - Items that were never pushed are never touched.
 
+## WP-CLI
+
+Feedback Collector includes a complete command suite under `wp feedback` for terminal-based triage, automated scripts, CI/CD pipelines, and bulk operations.
+
+### Commands
+
+- **`wp feedback list`**: Lists feedback items with filtering and flexible formatting.
+  - **Flags:** `--status=<open|in_progress|ready|resolved|unresolved|all>` (default: `unresolved`), `--type=<bug|tweak|change|comment>`, `--priority=<low|medium|high|critical>`, `--round=<num>`, `--page-path=<path>`, `--assignee=<id>`, `--search=<query>`, `--fields=<fields>`, `--format=<table|json|csv|yaml|ids|count>`
+  - **Examples:**
+    ```sh
+    # List unresolved feedback
+    wp feedback list
+
+    # List all high-priority bugs
+    wp feedback list --status=open --type=bug --priority=high
+
+    # Export all feedback as CSV
+    wp feedback list --status=all --format=csv > feedback.csv
+
+    # Get IDs of unpushed items
+    wp feedback list --status=unresolved --format=ids
+    ```
+
+- **`wp feedback get <id>`**: Shows complete details for a feedback item (anchor, breakpoint, browser/OS, screenshot URL, Teamwork URL, and threaded comments table). Supports `--format=table|json|yaml`.
+  - **Example:**
+    ```sh
+    wp feedback get 12
+    wp feedback get 12 --format=json
+    ```
+
+- **`wp feedback stats`**: Overview of feedback items by status and type, active QA round, screenshots on disk, and unpushed tasks. Supports `--format=table|json|yaml`.
+  - **Example:**
+    ```sh
+    wp feedback stats
+    ```
+
+- **`wp feedback create`**: Creates a feedback item from the command line.
+  - **Flags:** `--title=<title>`, `[--type=<type>]`, `[--priority=<priority>]`, `[--page-path=<path>]`, `[--description=<desc>]`, `[--due-date=<YYYY-MM-DD>]`, `[--assignee=<user_id>]`, `[--round=<round>]`
+  - **Example:**
+    ```sh
+    wp feedback create --title="Footer link 404s" --type=bug --priority=high --page-path=/the-future/
+    ```
+
+- **`wp feedback update <id>`**: Updates status, priority, due date, assignee, or title.
+  - **Flags:** `[--status=<open|in_progress|ready|resolved>]`, `[--priority=<low|medium|high|critical>]`, `[--due-date=<date>]`, `[--assignee=<id>]`, `[--title=<title>]`
+  - **Example:**
+    ```sh
+    wp feedback update 12 --status=resolved
+    wp feedback update 12 --priority=critical --due-date=2026-10-15
+    ```
+
+- **`wp feedback delete <id>...`**: Deletes one or more items and their screenshots/comments.
+  - **Flags:** `[--force]` skips confirmation.
+  - **Example:**
+    ```sh
+    wp feedback delete 12 13 14 --force
+    ```
+
+- **`wp feedback push-teamwork [<id>] [--all] [--round=<round>]`**: Pushes an item or all unpushed items to Teamwork with a live CLI progress bar.
+  - **Example:**
+    ```sh
+    # Push single item
+    wp feedback push-teamwork 12
+
+    # Push all unpushed items
+    wp feedback push-teamwork --all
+
+    # Push all unpushed items in Round 2
+    wp feedback push-teamwork --all --round=2
+    ```
+
+- **`wp feedback inventory`**: Summarizes stored database rows, comments, screenshots on disk, and unpushed tasks.
+  - **Example:**
+    ```sh
+    wp feedback inventory
+    ```
+
+- **`wp feedback purge [--yes]`**: Drops feedback tables, removes options, and deletes screenshots from disk.
+  - **Example:**
+    ```sh
+    wp feedback purge --yes
+    ```
+
 ## Development
 
 ```sh
