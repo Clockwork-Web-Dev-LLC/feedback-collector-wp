@@ -131,7 +131,7 @@ Deliver a deactivatable WordPress plugin, "Feedback Collector". Reviewers with t
 - [x] ISC-62: Pins are numbered by item ID sequence on the site
 - [DEFERRED-VERIFY] ISC-63: Pin color encodes type (4 distinct colors)
 - [DEFERRED-VERIFY] ISC-64: Pin style encodes status (Resolved = green check)
-- [DEFERRED-VERIFY] ISC-65: Resolved pins hidden by default; "Show resolved" toggle reveals them
+- [DEFERRED-VERIFY] ISC-65: Resolved pins hidden by default; pins follow the List status filter (toolbar toggle removed 2026-10-01)
 - [DEFERRED-VERIFY] ISC-66: Anti: pins are visible when Feedback mode is off
 - [DEFERRED-VERIFY] ISC-67: Pins reposition after window resize within one animation frame
 - [x] ISC-68: Pins follow their element after a layout shift (late-loading image above it)

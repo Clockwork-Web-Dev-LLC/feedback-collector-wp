@@ -602,12 +602,13 @@ final class Admin {
 				Layout::card_open( __( 'Logo & colors', 'feedback-collector' ) );
 				echo '<table class="form-table" role="presentation">';
 				printf(
-					'<tr><th scope="row"><label for="fbc-b-logo_url">%1$s</label></th><td><input type="url" class="regular-text" id="fbc-b-logo_url" name="branding[logo_url]" value="%2$s" placeholder="%3$s" /> <button type="button" class="button" id="fbc-b-logo-pick">%4$s</button><p class="description">%5$s</p><div class="fbc-logo-preview" id="fbc-b-logo-preview">%6$s</div></td></tr>',
+					'<tr><th scope="row"><label for="fbc-b-logo_url">%1$s</label></th><td><input type="url" class="regular-text" id="fbc-b-logo_url" name="branding[logo_url]" value="%2$s" placeholder="%3$s" /> <button type="button" class="button" id="fbc-b-logo-pick">%4$s</button><p class="description">%5$s</p><div class="fbc-logo-preview" id="fbc-b-logo-preview" data-none="%6$s">%7$s</div></td></tr>',
 					esc_html__( 'Logo', 'feedback-collector' ),
 					esc_attr( (string) $b['logo_url'] ),
-					esc_attr__( 'Clockwork logo', 'feedback-collector' ),
+					esc_attr__( 'Optional: image URL', 'feedback-collector' ),
 					esc_html__( 'Choose…', 'feedback-collector' ),
-					esc_html__( 'Sits on the header color below, so use a light logo on a dark header (or change the header color). Leave empty for the Clockwork logo; a different plugin name with no logo shows the header label as text.', 'feedback-collector' ),
+					esc_html__( 'Optional. Leave empty to show the header label as small text. A logo sits on the header color below, so use a light logo on a dark header.', 'feedback-collector' ),
+					esc_attr__( 'No logo: the header label shows as text', 'feedback-collector' ),
 					'' !== $logo ? '<img src="' . esc_url( $logo ) . '" alt="" />' : '<em>' . esc_html__( 'No logo: the header label shows as text', 'feedback-collector' ) . '</em>'
 				);
 				foreach ( array(
@@ -634,31 +635,8 @@ final class Admin {
 
 				echo '<p class="submit">';
 				submit_button( __( 'Save branding', 'feedback-collector' ), 'primary', 'submit', false );
-				echo ' <button type="submit" class="button" name="reset" value="1">' . esc_html__( 'Reset to Clockwork defaults', 'feedback-collector' ) . '</button></p>';
+				echo ' <button type="submit" class="button" name="reset" value="1">' . esc_html__( 'Reset to defaults', 'feedback-collector' ) . '</button></p>';
 				echo '</form>';
-				?>
-				<script>
-				( function () {
-					var pick = document.getElementById( 'fbc-b-logo-pick' );
-					var input = document.getElementById( 'fbc-b-logo_url' );
-					var preview = document.getElementById( 'fbc-b-logo-preview' );
-					if ( ! pick || ! window.wp || ! wp.media ) { if ( pick ) { pick.style.display = 'none'; } return; }
-					var frame;
-					pick.addEventListener( 'click', function () {
-						frame = frame || wp.media( { title: pick.textContent, library: { type: 'image' }, multiple: false } );
-						frame.off( 'select' ).on( 'select', function () {
-							var url = frame.state().get( 'selection' ).first().get( 'url' );
-							input.value = url;
-							var img = document.createElement( 'img' );
-							img.src = url;
-							img.alt = '';
-							preview.replaceChildren( img );
-						} );
-						frame.open();
-					} );
-				} )();
-				</script>
-				<?php
 			}
 		);
 	}

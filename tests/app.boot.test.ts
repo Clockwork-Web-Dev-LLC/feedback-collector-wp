@@ -224,6 +224,66 @@ describe('pin reloads', () => {
   });
 });
 
+describe('resolved pins', () => {
+  it('follow the List status filter; there is no separate toolbar toggle', async () => {
+    const anchor = { id: 'cta', selector: '#cta', xpath: '', text: 'Book a demo', tag: 'a', offsetX: 0.5, offsetY: 0.5, docX: 0, docY: 0 };
+    serverItems = [makeItem({ id: 5, anchor }), makeItem({ id: 9, anchor, status: 'resolved' })];
+    const app = createApp(cfg());
+    app.init();
+    await app.setMode(true);
+    const pins = () => [...(shadow()?.querySelectorAll('.pin') ?? [])].map((p) => p.textContent);
+    expect(pins()).toEqual(['5']); // default filter is Unresolved
+    const buttons = [...(shadow()?.querySelectorAll('.toolbar button') ?? [])].map((b) => b.textContent ?? '');
+    expect(buttons.some((t) => t.includes('Resolved'))).toBe(false);
+
+    const listBtn = [...(shadow()?.querySelectorAll('.toolbar button') ?? [])].find((b) => b.textContent?.startsWith('List')) as HTMLButtonElement;
+    listBtn.click();
+    await tick();
+    const status = shadow()?.querySelector('select[name="status"]') as HTMLSelectElement;
+    status.value = '';
+    status.dispatchEvent(new Event('change'));
+    expect(pins()).toEqual(['5', '✓']);
+
+    status.value = 'resolved';
+    status.dispatchEvent(new Event('change'));
+    expect(pins()).toEqual(['✓']);
+  });
+});
+
+describe('hover highlight toggle', () => {
+  const outlineOn = () => !!shadow()?.querySelector('.outline.on');
+  const hover = () => document.getElementById('cta')?.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 150, clientY: 210 }));
+  const toggle = () => shadow()?.querySelector('.toolbar button[aria-label="Highlight elements on hover"]') as HTMLButtonElement;
+
+  it('turns hover outlines off, still highlights in pin mode, and remembers the choice', async () => {
+    const app = createApp(cfg());
+    app.init();
+    await app.setMode(true);
+    expect(toggle().getAttribute('aria-pressed')).toBe('true');
+    hover();
+    expect(outlineOn()).toBe(true);
+
+    toggle().click();
+    expect(toggle().getAttribute('aria-pressed')).toBe('false');
+    expect(outlineOn()).toBe(false);
+    hover();
+    expect(outlineOn()).toBe(false);
+    expect(window.localStorage.getItem('fbc:highlight')).toBe('0');
+
+    // + Add needs the outline to show what will be pinned.
+    const add = [...(shadow()?.querySelectorAll('.toolbar button') ?? [])].find((b) => b.textContent === '+ Add') as HTMLButtonElement;
+    add.click();
+    hover();
+    expect(outlineOn()).toBe(true);
+
+    app.destroy();
+    const again = createApp(cfg());
+    again.init();
+    await again.setMode(true);
+    expect(toggle().getAttribute('aria-pressed')).toBe('false');
+  });
+});
+
 describe('toolbar placement', () => {
   const adminBar = (bottom: number) => {
     const bar = document.createElement('div');

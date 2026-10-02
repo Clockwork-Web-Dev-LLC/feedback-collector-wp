@@ -54,7 +54,8 @@ body.wp-admin { overflow-x: hidden; }
 	text-transform: uppercase;
 	white-space: nowrap;
 }
-.fbc-admin__brand--text-only .fbc-admin__brand-text { font-size: 18px; opacity: 1; font-weight: 600; letter-spacing: 0.02em; text-transform: none; }
+/* No logo (the default): the label alone, small. */
+.fbc-admin__brand--text-only .fbc-admin__brand-text { font-size: 13px; opacity: 1; font-weight: 600; letter-spacing: 0.06em; }
 .fbc-admin__version { font-size: 12px; opacity: 0.6; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
 
 /* Tab strip */

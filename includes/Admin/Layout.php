@@ -165,6 +165,7 @@ final class Layout {
 		wp_enqueue_style( 'fbc-admin', plugins_url( 'assets/admin.css', \FeedbackCollector\PLUGIN_FILE ), array(), VERSION . '-' . filemtime( FBC_DIR . 'assets/admin.css' ) );
 		if ( str_contains( $hook, Admin::SLUG . '-branding' ) ) {
 			wp_enqueue_media();
+			wp_enqueue_script( 'fbc-admin-branding', plugins_url( 'assets/admin-branding.js', \FeedbackCollector\PLUGIN_FILE ), array(), VERSION . '-' . filemtime( FBC_DIR . 'assets/admin-branding.js' ), true );
 		}
 	}
 

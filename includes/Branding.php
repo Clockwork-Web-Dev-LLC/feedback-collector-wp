@@ -29,7 +29,7 @@ final class Branding {
 			'product_label' => 'Feedback Collector',
 			'author'        => 'Clockwork Web Dev',
 			'author_uri'    => 'https://clockworkwd.com',
-			'logo_url'      => '',
+			'logo_url'      => '', // Optional. Without one, the header label shows as small text.
 			'primary'       => '#6953C4',
 			'dark'          => '#2D2062',
 			'accent'        => '#7EFF83',
@@ -73,15 +73,11 @@ final class Branding {
 	}
 
 	/**
-	 * Logo URL: the custom one, or the Clockwork mark while on the default brand.
-	 * Empty for a white-label without a logo, in which case the product label stands alone.
+	 * The uploaded logo, if any. By default there is none and the product label
+	 * ("Feedback Collector") shows as small text instead.
 	 */
 	public static function logo_url(): string {
-		$custom = self::text( 'logo_url' );
-		if ( '' !== $custom ) {
-			return $custom;
-		}
-		return self::text( 'name' ) === self::defaults()['name'] ? plugins_url( 'assets/clockwork-logo.png', PLUGIN_FILE ) : '';
+		return self::text( 'logo_url' );
 	}
 
 	/**

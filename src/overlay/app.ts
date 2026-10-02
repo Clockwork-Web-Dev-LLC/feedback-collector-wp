@@ -10,6 +10,7 @@ import type { Config, Item, ItemStatus, ItemType, Priority } from './types';
 const TYPES: ItemType[] = ['bug', 'tweak', 'change', 'comment'];
 const STORAGE_KEY = 'fbc:mode';
 const CORNER_KEY = 'fbc:corner';
+const HIGHLIGHT_KEY = 'fbc:highlight';
 export const PREVIEW_FRAME_NAME = 'fbc-preview';
 const DEVICES: Array<{ id: string; label: string; w: number; h: number }> = [
   { id: 'phone', label: 'Mobile', w: 390, h: 844 },
@@ -59,7 +60,8 @@ export class App {
   private bannerEl: HTMLElement | null = null;
 
   private mode = false;
-  private showResolved = false;
+  /** Hover highlighting outside pin mode; a per-browser preference, on by default. */
+  private highlight = true;
   private pinMode: PinModeRequest | null = null;
   private states = new Map<number, PinState>();
   private allItems: Item[] | null = null;
@@ -121,6 +123,7 @@ export class App {
       stored = window.localStorage.getItem(STORAGE_KEY) === '1';
       const corner = window.localStorage.getItem(CORNER_KEY) as Corner | null;
       if (corner && CORNERS.includes(corner)) this.corner = corner;
+      this.highlight = window.localStorage.getItem(HIGHLIGHT_KEY) !== '0';
     } catch {
       stored = false;
     }
@@ -328,7 +331,8 @@ export class App {
   private drawPins(): void {
     if (!this.mode) return;
     for (const s of this.states.values()) {
-      const show = s.placement === 'pinned' && (this.showResolved || s.item.status !== 'resolved');
+      // Pins follow the List's status filter, so the page and the List never disagree.
+      const show = s.placement === 'pinned' && this.matchesStatus(s.item);
       if (!show) {
         s.pin?.remove();
         s.pin = null;
@@ -422,7 +426,7 @@ export class App {
   }
 
   private onMouseMove(e: MouseEvent): void {
-    if (!this.mode || (this.card && !this.pinMode) || this.inOverlay(e)) {
+    if (!this.mode || (this.card && !this.pinMode) || (!this.highlight && !this.pinMode) || this.inOverlay(e)) {
       if (!this.pinMode) this.hideOutline();
       return;
     }
@@ -479,6 +483,17 @@ export class App {
     if (t instanceof Element) return t;
     if (t instanceof Node) return t.parentElement;
     return null;
+  }
+
+  private setHighlight(on: boolean): void {
+    this.highlight = on;
+    try {
+      window.localStorage.setItem(HIGHLIGHT_KEY, on ? '1' : '0');
+    } catch {
+      /* storage blocked: the choice lasts for this page only */
+    }
+    if (!on) this.hideOutline();
+    this.renderToolbar();
   }
 
   /** Hides the hover outline, unless an element is selected (menu/composer open for it): that one stays outlined. */
@@ -1191,6 +1206,18 @@ export class App {
             : this.enterPinMode({ hint: 'Click any element to add feedback', done: (el, x, y) => this.openTypeMenu(el, x, y) }),
       }),
       h('button', { type: 'button', text: 'Page note', onclick: () => this.openComposer('comment', null, window.innerWidth / 2 - 170, 120) }),
+      h(
+        'button',
+        {
+          type: 'button',
+          class: 'icon-btn toggle',
+          'aria-pressed': String(this.highlight),
+          title: this.highlight ? 'Hover highlight is on: click to turn off' : 'Hover highlight is off: click to turn on',
+          'aria-label': 'Highlight elements on hover',
+          onclick: () => this.setHighlight(!this.highlight),
+        },
+        deviceIcon('highlight')
+      ),
       this.inPreview
         ? null
         : h(
@@ -1204,17 +1231,6 @@ export class App {
             )
           ),
       h('button', { type: 'button', class: this.sidebar ? 'on' : '', onclick: () => (this.sidebar ? this.closeSidebar() : this.openSidebar()) }, h('span', { class: 'label', text: 'List' }), count ? h('span', { class: 'count', text: String(count) }) : null),
-      h('button', {
-        type: 'button',
-        class: this.showResolved ? 'on' : '',
-        title: 'Show resolved pins',
-        text: '✓ Resolved',
-        onclick: () => {
-          this.showResolved = !this.showResolved;
-          this.drawPins();
-          this.renderToolbar();
-        },
-      }),
       h('button', { type: 'button', title: 'Exit Feedback mode (Alt+Shift+F)', 'aria-label': 'Exit Feedback mode', text: '×', onclick: () => void this.setMode(false) })
     );
     const wasPlaced = !!this.toolbar;
@@ -1482,6 +1498,7 @@ export class App {
     const status = select('status', [['unresolved', 'Unresolved'], ['', 'Any status'], ...(Object.keys(labels.status) as ItemStatus[]).map((k): [string, string] => [k, labels.status[k]])], f.status, {
       onchange: () => {
         f.status = status.value as SidebarFilters['status'];
+        this.drawPins();
         void this.renderSidebarList();
       },
     });
@@ -1530,13 +1547,18 @@ export class App {
     this.renderToolbar();
   }
 
+  private matchesStatus(item: Item): boolean {
+    const f = this.filters.status;
+    if (f === 'unresolved') return item.status !== 'resolved';
+    return !f || item.status === f;
+  }
+
   private matches(item: Item): boolean {
     const f = this.filters;
     if (f.type && item.type !== f.type) return false;
     if (f.round && item.round !== f.round) return false;
     if (f.bp && item.breakpoint !== f.bp) return false;
-    if (f.status === 'unresolved' && item.status === 'resolved') return false;
-    if (f.status && f.status !== 'unresolved' && item.status !== f.status) return false;
+    if (!this.matchesStatus(item)) return false;
     if (f.mine && (!this.cfg.assignees.me || item.assignee_id !== this.cfg.assignees.me)) return false;
     return true;
   }
@@ -1632,9 +1654,12 @@ export class App {
     const s = this.states.get(id);
     if (!s) return;
     if (s.placement === 'pinned' && s.el) {
-      if (s.item.status === 'resolved' && !this.showResolved) {
-        this.showResolved = true;
+      if (!this.matchesStatus(s.item)) {
+        this.filters.status = '';
+        const sel = this.sidebar?.querySelector<HTMLSelectElement>('select[name="status"]');
+        if (sel) sel.value = '';
         this.drawPins();
+        void this.renderSidebarList();
       }
       s.el.scrollIntoView({ block: 'center', behavior: 'smooth' });
       window.setTimeout(() => {
