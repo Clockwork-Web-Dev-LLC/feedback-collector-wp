@@ -123,6 +123,29 @@ $check( 'fields parsed from the JSON "data" part', 'From multipart' === $d['titl
 $check( 'screenshot already stored when fbc_item_created fires (auto-push sees it)', is_string( $seen ) && '' !== $seen );
 
 $q = new WP_REST_Request( 'POST', '/feedback-collector/v1/items' );
+$q->set_body_params(
+	array(
+		// Simulated raw JSON from browser containing quotes in selector and text:
+		'data' => wp_json_encode(
+			array(
+				'title'       => 'Padding missing for header',
+				'description' => 'The "WordPress" header should bump down 20px',
+				'type'        => 'bug',
+				'anchor'      => array(
+					'selector' => 'div[data-id="2525c78"] > img',
+					'tag'      => 'img',
+				),
+			)
+		),
+	)
+);
+$upload( $q, $jpeg() );
+$res = rest_do_request( $q );
+$d   = $res->get_data();
+$check( 'multipart create with quotes in selector/text succeeds (201)', 201 === $res->get_status() && 'Padding missing for header' === ( $d['title'] ?? '' ) );
+
+
+$q = new WP_REST_Request( 'POST', '/feedback-collector/v1/items' );
 $q->set_body_params( array( 'data' => wp_json_encode( array( 'title' => 'Bad image', 'type' => 'bug' ) ) ) );
 $upload( $q, 'definitely not a jpeg' );
 $res = rest_do_request( $q );

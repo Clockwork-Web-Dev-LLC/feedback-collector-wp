@@ -852,6 +852,7 @@ export class App {
     );
 
     const save = async () => {
+      error.textContent = '';
       if (!title.value.trim()) {
         error.textContent = 'Add a short title.';
         title.focus();

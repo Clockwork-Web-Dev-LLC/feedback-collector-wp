@@ -341,7 +341,12 @@ final class Rest {
 		}
 		$body = $request->get_body_params();
 		if ( isset( $body['data'] ) && is_string( $body['data'] ) ) {
-			$decoded = json_decode( wp_unslash( $body['data'] ), true );
+			// WordPress REST server already unslashes $_POST; calling wp_unslash a second time
+			// corrupts escaped quotes (e.g. [data-id="..."]) and backslashes. Try raw first.
+			$decoded = json_decode( $body['data'], true );
+			if ( ! is_array( $decoded ) ) {
+				$decoded = json_decode( wp_unslash( $body['data'] ), true );
+			}
 			return is_array( $decoded ) ? $decoded : array();
 		}
 		return is_array( $body ) ? $body : array();
