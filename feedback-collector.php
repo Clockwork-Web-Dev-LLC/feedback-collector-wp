@@ -9,6 +9,7 @@
  * Author URI:        https://clockworkwd.com
  * License:           GPL-2.0-or-later
  * Text Domain:       feedback-collector
+ * Domain Path:       /languages
  *
  * @package FeedbackCollector
  */

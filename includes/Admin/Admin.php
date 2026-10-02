@@ -706,7 +706,7 @@ final class Admin {
 		/* translators: 1: item count, 2: reply count */
 		echo '<li>' . esc_html( sprintf( __( '%1$d feedback items and %2$d replies (the database tables)', 'feedback-collector' ), $inv['items'], $inv['comments'] ) ) . '</li>';
 		/* translators: %d: screenshot count */
-		echo '<li>' . esc_html( sprintf( __( '%d screenshots in uploads/fbc-screenshots', 'feedback-collector' ), $inv['screenshots'] ) ) . '</li>';
+		echo '<li>' . esc_html( sprintf( _n( '%d screenshot in uploads/fbc-screenshots', '%d screenshots in uploads/fbc-screenshots', $inv['screenshots'], 'feedback-collector' ), $inv['screenshots'] ) ) . '</li>';
 		echo '<li>' . esc_html__( 'All settings (including the Teamwork key and branding), cached Teamwork data, scheduled sync jobs, and the reviewer capability on every role', 'feedback-collector' ) . '</li></ul>';
 		echo '<p class="description">' . esc_html__( 'Tasks already in Teamwork are not touched.', 'feedback-collector' ) . '</p>';
 		if ( $inv['unpushed'] ) {
@@ -829,6 +829,7 @@ final class Admin {
 				'Priority',
 				'Title',
 				'Description',
+				'Due Date',
 				'Page Path',
 				'Page URL',
 				'Breakpoint',
@@ -843,6 +844,15 @@ final class Admin {
 				'Updated At',
 			)
 		);
+
+		// Disarm spreadsheet formula injection (CWE-1236) if text starts with formula triggers.
+		$escape_csv = static function ( mixed $val ): string {
+			$str = (string) $val;
+			if ( '' !== $str && in_array( $str[0], array( '=', '+', '-', '@', "\t", "\r" ), true ) ) {
+				return "'" . $str;
+			}
+			return $str;
+		};
 
 		$paged = 1;
 		do {
@@ -872,16 +882,17 @@ final class Admin {
 						(string) $item['type'],
 						(string) $item['status'],
 						(string) $item['priority'],
-						(string) $item['title'],
-						(string) $item['description'],
-						(string) $item['page_path'],
+						$escape_csv( $item['title'] ),
+						$escape_csv( $item['description'] ),
+						(string) ( $item['due_date'] ?? '' ),
+						$escape_csv( $item['page_path'] ),
 						Items::page_url( $item ),
 						(string) ( $item['breakpoint'] ?? '' ),
 						(string) ( $item['viewport'] ?? '' ),
 						(string) ( $item['browser'] ?? '' ),
 						(string) ( $item['os'] ?? '' ),
-						$reporter_name,
-						$assignee_name,
+						$escape_csv( $reporter_name ),
+						$escape_csv( $assignee_name ),
 						$tw_task_id > 0 ? $tw_task_id : '',
 						$tw_url,
 						(string) $item['created_at'],

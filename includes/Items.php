@@ -317,7 +317,7 @@ final class Items {
 				self::add_comment(
 					$id,
 					$user
-						/* translators: %s: user display name */
+						/* translators: %s: assignee name */
 						? sprintf( __( 'assigned to %s', 'feedback-collector' ), $user->display_name )
 						: __( 'removed the assignee', 'feedback-collector' ),
 					'activity'
@@ -338,7 +338,7 @@ final class Items {
 				self::add_comment(
 					$id,
 					$row['tw_assignee_id']
-						/* translators: %s: Teamwork person name */
+						/* translators: %s: assignee name */
 						? sprintf( __( 'assigned to %s', 'feedback-collector' ), (string) ( $row['tw_assignee_name'] ?? '' ) )
 						: __( 'removed the assignee', 'feedback-collector' ),
 					'activity'

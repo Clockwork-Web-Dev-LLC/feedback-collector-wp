@@ -1,0 +1,1298 @@
+# Copyright (C) 2026 Clockwork Web Dev
+# This file is distributed under the GPL-2.0-or-later.
+msgid ""
+msgstr ""
+"Project-Id-Version: Clockwork Feedback Collector 0.2.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/feedback-collector-wp\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2026-10-02T12:51:36+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.12.0\n"
+"X-Domain: feedback-collector\n"
+
+#. Plugin Name of the plugin
+#: feedback-collector.php
+msgid "Clockwork Feedback Collector"
+msgstr ""
+
+#. Description of the plugin
+#: feedback-collector.php
+msgid "Internal QA feedback for staging sites. Right-click any element to log a bug, tweak, change request or comment, pinned to the page, with optional push to Teamwork."
+msgstr ""
+
+#. Author of the plugin
+#: feedback-collector.php
+msgid "Clockwork Web Dev"
+msgstr ""
+
+#. Author URI of the plugin
+#: feedback-collector.php
+msgid "https://clockworkwd.com"
+msgstr ""
+
+#: includes/Admin/Admin.php:56
+msgid "All Feedback"
+msgstr ""
+
+#: includes/Admin/Admin.php:57
+#: includes/Admin/Admin.php:466
+#: includes/Admin/Layout.php:39
+msgid "Settings"
+msgstr ""
+
+#: includes/Admin/Admin.php:58
+#: includes/Admin/Admin.php:595
+#: includes/Admin/Layout.php:44
+msgid "Branding"
+msgstr ""
+
+#: includes/Admin/Admin.php:144
+#: includes/Admin/ItemsTable.php:47
+#: includes/Admin/Layout.php:31
+msgid "Feedback"
+msgstr ""
+
+#. translators: %d: current QA round
+#: includes/Admin/Admin.php:146
+#, php-format
+msgid "QA Round %d is in progress. Turn on Feedback mode from the admin bar to add more."
+msgstr ""
+
+#. translators: %d: number of items
+#: includes/Admin/Admin.php:152
+#, php-format
+msgid "%d item updated."
+msgid_plural "%d items updated."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %d: round number
+#: includes/Admin/Admin.php:157
+#, php-format
+msgid "Round %d started. New feedback goes into this round."
+msgstr ""
+
+#: includes/Admin/Admin.php:162
+msgid "Its Teamwork QA list was created and is now active."
+msgstr ""
+
+#: includes/Admin/Admin.php:163
+msgid "The Teamwork QA list could not be created; create it in Settings."
+msgstr ""
+
+#: includes/Admin/Admin.php:172
+msgid "QA rounds"
+msgstr ""
+
+#: includes/Admin/Admin.php:177
+#: includes/Admin/ItemsTable.php:184
+msgid "All rounds"
+msgstr ""
+
+#. translators: %d: round number
+#: includes/Admin/Admin.php:187
+#, php-format
+msgid "Round %d · current"
+msgstr ""
+
+#. translators: %d: round number
+#: includes/Admin/Admin.php:189
+#: includes/Admin/ItemsTable.php:182
+#: includes/Admin/ItemsTable.php:252
+#, php-format
+msgid "Round %d"
+msgstr ""
+
+#. translators: 1: open count, 2: resolved count
+#: includes/Admin/Admin.php:194
+#, php-format
+msgid "%1$d open · %2$d resolved"
+msgstr ""
+
+#: includes/Admin/Admin.php:206
+msgid "Search feedback"
+msgstr ""
+
+#. translators: %d: next round
+#: includes/Admin/Admin.php:219
+#, php-format
+msgid "Start QA Round %d? New feedback will go into the new round. Existing items keep their round."
+msgstr ""
+
+#. translators: %d: next round number
+#: includes/Admin/Admin.php:221
+#, php-format
+msgid "Start Round %d"
+msgstr ""
+
+#: includes/Admin/Admin.php:239
+msgid "Not found"
+msgstr ""
+
+#: includes/Admin/Admin.php:242
+msgid "This feedback item no longer exists."
+msgstr ""
+
+#: includes/Admin/Admin.php:258
+#: includes/Frontend.php:188
+msgid "All feedback"
+msgstr ""
+
+#: includes/Admin/Admin.php:261
+msgid "Saved."
+msgstr ""
+
+#: includes/Admin/Admin.php:266
+msgid "Description"
+msgstr ""
+
+#: includes/Admin/Admin.php:267
+msgid "No description."
+msgstr ""
+
+#: includes/Admin/Admin.php:268
+#: includes/Admin/ItemsTable.php:275
+msgid "View on page"
+msgstr ""
+
+#: includes/Admin/Admin.php:273
+#: includes/Teamwork/Teamwork.php:450
+msgid "Screenshot"
+msgstr ""
+
+#: includes/Admin/Admin.php:277
+msgid "Screenshot of the page when this feedback was filed"
+msgstr ""
+
+#: includes/Admin/Admin.php:282
+msgid "Thread"
+msgstr ""
+
+#: includes/Admin/Admin.php:300
+msgid "Reply…"
+msgstr ""
+
+#: includes/Admin/Admin.php:301
+msgid "Add reply"
+msgstr ""
+
+#: includes/Admin/Admin.php:306
+msgid "Page"
+msgstr ""
+
+#: includes/Admin/Admin.php:307
+#: includes/Teamwork/Teamwork.php:440
+msgid "Page title"
+msgstr ""
+
+#: includes/Admin/Admin.php:308
+#: includes/Teamwork/Teamwork.php:442
+msgid "Breakpoint"
+msgstr ""
+
+#: includes/Admin/Admin.php:308
+msgid "device preview"
+msgstr ""
+
+#: includes/Admin/Admin.php:309
+#: includes/Teamwork/Teamwork.php:443
+msgid "Browser"
+msgstr ""
+
+#: includes/Admin/Admin.php:310
+#: includes/Teamwork/Teamwork.php:445
+msgid "Element"
+msgstr ""
+
+#: includes/Admin/Admin.php:310
+msgid "Whole page"
+msgstr ""
+
+#: includes/Admin/Admin.php:311
+msgid "Element text"
+msgstr ""
+
+#: includes/Admin/Admin.php:312
+msgid "Post"
+msgstr ""
+
+#: includes/Admin/Admin.php:313
+msgid "Theme"
+msgstr ""
+
+#: includes/Admin/Admin.php:314
+msgid "Reporter"
+msgstr ""
+
+#: includes/Admin/Admin.php:315
+msgid "Created"
+msgstr ""
+
+#: includes/Admin/Admin.php:318
+msgid "JS errors"
+msgstr ""
+
+#: includes/Admin/Admin.php:320
+msgid "Captured context"
+msgstr ""
+
+#: includes/Admin/Admin.php:330
+msgid "Triage"
+msgstr ""
+
+#: includes/Admin/Admin.php:335
+#: includes/Admin/ItemsTable.php:49
+msgid "Status"
+msgstr ""
+
+#: includes/Admin/Admin.php:336
+#: includes/Admin/ItemsTable.php:50
+#: includes/Teamwork/Teamwork.php:446
+msgid "Priority"
+msgstr ""
+
+#: includes/Admin/Admin.php:337
+#: includes/Admin/ItemsTable.php:48
+msgid "Type"
+msgstr ""
+
+#: includes/Admin/Admin.php:343
+msgid "Due date"
+msgstr ""
+
+#: includes/Admin/Admin.php:345
+#: includes/Admin/ItemsTable.php:303
+msgid "Overdue"
+msgstr ""
+
+#: includes/Admin/Admin.php:348
+#: includes/Admin/Admin.php:538
+#: includes/Admin/ItemsTable.php:53
+#: includes/Teamwork/Teamwork.php:1366
+msgid "Teamwork"
+msgstr ""
+
+#: includes/Admin/Admin.php:348
+msgid "WordPress"
+msgstr ""
+
+#: includes/Admin/Admin.php:349
+#: includes/Admin/ItemsTable.php:52
+msgid "Assignee"
+msgstr ""
+
+#: includes/Admin/Admin.php:352
+#: includes/Admin/Admin.php:354
+#: includes/Admin/ItemsTable.php:168
+msgid "Unassigned"
+msgstr ""
+
+#: includes/Admin/Admin.php:352
+msgid "In Teamwork now: change the assignee there."
+msgstr ""
+
+#: includes/Admin/Admin.php:364
+msgid "Showing WordPress users until Teamwork is connected."
+msgstr ""
+
+#: includes/Admin/Admin.php:366
+#: includes/Teamwork/Teamwork.php:1393
+msgid "Connect Teamwork"
+msgstr ""
+
+#: includes/Admin/Admin.php:371
+msgid "Save"
+msgstr ""
+
+#: includes/Admin/Admin.php:404
+#: includes/Admin/Admin.php:450
+#: includes/Admin/Admin.php:558
+#: includes/Admin/Admin.php:739
+#: includes/Admin/Admin.php:758
+#: includes/Admin/Admin.php:778
+#: includes/Admin/Admin.php:796
+#: includes/Teamwork/Teamwork.php:1080
+#: includes/Teamwork/Teamwork.php:1097
+#: includes/Teamwork/Teamwork.php:1114
+#: includes/Teamwork/Teamwork.php:1132
+#: includes/Teamwork/Teamwork.php:1154
+#: includes/Teamwork/Teamwork.php:1197
+msgid "Not allowed."
+msgstr ""
+
+#: includes/Admin/Admin.php:467
+msgid "Who can leave feedback, what happens on uninstall, and the Teamwork connection."
+msgstr ""
+
+#: includes/Admin/Admin.php:474
+msgid "Settings saved."
+msgstr ""
+
+#: includes/Admin/Admin.php:481
+msgid "Reviewers"
+msgstr ""
+
+#: includes/Admin/Admin.php:483
+msgid "Who can leave feedback"
+msgstr ""
+
+#: includes/Admin/Admin.php:494
+msgid "Reviewers see the Feedback toggle in the admin bar and can be assigned items."
+msgstr ""
+
+#: includes/Admin/Admin.php:497
+msgid "Teamwork isn’t connected with a project yet, so WordPress users are used until it is."
+msgstr ""
+
+#: includes/Admin/Admin.php:501
+msgid "Assign feedback to"
+msgstr ""
+
+#: includes/Admin/Admin.php:503
+msgid "Teamwork project members (recommended)"
+msgstr ""
+
+#: includes/Admin/Admin.php:505
+msgid "WordPress users on this site"
+msgstr ""
+
+#: includes/Admin/Admin.php:506
+msgid "Who appears in the Assignee dropdowns. With Teamwork, the person you pick is assigned on the Teamwork task directly; once pushed, change the assignee in Teamwork."
+msgstr ""
+
+#: includes/Admin/Admin.php:511
+msgid "Screenshots"
+msgstr ""
+
+#: includes/Admin/Admin.php:513
+msgid "Attach a screenshot of what the reviewer sees to each new item"
+msgstr ""
+
+#: includes/Admin/Admin.php:514
+msgid "Captured in the browser, with typed form values masked. Stored in uploads/fbc-screenshots and attached to the Teamwork task."
+msgstr ""
+
+#: includes/Admin/Admin.php:518
+msgid "Due dates"
+msgstr ""
+
+#: includes/Admin/Admin.php:520
+msgid "Give new feedback a due date by default (“Set date?” starts ticked)"
+msgstr ""
+
+#: includes/Admin/Admin.php:521
+#: includes/Admin/ItemsTable.php:51
+msgid "Due"
+msgstr ""
+
+#: includes/Admin/Admin.php:523
+msgid "days after it’s filed (default 3)"
+msgstr ""
+
+#: includes/Admin/Admin.php:524
+msgid "Keep the same due date for"
+msgstr ""
+
+#: includes/Admin/Admin.php:526
+msgid "hours after a reviewer’s first item (default 3; 0 = off)"
+msgstr ""
+
+#: includes/Admin/Admin.php:527
+msgid "Items a reviewer files in one sitting share a due date: the first starts a batch, everything within the window reuses its date, and changing the date mid-batch carries forward. Teamwork gets the date too."
+msgstr ""
+
+#: includes/Admin/Admin.php:531
+msgid "Uninstall"
+msgstr ""
+
+#: includes/Admin/Admin.php:533
+msgid "Delete all feedback data when the plugin is deleted"
+msgstr ""
+
+#: includes/Admin/Admin.php:596
+msgid "White-label the plugin: the name, logo and colors shown in wp-admin, on the Plugins screen, in the on-page toolbar and in Teamwork tasks."
+msgstr ""
+
+#: includes/Admin/Admin.php:604
+msgid "Branding saved."
+msgstr ""
+
+#: includes/Admin/Admin.php:607
+msgid "Some values are being set in code with the fbc_branding filter and override what you save here."
+msgstr ""
+
+#: includes/Admin/Admin.php:625
+msgid "Custom branding"
+msgstr ""
+
+#: includes/Admin/Admin.php:629
+msgid "Use custom branding"
+msgstr ""
+
+#: includes/Admin/Admin.php:630
+msgid "Off: the plugin shows “Feedback Collector” with the default colors and no logo. On: the name, logo and colors below apply everywhere. Flipping the switch saves right away; your settings are kept when you switch it off."
+msgstr ""
+
+#: includes/Admin/Admin.php:631
+msgid "Saving…"
+msgstr ""
+
+#: includes/Admin/Admin.php:636
+msgid "Names"
+msgstr ""
+
+#: includes/Admin/Admin.php:638
+msgid "Plugin name"
+msgstr ""
+
+#: includes/Admin/Admin.php:638
+msgid "Shown on the Plugins screen, page titles and in Teamwork tasks."
+msgstr ""
+
+#: includes/Admin/Admin.php:639
+msgid "Header label"
+msgstr ""
+
+#: includes/Admin/Admin.php:639
+msgid "Shown beside the logo in the header band."
+msgstr ""
+
+#: includes/Admin/Admin.php:640
+msgid "Menu label"
+msgstr ""
+
+#: includes/Admin/Admin.php:640
+msgid "The wp-admin sidebar item and the admin-bar toggle."
+msgstr ""
+
+#: includes/Admin/Admin.php:641
+msgid "Author"
+msgstr ""
+
+#: includes/Admin/Admin.php:641
+msgid "Shown on the Plugins screen."
+msgstr ""
+
+#: includes/Admin/Admin.php:644
+msgid "Author URL"
+msgstr ""
+
+#: includes/Admin/Admin.php:652
+msgid "Logo & colors"
+msgstr ""
+
+#: includes/Admin/Admin.php:656
+msgid "Logo"
+msgstr ""
+
+#: includes/Admin/Admin.php:658
+msgid "Optional: image URL"
+msgstr ""
+
+#: includes/Admin/Admin.php:659
+msgid "Choose…"
+msgstr ""
+
+#: includes/Admin/Admin.php:660
+msgid "Optional. Leave empty to show the header label as small text. A logo sits on the header color below, so use a light logo on a dark header."
+msgstr ""
+
+#: includes/Admin/Admin.php:661
+#: includes/Admin/Admin.php:662
+msgid "No logo: the header label shows as text"
+msgstr ""
+
+#: includes/Admin/Admin.php:665
+msgid "Primary color"
+msgstr ""
+
+#: includes/Admin/Admin.php:665
+msgid "Buttons, links, active tabs, pins outline."
+msgstr ""
+
+#: includes/Admin/Admin.php:666
+msgid "Header color"
+msgstr ""
+
+#: includes/Admin/Admin.php:666
+msgid "Header band and the on-page toolbar."
+msgstr ""
+
+#: includes/Admin/Admin.php:667
+msgid "Accent color"
+msgstr ""
+
+#: includes/Admin/Admin.php:667
+msgid "The stripe under the header and small highlights. Text never sits on it."
+msgstr ""
+
+#. translators: %s: hex color
+#: includes/Admin/Admin.php:674
+#, php-format
+msgid "Default %s."
+msgstr ""
+
+#: includes/Admin/Admin.php:679
+msgid "Credit"
+msgstr ""
+
+#: includes/Admin/Admin.php:681
+msgid "Show “Powered by Clockwork Feedback Collector” at the bottom of these screens when white-labeled"
+msgstr ""
+
+#: includes/Admin/Admin.php:688
+msgid "Save branding"
+msgstr ""
+
+#: includes/Admin/Admin.php:689
+msgid "Reset to defaults"
+msgstr ""
+
+#: includes/Admin/Admin.php:702
+msgid "Type DELETE in the box to confirm."
+msgstr ""
+
+#: includes/Admin/Admin.php:704
+msgid "Remove all data"
+msgstr ""
+
+#: includes/Admin/Admin.php:705
+msgid "Done with QA on this site? This deletes everything the plugin created, then deactivates it so you can delete it from the Plugins screen:"
+msgstr ""
+
+#. translators: 1: item count, 2: reply count
+#: includes/Admin/Admin.php:707
+#, php-format
+msgid "%1$d feedback items and %2$d replies (the database tables)"
+msgstr ""
+
+#. translators: %d: screenshot count
+#: includes/Admin/Admin.php:709
+#, php-format
+msgid "%d screenshot in uploads/fbc-screenshots"
+msgid_plural "%d screenshots in uploads/fbc-screenshots"
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/Admin/Admin.php:710
+msgid "All settings (including the Teamwork key and branding), cached Teamwork data, scheduled sync jobs, and the reviewer capability on every role"
+msgstr ""
+
+#: includes/Admin/Admin.php:711
+msgid "Tasks already in Teamwork are not touched."
+msgstr ""
+
+#. translators: %d: count
+#: includes/Admin/Admin.php:716
+#, php-format
+msgid "%d unresolved item has not been pushed to Teamwork and will be lost."
+msgid_plural "%d unresolved items have not been pushed to Teamwork and will be lost."
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/Admin/Admin.php:726
+msgid "Type DELETE to confirm. This cannot be undone."
+msgstr ""
+
+#: includes/Admin/Admin.php:728
+msgid "Remove all data and deactivate"
+msgstr ""
+
+#. translators: %d: number of items
+#: includes/Admin/Admin.php:928
+#, php-format
+msgid "%d unresolved feedback item has not been pushed to Teamwork. Removing this plugin deletes it from view."
+msgid_plural "%d unresolved feedback items have not been pushed to Teamwork. Removing this plugin deletes them from view."
+msgstr[0] ""
+msgstr[1] ""
+
+#: includes/Admin/Admin.php:933
+msgid "Review feedback"
+msgstr ""
+
+#. translators: %s: status label
+#: includes/Admin/ItemsTable.php:80
+#, php-format
+msgid "Mark %s"
+msgstr ""
+
+#: includes/Admin/ItemsTable.php:82
+msgid "Delete"
+msgstr ""
+
+#: includes/Admin/ItemsTable.php:165
+msgid "All types"
+msgstr ""
+
+#: includes/Admin/ItemsTable.php:166
+msgid "All statuses"
+msgstr ""
+
+#: includes/Admin/ItemsTable.php:172
+msgid "Any assignee"
+msgstr ""
+
+#: includes/Admin/ItemsTable.php:177
+msgid "All pages"
+msgstr ""
+
+#: includes/Admin/ItemsTable.php:187
+msgid "All breakpoints"
+msgstr ""
+
+#: includes/Admin/ItemsTable.php:189
+msgid "Mobile"
+msgstr ""
+
+#: includes/Admin/ItemsTable.php:190
+msgid "Tablet"
+msgstr ""
+
+#: includes/Admin/ItemsTable.php:191
+msgid "Desktop"
+msgstr ""
+
+#: includes/Admin/ItemsTable.php:196
+msgid "Filter"
+msgstr ""
+
+#: includes/Admin/ItemsTable.php:209
+msgid "Export CSV"
+msgstr ""
+
+#. translators: %s: human time difference
+#: includes/Admin/ItemsTable.php:261
+#, php-format
+msgid "%s ago"
+msgstr ""
+
+#: includes/Admin/ItemsTable.php:274
+msgid "Details"
+msgstr ""
+
+#: includes/Admin/ItemsTable.php:334
+msgid "No feedback yet. Visit the site, turn on Feedback mode from the admin bar, and right-click anything."
+msgstr ""
+
+#. translators: %s: link to Clockwork
+#: includes/Admin/Layout.php:109
+#, php-format
+msgid "Powered by %s"
+msgstr ""
+
+#: includes/Assignees.php:51
+#: includes/Teamwork/Teamwork.php:691
+msgid "Teamwork is not connected."
+msgstr ""
+
+#: includes/Assignees.php:150
+msgid "That person is not on the Teamwork project."
+msgstr ""
+
+#: includes/Assignees.php:153
+msgid "That user cannot be assigned feedback."
+msgstr ""
+
+#. translators: %s: plugin name
+#: includes/Frontend.php:181
+#, php-format
+msgid "Toggle %s (Alt+Shift+F)"
+msgstr ""
+
+#: includes/Items.php:29
+msgid "Bug"
+msgstr ""
+
+#: includes/Items.php:30
+msgid "Tweak"
+msgstr ""
+
+#: includes/Items.php:31
+msgid "Change Request"
+msgstr ""
+
+#: includes/Items.php:32
+msgid "Comment"
+msgstr ""
+
+#: includes/Items.php:35
+msgid "Open"
+msgstr ""
+
+#: includes/Items.php:36
+msgid "In Progress"
+msgstr ""
+
+#: includes/Items.php:37
+msgid "Ready for Review"
+msgstr ""
+
+#: includes/Items.php:38
+msgid "Resolved"
+msgstr ""
+
+#: includes/Items.php:41
+msgid "Low"
+msgstr ""
+
+#: includes/Items.php:42
+msgid "Medium"
+msgstr ""
+
+#: includes/Items.php:43
+msgid "High"
+msgstr ""
+
+#: includes/Items.php:44
+msgid "Critical"
+msgstr ""
+
+#. translators: 1: old status, 2: new status
+#: includes/Items.php:307
+#, php-format
+msgid "changed status from %1$s to %2$s"
+msgstr ""
+
+#. translators: %s: assignee name
+#: includes/Items.php:321
+#: includes/Items.php:342
+#, php-format
+msgid "assigned to %s"
+msgstr ""
+
+#: includes/Items.php:322
+#: includes/Items.php:343
+msgid "removed the assignee"
+msgstr ""
+
+#. translators: %s: date
+#: includes/Items.php:331
+#, php-format
+msgid "set the due date to %s"
+msgstr ""
+
+#: includes/Items.php:332
+msgid "removed the due date"
+msgstr ""
+
+#: includes/Items.php:419
+msgid "Unknown"
+msgstr ""
+
+#: includes/Rest.php:142
+msgid "You do not have access to feedback."
+msgstr ""
+
+#: includes/Rest.php:212
+#: includes/Rest.php:393
+msgid "A title is required."
+msgstr ""
+
+#: includes/Rest.php:215
+msgid "Unknown feedback type."
+msgstr ""
+
+#: includes/Rest.php:219
+msgid "Unknown priority."
+msgstr ""
+
+#: includes/Rest.php:234
+#: includes/Rest.php:438
+msgid "That due date isn’t a valid date."
+msgstr ""
+
+#: includes/Rest.php:257
+msgid "Could not save feedback."
+msgstr ""
+
+#: includes/Rest.php:303
+msgid "No screenshot was uploaded."
+msgstr ""
+
+#: includes/Rest.php:362
+#: includes/Rest.php:367
+#: includes/Rest.php:373
+msgid "The screenshot upload failed."
+msgstr ""
+
+#: includes/Rest.php:370
+msgid "The screenshot is too large."
+msgstr ""
+
+#. translators: %s: field name
+#: includes/Rest.php:409
+#, php-format
+msgid "Invalid %s."
+msgstr ""
+
+#: includes/Rest.php:418
+msgid "This item is in Teamwork now; change the assignee there."
+msgstr ""
+
+#: includes/Rest.php:447
+msgid "Could not update feedback."
+msgstr ""
+
+#: includes/Rest.php:472
+msgid "Only the reporter or an administrator can delete this."
+msgstr ""
+
+#: includes/Rest.php:496
+msgid "Write something first."
+msgstr ""
+
+#: includes/Rest.php:655
+msgid "Teamwork isn’t connected on the server any more, so that Teamwork assignee can’t be used. Reload the page (or check Settings → Teamwork) and pick again."
+msgstr ""
+
+#: includes/Rest.php:656
+msgid "The assignee list changed to Teamwork people since this page loaded. Reload the page and pick the assignee again."
+msgstr ""
+
+#: includes/Rest.php:679
+#: includes/Screenshots.php:87
+#: includes/Teamwork/Teamwork.php:330
+msgid "Feedback item not found."
+msgstr ""
+
+#: includes/Screenshots.php:90
+msgid "The screenshot is empty or too large."
+msgstr ""
+
+#: includes/Screenshots.php:95
+msgid "The screenshot is not a valid JPEG, PNG or WebP image."
+msgstr ""
+
+#: includes/Screenshots.php:101
+msgid "Could not save the screenshot."
+msgstr ""
+
+#: includes/Teamwork/Client.php:64
+msgid "Teamwork rate limit reached."
+msgstr ""
+
+#: includes/Teamwork/Client.php:105
+msgid "The API key was rejected."
+msgstr ""
+
+#. translators: 1: HTTP status, 2: detail
+#: includes/Teamwork/Client.php:108
+#, php-format
+msgid "Teamwork returned %1$d. %2$s"
+msgstr ""
+
+#. translators: %s: plugin name
+#: includes/Teamwork/Client.php:213
+#, php-format
+msgid "QA feedback pushed from %s."
+msgstr ""
+
+#: includes/Teamwork/Client.php:222
+msgid "Teamwork did not return a task list ID."
+msgstr ""
+
+#: includes/Teamwork/Client.php:298
+msgid "Teamwork did not return a tag ID."
+msgstr ""
+
+#: includes/Teamwork/Client.php:313
+msgid "Screenshot file is missing."
+msgstr ""
+
+#: includes/Teamwork/Client.php:329
+msgid "Teamwork did not return an upload URL."
+msgstr ""
+
+#. translators: %d: HTTP status
+#: includes/Teamwork/Client.php:349
+#, php-format
+msgid "Screenshot upload to Teamwork failed (%d)."
+msgstr ""
+
+#: includes/Teamwork/Client.php:382
+msgid "Teamwork did not return a task ID."
+msgstr ""
+
+#: includes/Teamwork/Client.php:442
+msgid "Teamwork did not return a comment ID."
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:189
+msgid "Choose a Teamwork project first."
+msgstr ""
+
+#. translators: 1: round number, 2: date
+#: includes/Teamwork/Teamwork.php:192
+#, php-format
+msgid "QA – Round %1$d – %2$s"
+msgstr ""
+
+#. translators: %d: minutes
+#: includes/Teamwork/Teamwork.php:281
+#, php-format
+msgid "Every %d minutes"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:338
+msgid "Connect Teamwork and choose a project and QA list in Feedback → Settings first."
+msgstr ""
+
+#. translators: %d: round number
+#: includes/Teamwork/Teamwork.php:346
+#, php-format
+msgid "There is no Teamwork list for Round %d. Pick or create one in Feedback → Settings."
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:350
+msgid "This item is already being pushed."
+msgstr ""
+
+#. translators: %s: error
+#: includes/Teamwork/Teamwork.php:363
+#, php-format
+msgid "screenshot was not attached in Teamwork (%s); the task links to it instead"
+msgstr ""
+
+#. translators: 1: task ID, 2: task list name
+#: includes/Teamwork/Teamwork.php:393
+#, php-format
+msgid "pushed to Teamwork as task #%1$d in %2$s"
+msgstr ""
+
+#. translators: 1: task ID, 2: task list name
+#: includes/Teamwork/Teamwork.php:393
+msgid "the QA list"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:437
+msgid "Page URL"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:439
+msgid "Open the pin on the page →"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:445
+msgid "whole page"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:447
+msgid "Reported by"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:450
+msgid "view image"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:454
+msgid "JavaScript errors on the page:"
+msgstr ""
+
+#. translators: %s: user name
+#: includes/Teamwork/Teamwork.php:488
+#, php-format
+msgid "Assigned in WordPress to %s, who has no matching Teamwork account on this project."
+msgstr ""
+
+#. translators: %s: error message
+#: includes/Teamwork/Teamwork.php:664
+#, php-format
+msgid "Couldn’t update the due date in Teamwork: %s"
+msgstr ""
+
+#. translators: 1: Teamwork project ID, 2: error message
+#: includes/Teamwork/Teamwork.php:785
+#, php-format
+msgid "Project %1$d: %2$s"
+msgstr ""
+
+#. translators: %s: error message
+#: includes/Teamwork/Teamwork.php:824
+#, php-format
+msgid "Teamwork push failed: %s"
+msgstr ""
+
+#. translators: %d: round number
+#: includes/Teamwork/Teamwork.php:827
+#, php-format
+msgid "Not in Teamwork yet: Round %d has no QA list."
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:829
+msgid "Sending to Teamwork…"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:844
+msgid "Teamwork site URL"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:846
+msgid "Set by FBC_TEAMWORK_SITE in wp-config.php"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:852
+msgid "API key"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:854
+msgid "Using FBC_TEAMWORK_API_KEY from wp-config.php"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:859
+msgid "The saved key can no longer be read (this site’s security salts changed, e.g. after a migration). Paste the key again."
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:861
+msgid "•••••••• saved — leave blank to keep"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:861
+msgid "Paste the Teamwork API key"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:863
+msgid "Stored encrypted in the database and never shown again or sent to the browser. In Teamwork: profile icon → <strong>Edit My Details</strong> → <strong>API &amp; Mobile</strong> → <strong>Show your Token</strong>. Use a dedicated “QA Bot” user that is only on the projects it needs."
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:880
+msgid "Project"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:884
+msgid "— Choose a project —"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:894
+msgid "QA task list"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:898
+msgid "— Choose a task list —"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:902
+msgid "Or create a fresh “QA – Round N” list with the button below."
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:909
+msgid "Auto-push"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:911
+msgid "Push new feedback to Teamwork as soon as it is created"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:915
+msgid "Every 5 minutes"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:916
+msgid "Every 15 minutes"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:917
+msgid "Every 30 minutes"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:918
+msgid "Every hour (default)"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:920
+#: includes/Teamwork/Teamwork.php:1492
+msgid "Sync with Teamwork"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:924
+msgid "Checks Teamwork for completed or reopened tasks. WP-Cron runs when the site gets visits, so a quiet staging site may sync a little late; use “Sync now” any time."
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:928
+msgid "Email notifications"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:930
+msgid "Email assignees when a task is created in Teamwork"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:931
+msgid "Applies to every push from this site. When off, tasks are still created and assigned in Teamwork; nobody is emailed about them."
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:1010
+msgid "Teamwork tools"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:1012
+msgid "Sync now"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:1014
+msgid "Test connection"
+msgstr ""
+
+#. translators: %d: round number
+#: includes/Teamwork/Teamwork.php:1021
+#, php-format
+msgid "Create “QA – Round %d” list"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:1083
+msgid "Add a site URL and API key first."
+msgstr ""
+
+#. translators: %s: Teamwork user name
+#: includes/Teamwork/Teamwork.php:1088
+#, php-format
+msgid "Connected to Teamwork as %s."
+msgstr ""
+
+#. translators: %s: list name
+#: includes/Teamwork/Teamwork.php:1104
+#, php-format
+msgid "Created “%s” and set it as the active QA list."
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:1221
+#: includes/Teamwork/Teamwork.php:1404
+msgid "Push to Teamwork"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:1256
+msgid "Queued for Teamwork"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:1300
+msgid "A reviewer"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:1382
+msgid "Open in Teamwork ↗"
+msgstr ""
+
+#. translators: 1: task ID, 2: task list name
+#: includes/Teamwork/Teamwork.php:1386
+#, php-format
+msgid "Task #%1$d in “%2$s”."
+msgstr ""
+
+#. translators: %d: task ID
+#: includes/Teamwork/Teamwork.php:1388
+#, php-format
+msgid "Task #%d."
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:1390
+msgid "Completing this task in Teamwork marks this item Resolved here."
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:1393
+msgid "Not connected to Teamwork yet."
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:1395
+msgid "Teamwork is connected. Choose which project QA feedback goes to."
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:1395
+msgid "Choose a project"
+msgstr ""
+
+#. translators: 1: round number, 2: task list name
+#: includes/Teamwork/Teamwork.php:1403
+#, php-format
+msgid "Not in Teamwork yet. Round %1$d → “%2$s”."
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:1404
+msgid "Retry push"
+msgstr ""
+
+#. translators: 1: project name, 2: round number
+#: includes/Teamwork/Teamwork.php:1411
+#, php-format
+msgid "Connected to %1$s, but Round %2$d doesn’t have a QA list yet."
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:1412
+msgid "your project"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:1417
+#: includes/Teamwork/Teamwork.php:1516
+msgid "Ask an administrator to create it in Settings."
+msgstr ""
+
+#. translators: %d: round number
+#: includes/Teamwork/Teamwork.php:1424
+#, php-format
+msgid "Create Round %d QA list & push"
+msgstr ""
+
+#. translators: %s: human time difference
+#: includes/Teamwork/Teamwork.php:1442
+#, php-format
+msgid "Last synced %s ago"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:1443
+msgid "Not synced yet"
+msgstr ""
+
+#. translators: %s: human time difference
+#: includes/Teamwork/Teamwork.php:1448
+#, php-format
+msgid "next in %s"
+msgstr ""
+
+#: includes/Teamwork/Teamwork.php:1449
+msgid "next sync is due (waiting for a site visit)"
+msgstr ""
+
+#. translators: %s: error message
+#: includes/Teamwork/Teamwork.php:1454
+#, php-format
+msgid "Last problem: %s"
+msgstr ""
+
+#. translators: 1: changed count, 2: checked count
+#: includes/Teamwork/Teamwork.php:1472
+#, php-format
+msgid "Synced with Teamwork: %1$d item(s) updated, %2$d changed task(s) checked."
+msgstr ""
+
+#. translators: 1: round number, 2: item count
+#: includes/Teamwork/Teamwork.php:1507
+#, php-format
+msgid "Round %1$d has no Teamwork QA list, so %2$d item hasn’t been sent to Teamwork."
+msgid_plural "Round %1$d has no Teamwork QA list, so %2$d items haven’t been sent to Teamwork."
+msgstr[0] ""
+msgstr[1] ""
+
+#. translators: %d: round number
+#: includes/Teamwork/Teamwork.php:1514
+#, php-format
+msgid "Create Round %d QA list & push all"
+msgstr ""
+
+#. translators: %d: pushed count
+#: includes/Teamwork/Teamwork.php:1525
+#, php-format
+msgid "Sent %d item(s) to Teamwork."
+msgstr ""
+
+#. translators: %d: still-queued count
+#: includes/Teamwork/Teamwork.php:1528
+#, php-format
+msgid "%d more will follow in the background."
+msgstr ""
+
+#. translators: %d: failed count
+#: includes/Teamwork/Teamwork.php:1532
+#, php-format
+msgid "%d failed: hover the warning icon in the Teamwork column for the reason."
+msgstr ""
