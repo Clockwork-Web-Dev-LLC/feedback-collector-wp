@@ -557,7 +557,8 @@ final class Admin {
 			__( 'Branding', 'feedback-collector' ),
 			__( 'White-label the plugin: the name, logo and colors shown in wp-admin, on the Plugins screen, in the on-page toolbar and in Teamwork tasks.', 'feedback-collector' ),
 			static function (): void {
-				$b = Branding::get();
+				// The form edits what's saved, even while custom branding is off.
+				$b = Branding::saved();
 				$d = Branding::defaults();
 
 				// phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -583,6 +584,16 @@ final class Admin {
 					);
 				};
 
+				Layout::card_open( __( 'Custom branding', 'feedback-collector' ) );
+				printf(
+					'<p><label class="fbc-toggle"><input type="checkbox" class="fbc-toggle__input" id="fbc-b-enabled" name="branding[enabled]" value="1"%1$s /><span class="fbc-toggle__track" aria-hidden="true"><span class="fbc-toggle__knob"></span></span> <strong>%2$s</strong></label></p><p class="description">%3$s</p>',
+					checked( ! empty( $b['enabled'] ), true, false ),
+					esc_html__( 'Use custom branding', 'feedback-collector' ),
+					esc_html__( 'Off: the plugin shows “Feedback Collector” with the default colors and no logo. On: the name, logo and colors below apply everywhere. Your settings are kept when you switch it off.', 'feedback-collector' )
+				);
+				Layout::card_close();
+
+				echo '<div id="fbc-branding-fields"' . ( empty( $b['enabled'] ) ? ' class="fbc-is-off"' : '' ) . '>';
 				Layout::card_open( __( 'Names', 'feedback-collector' ) );
 				echo '<table class="form-table" role="presentation">';
 				$text( 'name', __( 'Plugin name', 'feedback-collector' ), __( 'Shown on the Plugins screen, page titles and in Teamwork tasks.', 'feedback-collector' ) );
@@ -633,6 +644,7 @@ final class Admin {
 				echo '</table>';
 				Layout::card_close();
 
+				echo '</div>';
 				echo '<p class="submit">';
 				submit_button( __( 'Save branding', 'feedback-collector' ), 'primary', 'submit', false );
 				echo ' <button type="submit" class="button" name="reset" value="1">' . esc_html__( 'Reset to defaults', 'feedback-collector' ) . '</button></p>';

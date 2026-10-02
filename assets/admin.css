@@ -238,3 +238,42 @@ body.wp-admin { overflow-x: hidden; }
 .fbc-admin .button.fbc-danger { background: #b91c1c; border-color: #b91c1c; color: #fff; }
 .fbc-admin .button.fbc-danger:hover, .fbc-admin .button.fbc-danger:focus { background: #991b1b; border-color: #991b1b; color: #fff; }
 .fbc-admin .ul-disc { list-style: disc; padding-left: 20px; }
+
+/* Branding tab: fields stay editable but read as inactive while custom branding is off. */
+#fbc-branding-fields.fbc-is-off { opacity: 0.55; }
+#fbc-branding-fields.fbc-is-off:focus-within { opacity: 1; }
+.fbc-toggle { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; }
+.fbc-admin .fbc-toggle__input {
+	position: absolute;
+	opacity: 0;
+	width: 1px;
+	height: 1px;
+	margin: 0;
+}
+.fbc-admin .fbc-toggle__track {
+	position: relative;
+	flex: none;
+	width: 40px;
+	height: 22px;
+	border-radius: 999px;
+	background: #c3c4c7;
+	transition: background 0.15s ease;
+}
+.fbc-admin .fbc-toggle__knob {
+	position: absolute;
+	top: 3px;
+	left: 3px;
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	background: #fff;
+	box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+	transition: transform 0.15s ease;
+}
+.fbc-admin .fbc-toggle__input:checked + .fbc-toggle__track { background: var(--fbc-primary, #6953C4); }
+.fbc-admin .fbc-toggle__input:checked + .fbc-toggle__track .fbc-toggle__knob { transform: translateX(18px); }
+.fbc-admin .fbc-toggle__input:focus-visible + .fbc-toggle__track { outline: 2px solid var(--fbc-primary, #6953C4); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) {
+	.fbc-admin .fbc-toggle__track,
+	.fbc-admin .fbc-toggle__knob { transition: none; }
+}

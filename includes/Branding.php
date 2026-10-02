@@ -34,7 +34,26 @@ final class Branding {
 			'dark'          => '#2D2062',
 			'accent'        => '#7EFF83',
 			'show_credit'   => true,
+			'enabled'       => false, // Custom branding off: the defaults above apply, whatever is saved.
 		);
+	}
+
+	/**
+	 * What the Branding form holds: saved values over the defaults, whether or not
+	 * custom branding is switched on (switching it off keeps them for next time).
+	 *
+	 * @return array<string, string|bool>
+	 */
+	public static function saved(): array {
+		$saved = (array) get_option( self::OPTION, array() );
+		return wp_parse_args( array_filter( $saved, static fn( $v ) => '' !== $v && null !== $v ), self::defaults() );
+	}
+
+	/**
+	 * True when custom branding is switched on.
+	 */
+	public static function enabled(): bool {
+		return ! empty( self::saved()['enabled'] );
 	}
 
 	/**
@@ -47,9 +66,9 @@ final class Branding {
 		if ( null !== $cache ) {
 			return $cache;
 		}
-		$saved = (array) get_option( self::OPTION, array() );
-		$b     = wp_parse_args( array_filter( $saved, static fn( $v ) => '' !== $v && null !== $v ), self::defaults() );
-		$b     = (array) apply_filters( 'fbc_branding', $b );
+		// Custom branding off: the defaults (Clockwork colors, "Feedback Collector", no logo).
+		$b = self::enabled() ? self::saved() : self::defaults();
+		$b = (array) apply_filters( 'fbc_branding', $b );
 		$cache = $b;
 		return $b;
 	}
@@ -229,6 +248,7 @@ final class Branding {
 			}
 		}
 		$out['show_credit'] = ! empty( $input['show_credit'] );
+		$out['enabled']     = ! empty( $input['enabled'] );
 		return $out;
 	}
 }

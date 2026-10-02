@@ -3,6 +3,15 @@
  * with the logo field (empty = the header label shows as text).
  */
 ( function () {
+	// Dim the branding fields while custom branding is switched off.
+	var toggle = document.getElementById( 'fbc-b-enabled' );
+	var fields = document.getElementById( 'fbc-branding-fields' );
+	if ( toggle && fields ) {
+		toggle.addEventListener( 'change', function () {
+			fields.classList.toggle( 'fbc-is-off', ! toggle.checked );
+		} );
+	}
+
 	var input = document.getElementById( 'fbc-b-logo_url' );
 	var preview = document.getElementById( 'fbc-b-logo-preview' );
 	var pick = document.getElementById( 'fbc-b-logo-pick' );
