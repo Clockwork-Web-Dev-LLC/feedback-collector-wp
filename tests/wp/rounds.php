@@ -142,4 +142,11 @@ $s = get_option( 'fbc_teamwork' );
 $check( 'start_next with Teamwork creates and activates the Round 3 list', 3 === $r['round'] && 302 === $r['teamwork'] && 302 === (int) $s['round_lists'][3]['id'] && 302 === (int) $s['tasklist_id'] );
 $check( 'earlier round lists are kept', 200 === (int) $s['round_lists'][1]['id'] && 301 === (int) $s['round_lists'][2]['id'] );
 
+// create_custom_list tests
+$empty_err = Teamwork::create_custom_list( '   ', 3 );
+$check( 'create_custom_list rejects empty name', is_wp_error( $empty_err ) && 'fbc_tw_empty_name' === $empty_err->get_error_code() );
+$custom_id = Teamwork::create_custom_list( 'Sprint 42 QA List', 3 );
+$s         = get_option( 'fbc_teamwork' );
+$check( 'create_custom_list creates and maps custom named list', 303 === $custom_id && 'Sprint 42 QA List' === $s['tasklist_name'] && 'Sprint 42 QA List' === $s['round_lists'][3]['name'] );
+
 printf( "\n%d passed, %d failed\n", $n[0], $n[1] );

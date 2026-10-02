@@ -471,7 +471,18 @@ final class Admin {
 
 				// phpcs:ignore WordPress.Security.NonceVerification.Recommended
 				if ( isset( $_GET['fbc_saved'] ) ) {
-					echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Settings saved.', 'feedback-collector' ) . '</p></div>';
+					$created_msg = get_transient( 'fbc_tw_created_list_msg' );
+					if ( $created_msg ) {
+						delete_transient( 'fbc_tw_created_list_msg' );
+						echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( $created_msg ) . '</p></div>';
+					} else {
+						echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Settings saved.', 'feedback-collector' ) . '</p></div>';
+					}
+				}
+				$err_msg = get_transient( 'fbc_tw_error_msg' );
+				if ( $err_msg ) {
+					delete_transient( 'fbc_tw_error_msg' );
+					echo '<div class="notice notice-error is-dismissible"><p>' . esc_html( $err_msg ) . '</p></div>';
 				}
 
 				printf( '<form method="post" action="%s">', esc_url( admin_url( 'admin-post.php' ) ) );

@@ -177,20 +177,24 @@ final class Teamwork {
 	}
 
 	/**
-	 * Creates "QA – Round N – date" in the selected project, maps it to the round and makes it active.
+	 * Creates a custom task list in the selected project, maps it to the round and makes it active.
 	 *
-	 * @param int $round Round.
+	 * @param string   $name  Task list name.
+	 * @param int|null $round Round (defaults to current).
 	 * @return int|WP_Error New task list ID.
 	 */
-	public static function create_round_list( int $round ): int|WP_Error {
+	public static function create_custom_list( string $name, ?int $round = null ): int|WP_Error {
 		$client = self::client();
 		$s      = self::settings();
 		if ( ! $client || ! $s['project_id'] ) {
 			return new WP_Error( 'fbc_tw_not_ready', __( 'Choose a Teamwork project first.', 'feedback-collector' ) );
 		}
-		/* translators: 1: round number, 2: date */
-		$name = sprintf( __( 'QA – Round %1$d – %2$s', 'feedback-collector' ), $round, wp_date( 'Y-m-d' ) );
-		$id   = $client->create_tasklist( (int) $s['project_id'], $name );
+		$name = trim( $name );
+		if ( '' === $name ) {
+			return new WP_Error( 'fbc_tw_empty_name', __( 'Task list name cannot be empty.', 'feedback-collector' ) );
+		}
+		$round = $round ?? Rounds::current();
+		$id    = $client->create_tasklist( (int) $s['project_id'], $name );
 		if ( is_wp_error( $id ) ) {
 			return $id;
 		}
@@ -203,6 +207,18 @@ final class Teamwork {
 		$s['tasklist_name']         = $name;
 		self::save( $s );
 		return $id;
+	}
+
+	/**
+	 * Creates "QA – Round N – date" in the selected project, maps it to the round and makes it active.
+	 *
+	 * @param int $round Round.
+	 * @return int|WP_Error New task list ID.
+	 */
+	public static function create_round_list( int $round ): int|WP_Error {
+		/* translators: 1: round number, 2: date */
+		$name = sprintf( __( 'QA – Round %1$d – %2$s', 'feedback-collector' ), $round, wp_date( 'Y-m-d' ) );
+		return self::create_custom_list( $name, $round );
 	}
 
 	/**
@@ -890,16 +906,96 @@ final class Teamwork {
 		echo '</td></tr>';
 
 		if ( $s['project_id'] ) {
-			$lists = $client->tasklists( (int) $s['project_id'] );
-			echo '<tr><th scope="row"><label for="fbc-tw-list">' . esc_html__( 'QA task list', 'feedback-collector' ) . '</label></th><td>';
+			$lists          = $client->tasklists( (int) $s['project_id'] );
+			$current_round  = Rounds::current();
+			/* translators: 1: round number, 2: current date */
+			$suggested_name = sprintf( __( 'QA – Round %1$d – %2$s', 'feedback-collector' ), $current_round, wp_date( 'Y-m-d' ) );
+
+			echo '<tr><th scope="row"><label>' . esc_html__( 'QA task list', 'feedback-collector' ) . '</label></th><td>';
 			if ( is_wp_error( $lists ) ) {
 				echo '<div class="notice inline notice-error"><p>' . esc_html( $lists->get_error_message() ) . '</p></div>';
 			} else {
-				echo '<select id="fbc-tw-list" name="tw_tasklist"><option value="0">' . esc_html__( '— Choose a task list —', 'feedback-collector' ) . '</option>';
+				echo '<fieldset class="fbc-tw-list-fieldset">';
+				echo '<div style="display:flex;gap:20px;margin-bottom:10px;align-items:center;">';
+				echo '<label style="font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer;">';
+				echo '<input type="radio" name="tw_list_mode" value="existing" checked="checked" /> ';
+				esc_html_e( 'Select existing list', 'feedback-collector' );
+				echo '</label>';
+				echo '<label style="font-weight:600;display:inline-flex;align-items:center;gap:6px;cursor:pointer;">';
+				echo '<input type="radio" name="tw_list_mode" value="new" /> ';
+				esc_html_e( 'Create new list', 'feedback-collector' );
+				echo '</label>';
+				echo '</div>';
+
+				echo '<div id="fbc-tw-existing-list-panel">';
+				echo '<select id="fbc-tw-list" name="tw_tasklist" style="max-width:380px;width:100%;">';
+				echo '<option value="0">' . esc_html__( '— Choose a task list —', 'feedback-collector' ) . '</option>';
 				foreach ( $lists as $id => $name ) {
 					printf( '<option value="%d"%s>%s</option>', (int) $id, selected( (int) $s['tasklist_id'], (int) $id, false ), esc_html( $name ) );
 				}
-				echo '</select><p class="description">' . esc_html__( 'Or create a fresh “QA – Round N” list with the button below.', 'feedback-collector' ) . '</p>';
+				echo '<option value="__new__">' . esc_html__( '+ Create new task list…', 'feedback-collector' ) . '</option>';
+				echo '</select>';
+				echo '<p class="description">' . esc_html__( 'Select an existing task list in this project, or switch to create a new one.', 'feedback-collector' ) . '</p>';
+				echo '</div>';
+
+				echo '<div id="fbc-tw-new-list-panel" style="display:none;">';
+				echo '<div style="display:flex;gap:8px;align-items:center;max-width:540px;">';
+				printf(
+					'<input type="text" id="fbc-tw-new-list-name" name="tw_new_list_name" class="regular-text" style="flex:1;" value="%s" placeholder="%s" />',
+					esc_attr( $suggested_name ),
+					esc_attr( $suggested_name )
+				);
+				echo '<button type="submit" name="fbc_tw_create_list_btn" value="1" class="button button-secondary" style="white-space:nowrap;">' . esc_html__( 'Create list now', 'feedback-collector' ) . '</button>';
+				echo '</div>';
+				printf(
+					'<p class="description">%s</p>',
+					/* translators: %d: round number */
+					sprintf( esc_html__( 'Creates a new list in this project and sets it as the active QA list for Round %d.', 'feedback-collector' ), $current_round )
+				);
+				echo '</div>';
+				echo '</fieldset>';
+
+				echo '<script>
+				(function() {
+					var modeExisting = document.querySelector(\'input[name="tw_list_mode"][value="existing"]\');
+					var modeNew = document.querySelector(\'input[name="tw_list_mode"][value="new"]\');
+					var existingPanel = document.getElementById("fbc-tw-existing-list-panel");
+					var newPanel = document.getElementById("fbc-tw-list-new-panel");
+					var selectList = document.getElementById("fbc-tw-list");
+					var newListName = document.getElementById("fbc-tw-new-list-name");
+
+					function setMode(mode) {
+						if (mode === "new") {
+							if (modeNew) modeNew.checked = true;
+							if (existingPanel) existingPanel.style.display = "none";
+							if (newPanel) newPanel.style.display = "block";
+							if (newListName) {
+								newListName.focus();
+								newListName.select();
+							}
+						} else {
+							if (modeExisting) modeExisting.checked = true;
+							if (existingPanel) existingPanel.style.display = "block";
+							if (newPanel) newPanel.style.display = "none";
+						}
+					}
+
+					if (modeExisting) {
+						modeExisting.addEventListener("change", function() { setMode("existing"); });
+					}
+					if (modeNew) {
+						modeNew.addEventListener("change", function() { setMode("new"); });
+					}
+					if (selectList) {
+						selectList.addEventListener("change", function() {
+							if (this.value === "__new__") {
+								setMode("new");
+								this.value = "0";
+							}
+						});
+					}
+				})();
+				</script>';
 			}
 			echo '</td></tr>';
 		}
@@ -961,22 +1057,41 @@ final class Teamwork {
 				$s['tasklist_name'] = '';
 				$projects           = get_transient( 'fbc_tw_projects' );
 				$s['project_name']  = is_array( $projects ) ? (string) ( $projects[ $project ] ?? '' ) : '';
-			} elseif ( isset( $_POST['tw_tasklist'] ) ) {
-				$list = absint( $_POST['tw_tasklist'] );
-				if ( $list !== (int) $s['tasklist_id'] ) {
-					$s['tasklist_id']   = $list;
-					$client             = self::client();
-					$lists              = $client && $project ? $client->tasklists( $project ) : array();
-					$s['tasklist_name'] = is_array( $lists ) ? (string) ( $lists[ $list ] ?? '' ) : '';
-					// Picking a list maps it to the current round; earlier rounds keep theirs.
-					$current = Rounds::current();
-					if ( $list ) {
-						$s['round_lists'][ $current ] = array(
-							'id'   => $list,
-							'name' => $s['tasklist_name'],
-						);
+			} else {
+				$mode       = isset( $_POST['tw_list_mode'] ) ? sanitize_key( wp_unslash( $_POST['tw_list_mode'] ) ) : 'existing';
+				$create_btn = ! empty( $_POST['fbc_tw_create_list_btn'] );
+
+				if ( 'new' === $mode || $create_btn ) {
+					$new_name = isset( $_POST['tw_new_list_name'] ) ? trim( sanitize_text_field( wp_unslash( $_POST['tw_new_list_name'] ) ) ) : '';
+					if ( '' === $new_name ) {
+						/* translators: 1: round number, 2: date */
+						$new_name = sprintf( __( 'QA – Round %1$d – %2$s', 'feedback-collector' ), Rounds::current(), wp_date( 'Y-m-d' ) );
+					}
+					$created_id = self::create_custom_list( $new_name );
+					if ( ! is_wp_error( $created_id ) ) {
+						$s = self::settings(); // Reload updated settings from create_custom_list.
+						/* translators: %s: list name */
+						set_transient( 'fbc_tw_created_list_msg', sprintf( __( 'Created “%s” and set it as the active QA task list.', 'feedback-collector' ), $new_name ), 30 );
 					} else {
-						unset( $s['round_lists'][ $current ] );
+						set_transient( 'fbc_tw_error_msg', $created_id->get_error_message(), 30 );
+					}
+				} elseif ( isset( $_POST['tw_tasklist'] ) ) {
+					$list = absint( $_POST['tw_tasklist'] );
+					if ( $list !== (int) $s['tasklist_id'] ) {
+						$s['tasklist_id']   = $list;
+						$client             = self::client();
+						$lists              = $client && $project ? $client->tasklists( $project ) : array();
+						$s['tasklist_name'] = is_array( $lists ) ? (string) ( $lists[ $list ] ?? '' ) : '';
+						// Picking a list maps it to the current round; earlier rounds keep theirs.
+						$current = Rounds::current();
+						if ( $list ) {
+							$s['round_lists'][ $current ] = array(
+								'id'   => $list,
+								'name' => $s['tasklist_name'],
+							);
+						} else {
+							unset( $s['round_lists'][ $current ] );
+						}
 					}
 				}
 			}
@@ -1013,7 +1128,7 @@ final class Teamwork {
 		echo ' ';
 		self::button_form( 'fbc_tw_test', __( 'Test connection', 'feedback-collector' ) );
 		$current = Rounds::current();
-		if ( $s['project_id'] && empty( $s['round_lists'][ $current ] ) ) {
+		if ( $s['project_id'] ) {
 			echo ' ';
 			self::button_form(
 				'fbc_tw_create_list',

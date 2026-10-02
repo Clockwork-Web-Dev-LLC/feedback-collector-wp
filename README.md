@@ -58,7 +58,7 @@ Then, in **Feedback → Settings**:
 
 1. Click **Test connection**.
 2. Choose the **Project**.
-3. Click **Create "QA – Round N" list**, or pick an existing task list.
+3. Under **QA task list**, choose **Select existing list** (or pick "+ Create new task list…") or switch to **Create new list** to create a custom or fresh "QA – Round N" list on the spot.
 4. Optionally turn on **Auto-push** for new feedback.
 
 Push items from the detail screen, or select several in the list and use **Bulk actions → Push to Teamwork**.
