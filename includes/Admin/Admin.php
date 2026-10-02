@@ -624,10 +624,11 @@ final class Admin {
 
 				Layout::card_open( __( 'Custom branding', 'feedback-collector' ) );
 				printf(
-					'<p><label class="fbc-toggle"><input type="checkbox" class="fbc-toggle__input" id="fbc-b-enabled" name="branding[enabled]" value="1"%1$s /><span class="fbc-toggle__track" aria-hidden="true"><span class="fbc-toggle__knob"></span></span> <strong>%2$s</strong></label></p><p class="description">%3$s</p>',
+					'<p><label class="fbc-toggle"><input type="checkbox" class="fbc-toggle__input" id="fbc-b-enabled" name="branding[enabled]" value="1"%1$s /><span class="fbc-toggle__track" aria-hidden="true"><span class="fbc-toggle__knob"></span></span> <strong>%2$s</strong></label> <span id="fbc-b-enabled-status" class="description" role="status" data-saving="%4$s"></span></p><p class="description">%3$s</p>',
 					checked( ! empty( $b['enabled'] ), true, false ),
 					esc_html__( 'Use custom branding', 'feedback-collector' ),
-					esc_html__( 'Off: the plugin shows “Feedback Collector” with the default colors and no logo. On: the name, logo and colors below apply everywhere. Your settings are kept when you switch it off.', 'feedback-collector' )
+					esc_html__( 'Off: the plugin shows “Feedback Collector” with the default colors and no logo. On: the name, logo and colors below apply everywhere. Flipping the switch saves right away; your settings are kept when you switch it off.', 'feedback-collector' ),
+					esc_attr__( 'Saving…', 'feedback-collector' )
 				);
 				Layout::card_close();
 

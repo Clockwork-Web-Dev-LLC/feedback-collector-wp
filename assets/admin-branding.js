@@ -6,9 +6,22 @@
 	// Dim the branding fields while custom branding is switched off.
 	var toggle = document.getElementById( 'fbc-b-enabled' );
 	var fields = document.getElementById( 'fbc-branding-fields' );
+	// A switch should act like one: flipping it saves straight away.
 	if ( toggle && fields ) {
 		toggle.addEventListener( 'change', function () {
 			fields.classList.toggle( 'fbc-is-off', ! toggle.checked );
+			var status = document.getElementById( 'fbc-b-enabled-status' );
+			if ( status ) {
+				status.textContent = status.dataset.saving || '';
+			}
+			if ( toggle.form ) {
+				// The form has a button named "submit", which shadows form.submit(); use the prototype.
+				if ( toggle.form.requestSubmit ) {
+					toggle.form.requestSubmit();
+				} else {
+					HTMLFormElement.prototype.submit.call( toggle.form );
+				}
+			}
 		} );
 	}
 
