@@ -122,6 +122,8 @@ export interface Config {
   /** Attach a screenshot to new items. */
   shots?: boolean;
   due?: DueConfig;
+  /** The reviewer's own saved preferences (on their WordPress user); absent keys = never chosen. */
+  prefs?: { corner?: 'tl' | 'tr' | 'bl' | 'br'; highlight?: boolean };
 }
 
 export interface NewItem {

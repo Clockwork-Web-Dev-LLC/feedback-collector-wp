@@ -59,6 +59,11 @@ export class Api {
     return this.request('POST', '/items', form);
   }
 
+  /** Saves the reviewer's own overlay preferences to their WordPress user. */
+  savePrefs(prefs: NonNullable<Config['prefs']>): Promise<NonNullable<Config['prefs']>> {
+    return this.request('POST', '/me/prefs', prefs);
+  }
+
   replaceScreenshot(id: number, screenshot: Blob): Promise<Item> {
     const form = new FormData();
     form.append('screenshot', screenshot, 'screenshot.jpg');

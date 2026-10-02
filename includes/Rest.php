@@ -109,6 +109,26 @@ final class Rest {
 				'permission_callback' => $can,
 			)
 		);
+
+		register_rest_route(
+			self::NS,
+			'/me/prefs',
+			array(
+				'methods'             => WP_REST_Server::EDITABLE,
+				'callback'            => array( self::class, 'update_prefs' ),
+				'permission_callback' => $can,
+			)
+		);
+	}
+
+	/**
+	 * POST /me/prefs — the reviewer's own toolbar corner / hover highlight.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function update_prefs( WP_REST_Request $request ): WP_REST_Response {
+		$p = $request->get_json_params() ?: array();
+		return new WP_REST_Response( UserPrefs::update( get_current_user_id(), is_array( $p ) ? $p : array() ) );
 	}
 
 	/**

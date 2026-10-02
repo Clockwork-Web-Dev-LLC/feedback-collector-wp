@@ -34,7 +34,7 @@ final class Cleanup {
 	);
 
 	/** Every user-meta key the plugin writes. */
-	public const USER_META = array( 'fbc_due_batch' );
+	public const USER_META = array( 'fbc_due_batch', 'fbc_prefs' );
 
 	/** Every WP-Cron hook the plugin schedules. */
 	public const CRON_HOOKS = array( 'fbc_tw_sync', 'fbc_tw_queue' );

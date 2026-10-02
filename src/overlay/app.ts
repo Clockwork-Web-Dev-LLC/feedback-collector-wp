@@ -143,13 +143,27 @@ export class App {
     this.bindAdminBar();
 
     let stored = false;
+    let localCorner: Corner | null = null;
+    let localHighlight: boolean | null = null;
     try {
       stored = window.localStorage.getItem(STORAGE_KEY) === '1';
       const corner = window.localStorage.getItem(CORNER_KEY) as Corner | null;
-      if (corner && CORNERS.includes(corner)) this.corner = corner;
-      this.highlight = window.localStorage.getItem(HIGHLIGHT_KEY) !== '0';
+      if (corner && CORNERS.includes(corner)) localCorner = corner;
+      const hl = window.localStorage.getItem(HIGHLIGHT_KEY);
+      if (hl !== null) localHighlight = hl !== '0';
     } catch {
       stored = false;
+    }
+    // Corner and hover highlight are per reviewer (saved on their WordPress user), so they
+    // follow them to any browser. A choice made before that, in this browser, is adopted once.
+    const prefs = this.cfg.prefs ?? {};
+    this.corner = prefs.corner ?? localCorner ?? this.corner;
+    this.highlight = prefs.highlight ?? localHighlight ?? true;
+    if (!this.inPreview) {
+      const adopt: NonNullable<Config['prefs']> = {};
+      if (!prefs.corner && localCorner) adopt.corner = localCorner;
+      if (prefs.highlight === undefined && localHighlight !== null) adopt.highlight = localHighlight;
+      if (Object.keys(adopt).length) this.savePrefs(adopt);
     }
     if (this.inPreview) {
       // Inside the device preview: always in Feedback mode, and no admin bar, even after
@@ -514,8 +528,9 @@ export class App {
     try {
       window.localStorage.setItem(HIGHLIGHT_KEY, on ? '1' : '0');
     } catch {
-      /* storage blocked: the choice lasts for this page only */
+      /* storage blocked: the account copy below still remembers it */
     }
+    if (!this.inPreview) this.savePrefs({ highlight: on });
     if (!on) this.hideOutline();
     this.renderToolbar();
   }
@@ -1452,13 +1467,22 @@ export class App {
     this.positionToolbar(false);
   }
 
+  /** Saves preferences to the reviewer's account; the local copy keeps working if that fails. */
+  private savePrefs(prefs: NonNullable<Config['prefs']>): void {
+    this.cfg.prefs = { ...(this.cfg.prefs ?? {}), ...prefs };
+    this.api.savePrefs(prefs).catch(() => {
+      /* offline or no permission: this browser still remembers it */
+    });
+  }
+
   private setCorner(corner: Corner): void {
     this.corner = corner;
     try {
       if (!this.inPreview) window.localStorage.setItem(CORNER_KEY, corner);
     } catch {
-      /* not remembered in private windows; still moves */
+      /* private window: the account copy below still remembers it */
     }
+    if (!this.inPreview) this.savePrefs({ corner });
     this.positionToolbar(true);
     this.positionChrome();
   }

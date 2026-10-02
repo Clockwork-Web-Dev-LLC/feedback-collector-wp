@@ -84,6 +84,9 @@ beforeEach(() => {
       const found = serverItems.find((i) => i.id === id) ?? makeItem({ id });
       return new Response(JSON.stringify(found), { status: 200 });
     }
+    if (method === 'POST' && url.includes('/me/prefs')) {
+      return new Response(JSON.stringify(body ?? {}), { status: 200 });
+    }
     if (method === 'POST' && url.endsWith('/items')) {
       const b = body as Partial<Item>;
       const item = makeItem({ id: 42, type: b.type, title: b.title, anchor: b.anchor ?? null, page_path: b.page_path, due_date: b.due_date ?? null });
@@ -321,6 +324,35 @@ describe('toolbar placement', () => {
     expect(px(toolbar().style.left)).toBe(16);
     expect(shadow()?.querySelector('.snap-ghost')).toBeNull();
     expect(window.localStorage.getItem('fbc:corner')).toBe('tl');
+  });
+
+  it('per reviewer: the corner saved on their account wins over this browser', async () => {
+    window.localStorage.setItem('fbc:corner', 'br');
+    const app = createApp({ ...cfg(), prefs: { corner: 'tl', highlight: false } });
+    app.init();
+    await app.setMode(true);
+    expect(toolbar().dataset.corner).toBe('tl');
+    expect(calls.some((c) => c.url.includes('/me/prefs'))).toBe(false); // nothing to adopt
+  });
+
+  it('moving the toolbar saves the corner to the reviewer\'s account', async () => {
+    const app = createApp(cfg());
+    app.init();
+    await app.setMode(true);
+    const grip = toolbar().querySelector('.grip') as HTMLElement;
+    grip.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, button: 0, clientX: 900, clientY: 700 }));
+    window.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, clientX: 20, clientY: 5 }));
+    window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, clientX: 20, clientY: 5 }));
+    const save = calls.filter((c) => c.method === 'POST' && c.url.includes('/me/prefs')).pop();
+    expect(save?.body).toEqual({ corner: 'tl' });
+  });
+
+  it('a corner chosen in this browser before accounts is adopted onto the account once', async () => {
+    window.localStorage.setItem('fbc:corner', 'tr');
+    const app = createApp({ ...cfg(), prefs: {} });
+    app.init();
+    const save = calls.find((c) => c.method === 'POST' && c.url.includes('/me/prefs'));
+    expect(save?.body).toEqual({ corner: 'tr' });
   });
 
   it('restores the saved corner on the next page load', async () => {
