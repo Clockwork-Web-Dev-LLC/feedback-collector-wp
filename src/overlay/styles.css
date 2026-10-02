@@ -255,6 +255,33 @@ select {
   padding-right: 30px !important;
   cursor: pointer;
 }
+/* Due date: "Set date?" checkbox, with the date picker beside it once ticked. */
+.due-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 34px;
+}
+.due-field .check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.due-field .check input {
+  width: auto;
+  margin: 0;
+}
+.due-field input[type='date'] {
+  width: auto;
+  flex: 1;
+}
+.field input[type='date'].overdue {
+  border-color: var(--bug);
+  color: var(--bug);
+}
 .field textarea {
   min-height: 70px;
   resize: vertical;

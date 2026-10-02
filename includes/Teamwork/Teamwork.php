@@ -13,6 +13,7 @@ namespace FeedbackCollector\Teamwork;
 use FeedbackCollector\Admin\Admin;
 use FeedbackCollector\Admin\Layout;
 use FeedbackCollector\Branding;
+use FeedbackCollector\DueDates;
 use FeedbackCollector\Items;
 use FeedbackCollector\Rounds;
 use FeedbackCollector\Screenshots;
@@ -40,6 +41,7 @@ final class Teamwork {
 		add_action( self::SYNC_HOOK, array( self::class, 'cron_sync' ) );
 		add_action( self::QUEUE_HOOK, array( self::class, 'process_queue' ) );
 		add_action( 'fbc_item_created', array( self::class, 'maybe_auto_push' ) );
+		add_action( 'fbc_item_due_changed', array( self::class, 'push_due_date' ) );
 		add_filter( 'fbc_present_item', array( self::class, 'present' ), 10, 2 );
 		add_filter( 'fbc_teamwork_task_url', array( self::class, 'task_url' ), 10, 2 );
 		add_action( 'fbc_comment_created', array( self::class, 'handle_comment_created' ), 10, 6 );
@@ -460,6 +462,11 @@ final class Teamwork {
 			'description'            => $md,
 			'priority'               => in_array( $item['priority'], array( 'high', 'critical' ), true ) ? 'high' : $item['priority'],
 		);
+		// Teamwork writes due dates through dueAt (Y-m-d; it reads back as dueDate).
+		$due = DueDates::sanitize( (string) ( $item['due_date'] ?? '' ) );
+		if ( $due ) {
+			$task['dueAt'] = $due;
+		}
 
 		$tag_id = self::tag_for_type( $item['type'], $client );
 		if ( $tag_id ) {
@@ -640,6 +647,25 @@ final class Teamwork {
 	}
 
 	/**
+	 * A due date edited here goes to the Teamwork task too (best effort; a failure is
+	 * noted in the item's thread so it's never silent).
+	 *
+	 * @param int $id Item ID.
+	 */
+	public static function push_due_date( int $id ): void {
+		$item   = Items::get( $id );
+		$client = self::client();
+		if ( ! $item || ! $item['tw_task_id'] || ! $client ) {
+			return;
+		}
+		$result = $client->update_task( (int) $item['tw_task_id'], array( 'dueAt' => DueDates::sanitize( (string) $item['due_date'] ) ) );
+		if ( is_wp_error( $result ) ) {
+			/* translators: %s: error message */
+			Items::add_comment( $id, sprintf( __( 'Couldn’t update the due date in Teamwork: %s', 'feedback-collector' ), $result->get_error_message() ), 'activity' );
+		}
+	}
+
+	/**
 	 * Auto-push on creation, when enabled. Runs in the background so the reviewer isn't kept waiting.
 	 *
 	 * @param int $id New item ID.
@@ -666,7 +692,7 @@ final class Teamwork {
 		}
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared
-		$rows    = $wpdb->get_results( 'SELECT id, status, tw_task_id, tw_project_id FROM ' . Items::table() . ' WHERE tw_task_id > 0', ARRAY_A );
+		$rows    = $wpdb->get_results( 'SELECT id, status, due_date, tw_task_id, tw_project_id FROM ' . Items::table() . ' WHERE tw_task_id > 0', ARRAY_A );
 		$state   = (array) get_option( self::STATE_OPTION, array() );
 		$started = time();
 
@@ -733,6 +759,21 @@ final class Teamwork {
 						)
 					);
 					++$changed;
+				}
+				// Due date changed in Teamwork (day-only there, same as here). Only when the
+				// response carries the field, so a sparse payload never clears a date.
+				if ( array_key_exists( 'dueDate', $task ) ) {
+					$tw_due = DueDates::sanitize( substr( (string) $task['dueDate'], 0, 10 ) );
+					if ( $tw_due !== DueDates::sanitize( (string) $row['due_date'] ) ) {
+						Items::update(
+							(int) $row['id'],
+							array(
+								'due_date'  => $tw_due,
+								'_actor_id' => 0,
+							)
+						);
+						++$changed;
+					}
 				}
 			}
 		}

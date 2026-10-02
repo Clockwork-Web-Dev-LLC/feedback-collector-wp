@@ -8,6 +8,7 @@
 namespace FeedbackCollector\Admin;
 
 use FeedbackCollector\Assignees;
+use FeedbackCollector\DueDates;
 use FeedbackCollector\Branding;
 use FeedbackCollector\Items;
 use FeedbackCollector\Rest;
@@ -337,6 +338,12 @@ final class Admin {
 				) as $field => $def ) {
 					echo '<p><label><strong>' . esc_html( $def[0] ) . '</strong><br />' . self::select( $field, $def[1], (string) $def[2] ) . '</label></p>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- select() escapes.
 				}
+				printf(
+					'<p><label><strong>%1$s</strong><br /><input type="date" name="due_date" value="%2$s" /></label>%3$s</p>',
+					esc_html__( 'Due date', 'feedback-collector' ),
+					esc_attr( (string) DueDates::sanitize( (string) $item['due_date'] ) ),
+					DueDates::overdue( $item ) ? ' <span class="fbc-overdue">' . esc_html__( 'Overdue', 'feedback-collector' ) . '</span>' : ''
+				);
 				$assignees = Assignees::options();
 				$source    = 'teamwork' === $assignees['source'] ? __( 'Teamwork', 'feedback-collector' ) : __( 'WordPress', 'feedback-collector' );
 				echo '<p><strong>' . esc_html__( 'Assignee', 'feedback-collector' ) . '</strong> <span class="fbc-bp">' . esc_html( $source ) . '</span><br />';
@@ -417,7 +424,18 @@ final class Admin {
 				}
 			}
 		}
+		$due_changed = false;
+		if ( $item && isset( $_POST['due_date'] ) ) {
+			$due = DueDates::sanitize( sanitize_text_field( wp_unslash( $_POST['due_date'] ) ) );
+			if ( $due !== DueDates::sanitize( (string) $item['due_date'] ) ) {
+				$changes['due_date'] = $due;
+				$due_changed         = true;
+			}
+		}
 		Items::update( $id, $changes );
+		if ( $due_changed ) {
+			do_action( 'fbc_item_due_changed', $id );
+		}
 		wp_safe_redirect( add_query_arg( 'fbc_saved', 1, self::item_url( $id ) ) );
 		exit;
 	}
@@ -496,6 +514,19 @@ final class Admin {
 					esc_html__( 'Captured in the browser, with typed form values masked. Stored in uploads/fbc-screenshots and attached to the Teamwork task.', 'feedback-collector' )
 				);
 				printf(
+					'<tr><th scope="row">%1$s</th><td><label><input type="checkbox" name="due_default" value="1"%2$s /> %3$s</label><p><label>%4$s <input type="number" name="due_days" min="0" max="365" step="1" class="small-text" value="%5$d" /> %6$s</label></p><p><label>%7$s <input type="number" name="due_batch_hours" min="0" max="72" step="1" class="small-text" value="%8$d" /> %9$s</label></p><p class="description">%10$s</p></td></tr>',
+					esc_html__( 'Due dates', 'feedback-collector' ),
+					checked( DueDates::on_by_default(), true, false ),
+					esc_html__( 'Give new feedback a due date by default (“Set date?” starts ticked)', 'feedback-collector' ),
+					esc_html__( 'Due', 'feedback-collector' ),
+					DueDates::days(),
+					esc_html__( 'days after it’s filed (default 3)', 'feedback-collector' ),
+					esc_html__( 'Keep the same due date for', 'feedback-collector' ),
+					DueDates::batch_hours(),
+					esc_html__( 'hours after a reviewer’s first item (default 3; 0 = off)', 'feedback-collector' ),
+					esc_html__( 'Items a reviewer files in one sitting share a due date: the first starts a batch, everything within the window reuses its date, and changing the date mid-batch carries forward. Teamwork gets the date too.', 'feedback-collector' )
+				);
+				printf(
 					'<tr><th scope="row">%1$s</th><td><label><input type="checkbox" name="delete_on_uninstall" value="1"%2$s /> %3$s</label></td></tr>',
 					esc_html__( 'Uninstall', 'feedback-collector' ),
 					checked( $cleanup, true, false ),
@@ -541,6 +572,13 @@ final class Admin {
 		update_option( 'fbc_delete_on_uninstall', ! empty( $_POST['delete_on_uninstall'] ), false );
 		update_option( \FeedbackCollector\Screenshots::OPTION, empty( $_POST['screenshots'] ) ? '0' : '1', false );
 		update_option( Assignees::OPTION, isset( $_POST['assignee_source'] ) && 'wordpress' === $_POST['assignee_source'] ? 'wordpress' : 'teamwork', false );
+		update_option( DueDates::OPT_DEFAULT, empty( $_POST['due_default'] ) ? '0' : '1', false );
+		if ( isset( $_POST['due_days'] ) ) {
+			update_option( DueDates::OPT_DAYS, max( 0, min( 365, absint( $_POST['due_days'] ) ) ), false );
+		}
+		if ( isset( $_POST['due_batch_hours'] ) ) {
+			update_option( DueDates::OPT_HOURS, max( 0, min( 72, absint( $_POST['due_batch_hours'] ) ) ), false );
+		}
 
 		do_action( 'fbc_save_settings' );
 

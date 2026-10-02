@@ -187,6 +187,7 @@ final class Items {
 			'priority' => "FIELD(priority,'critical','high','medium','low')",
 			'status'   => "FIELD(status,'open','in_progress','ready_for_review','resolved')",
 			'title'    => 'title',
+			'due'      => "COALESCE(due_date,'9999-12-31')",
 		);
 		$orderby     = $orderby_map[ $args['orderby'] ?? 'id' ] ?? 'id';
 		$order       = 'asc' === strtolower( (string) ( $args['order'] ?? 'desc' ) ) ? 'ASC' : 'DESC';
@@ -259,6 +260,7 @@ final class Items {
 				'tw_assignee_id'   => (int) ( $data['tw_assignee_id'] ?? 0 ),
 				'tw_assignee_name' => (string) ( $data['tw_assignee_name'] ?? '' ),
 				'round'            => Rounds::current(),
+				'due_date'         => DueDates::sanitize( $data['due_date'] ?? null ),
 				'created_at'       => $now,
 				'updated_at'       => $now,
 			)
@@ -279,8 +281,11 @@ final class Items {
 			return false;
 		}
 
-		$allowed = array( 'title', 'description', 'status', 'priority', 'assignee_id', 'tw_assignee_id', 'tw_assignee_name', 'type', 'anchor', 'tw_task_id', 'tw_project_id', 'tw_sync_state', 'tw_sync_error', 'screenshot' );
+		$allowed = array( 'title', 'description', 'status', 'priority', 'assignee_id', 'tw_assignee_id', 'tw_assignee_name', 'type', 'anchor', 'tw_task_id', 'tw_project_id', 'tw_sync_state', 'tw_sync_error', 'screenshot', 'due_date' );
 		$row     = array_intersect_key( $changes, array_flip( $allowed ) );
+		if ( array_key_exists( 'due_date', $row ) ) {
+			$row['due_date'] = DueDates::sanitize( $row['due_date'] );
+		}
 		if ( array_key_exists( 'anchor', $row ) ) {
 			$row['anchor'] = null === $row['anchor'] ? null : wp_json_encode( $row['anchor'] );
 		}
@@ -316,6 +321,17 @@ final class Items {
 						? sprintf( __( 'assigned to %s', 'feedback-collector' ), $user->display_name )
 						: __( 'removed the assignee', 'feedback-collector' ),
 					'activity'
+				);
+			}
+			if ( array_key_exists( 'due_date', $row ) && $row['due_date'] !== ( DueDates::sanitize( (string) $before['due_date'] ) ) ) {
+				self::add_comment(
+					$id,
+					$row['due_date']
+						/* translators: %s: date */
+						? sprintf( __( 'set the due date to %s', 'feedback-collector' ), DueDates::label( $row['due_date'] ) )
+						: __( 'removed the due date', 'feedback-collector' ),
+					'activity',
+					array_key_exists( '_actor_id', $changes ) ? (int) $changes['_actor_id'] : null
 				);
 			}
 			if ( isset( $row['tw_assignee_id'] ) && (int) $row['tw_assignee_id'] !== (int) $before['tw_assignee_id'] ) {

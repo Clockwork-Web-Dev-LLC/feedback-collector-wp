@@ -277,3 +277,7 @@ body.wp-admin { overflow-x: hidden; }
 	.fbc-admin .fbc-toggle__track,
 	.fbc-admin .fbc-toggle__knob { transition: none; }
 }
+
+/* Due dates */
+.fbc-admin .fbc-overdue { color: #b91c1c; font-weight: 600; }
+.fbc-admin .column-due { width: 9em; }

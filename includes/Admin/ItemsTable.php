@@ -8,6 +8,7 @@
 namespace FeedbackCollector\Admin;
 
 use FeedbackCollector\Assignees;
+use FeedbackCollector\DueDates;
 use FeedbackCollector\Items;
 use FeedbackCollector\Rest;
 
@@ -47,6 +48,7 @@ final class ItemsTable extends \WP_List_Table {
 			'type'     => __( 'Type', 'feedback-collector' ),
 			'status'   => __( 'Status', 'feedback-collector' ),
 			'priority' => __( 'Priority', 'feedback-collector' ),
+			'due'      => __( 'Due', 'feedback-collector' ),
 			'assignee' => __( 'Assignee', 'feedback-collector' ),
 			'teamwork' => __( 'Teamwork', 'feedback-collector' ),
 		);
@@ -62,6 +64,7 @@ final class ItemsTable extends \WP_List_Table {
 			'title'    => array( 'id', true ),
 			'status'   => array( 'status', false ),
 			'priority' => array( 'priority', true ),
+			'due'      => array( 'due', false ),
 		);
 	}
 
@@ -291,6 +294,14 @@ final class ItemsTable extends \WP_List_Table {
 				return Layout::pill( $item['status'], $labels['status'][ $item['status'] ] ?? $item['status'] );
 			case 'priority':
 				return esc_html( $labels['priority'][ $item['priority'] ] ?? $item['priority'] );
+			case 'due':
+				$label = DueDates::label( $item['due_date'] ?? null );
+				if ( '' === $label ) {
+					return '<span aria-hidden="true">—</span>';
+				}
+				return DueDates::overdue( $item )
+					? '<span class="fbc-overdue" title="' . esc_attr__( 'Overdue', 'feedback-collector' ) . '">' . esc_html( $label ) . '</span>'
+					: esc_html( $label );
 			case 'assignee':
 				$name = Assignees::name( $item );
 				return '' !== $name ? esc_html( $name ) : '<span aria-hidden="true">—</span>';

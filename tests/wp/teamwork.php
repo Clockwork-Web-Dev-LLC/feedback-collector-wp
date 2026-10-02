@@ -57,6 +57,10 @@ add_filter( 'pre_http_request', function ( $pre, $args, $url ) {
 		return $json( 201, array( 'task' => array( 'id' => $id ) ) );
 	}
 	if ( '/projects/api/v3/projects/100/tasks.json' === $path ) return $json( 200, array( 'tasks' => $mock['tasks'], 'meta' => array( 'page' => array( 'hasMore' => false ) ) ) );
+	if ( 'PATCH' === $args['method'] && preg_match( '#^/projects/api/v3/tasks/(\d+)\.json$#', (string) $path, $mm ) ) {
+		$mock['patches'][] = array( (int) $mm[1], json_decode( $args['body'], true ) );
+		return $json( 200, array( 'task' => array( 'id' => (int) $mm[1] ) ) );
+	}
 	if ( '/projects/api/v3/projects/999/tasks.json' === $path ) return $json( 403, array( 'errors' => array( array( 'detail' => 'no access to project' ) ) ) );
 	// Any other project (e.g. real items already on this site): nothing changed. Never a real request.
 	if ( preg_match( '#^/projects/api/v3/projects/\d+/tasks\.json$#', (string) $path ) ) return $json( 200, array( 'tasks' => array(), 'meta' => array( 'page' => array( 'hasMore' => false ) ) ) );
@@ -225,3 +229,29 @@ check( 'pulled comment attributes author', str_contains( $tw_comment['body'], 'B
 
 $second_sync = Teamwork::sync_task_comments( $client, $id, 9001 );
 check( 'comment sync is idempotent (does not duplicate)', 0 === $second_sync );
+
+// 10. Due dates: pushed as dueAt, edits go to Teamwork, Teamwork changes come back.
+$mock['patches'] = array();
+$did = mk( 'Has a due date', array( 'due_date' => '2026-10-04' ) );
+Teamwork::push( $did );
+check( 'push sends the due date as dueAt (Y-m-d)', '2026-10-04' === ( $mock['last_payload']['task']['dueAt'] ?? '' ) );
+$nodue = mk( 'No due date' );
+Teamwork::push( $nodue );
+check( 'Anti: no due date → no dueAt sent', ! array_key_exists( 'dueAt', $mock['last_payload']['task'] ?? array() ) );
+Items::update( $did, array( 'due_date' => '2026-10-06' ) );
+do_action( 'fbc_item_due_changed', $did );
+$last = end( $mock['patches'] );
+check( 'editing the due date PATCHes the Teamwork task', $last && (int) Items::get( $did )['tw_task_id'] === $last[0] && '2026-10-06' === ( $last[1]['task']['dueAt'] ?? '' ) );
+Items::update( $did, array( 'due_date' => null ) );
+do_action( 'fbc_item_due_changed', $did );
+$last = end( $mock['patches'] );
+check( 'clearing the due date sends dueAt null', $last && array_key_exists( 'dueAt', $last[1]['task'] ) && null === $last[1]['task']['dueAt'] );
+$tw = (int) Items::get( $did )['tw_task_id'];
+$mock['tasks'] = array( array( 'id' => $tw, 'status' => 'new', 'dueDate' => '2026-10-15' ) );
+$before = count( $mock['patches'] );
+Teamwork::sync();
+check( 'due date changed in Teamwork syncs back', '2026-10-15' === Items::get( $did )['due_date'] );
+check( 'Anti: a synced due date is not echoed back to Teamwork', count( $mock['patches'] ) === $before );
+$mock['tasks'] = array( array( 'id' => $tw, 'status' => 'new' ) );
+Teamwork::sync();
+check( 'Anti: a task payload without dueDate never clears the date', '2026-10-15' === Items::get( $did )['due_date'] );

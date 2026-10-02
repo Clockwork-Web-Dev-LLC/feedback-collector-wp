@@ -28,7 +28,13 @@ final class Cleanup {
 		'fbc_assignee_source',
 		'fbc_round',
 		'fbc_screenshots',
+		'fbc_due_default',
+		'fbc_due_days',
+		'fbc_due_batch_hours',
 	);
+
+	/** Every user-meta key the plugin writes. */
+	public const USER_META = array( 'fbc_due_batch' );
 
 	/** Every WP-Cron hook the plugin schedules. */
 	public const CRON_HOOKS = array( 'fbc_tw_sync', 'fbc_tw_queue' );
@@ -95,6 +101,10 @@ final class Cleanup {
 		);
 		// phpcs:enable
 		wp_cache_flush_group( 'transient' );
+
+		foreach ( self::USER_META as $key ) {
+			delete_metadata( 'user', 0, $key, '', true );
+		}
 
 		foreach ( self::CRON_HOOKS as $hook ) {
 			wp_clear_scheduled_hook( $hook );

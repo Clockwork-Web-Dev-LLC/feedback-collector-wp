@@ -45,6 +45,11 @@ export interface Item {
   context: Context | null;
   breakpoint: Breakpoint | '';
   round: number;
+  /** Y-m-d (site timezone), or null for no due date. */
+  due_date?: string | null;
+  overdue?: boolean;
+  /** On create only: the next due-date suggestion (keeps the reviewer's batch going). */
+  due_next?: DueConfig;
   screenshot_url?: string;
   screenshot_error?: string;
   reporter_id: number;
@@ -61,6 +66,20 @@ export interface Item {
   updated_at: string;
   can_delete: boolean;
   comments?: Comment[];
+}
+
+export interface DueConfig {
+  /** "Set date?" starts ticked. */
+  onByDefault: boolean;
+  /** Default due date = filed + days. */
+  days: number;
+  /** Batch window in hours (0 = off). */
+  hours: number;
+  /** Suggested date for the next item (Y-m-d). */
+  suggest: string;
+  /** Unix seconds when the reviewer's current batch ends; 0 = no batch. */
+  batchUntil: number;
+  today: string;
 }
 
 export interface Reviewer {
@@ -102,6 +121,7 @@ export interface Config {
   version?: string;
   /** Attach a screenshot to new items. */
   shots?: boolean;
+  due?: DueConfig;
 }
 
 export interface NewItem {
@@ -112,6 +132,7 @@ export interface NewItem {
   assignee_id: number;
   /** Which list assignee_id was picked from; the server refuses it if that list changed. */
   assignee_source?: 'teamwork' | 'wordpress';
+  due_date?: string | null;
   page_path: string;
   page_query: string;
   page_title: string;

@@ -46,6 +46,30 @@ interface SidebarFilters {
   bp: '' | 'mobile' | 'tablet' | 'desktop';
 }
 
+/** Today's date in the browser, as Y-m-d. */
+function localToday(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** Adds whole days to a Y-m-d date (calendar math, no timezone drift). */
+export function addDays(ymd: string, days: number): string {
+  const [y, m, d] = ymd.split('-').map(Number);
+  const t = new Date(Date.UTC(y, m - 1, d + days));
+  return t.toISOString().slice(0, 10);
+}
+
+/**
+ * The due date to suggest for the next item: the reviewer's batch date while the batch
+ * is running, otherwise N days from today.
+ */
+export function suggestDue(due: Config['due'], now: number = Date.now()): string {
+  if (!due) return '';
+  if (due.batchUntil && now < due.batchUntil * 1000) return due.suggest;
+  if (!due.batchUntil && due.suggest) return due.suggest; // computed by the server at page load
+  return addDays(localToday(), due.days);
+}
+
 export class App {
   private api: Api;
   private host!: HTMLDivElement;
@@ -724,6 +748,16 @@ export class App {
     const desc = h('textarea', { name: 'description', placeholder: 'Details, steps to reproduce, what you expected… (optional)' });
     const priority = select('priority', (Object.keys(labels.priority) as Priority[]).map((p) => [p, labels.priority[p]]), 'medium');
     const assignee = select('assignee_id', this.assigneeOptions(), '0');
+    // "Set date?": ticked by default when the site says so, pre-filled with the reviewer's
+    // batch date (or N days out when no batch is running).
+    const dueOn = h('input', { type: 'checkbox', name: 'due_on' }) as HTMLInputElement;
+    dueOn.checked = !!this.cfg.due?.onByDefault;
+    const dueInput = h('input', { type: 'date', name: 'due_date', value: suggestDue(this.cfg.due) }) as HTMLInputElement;
+    dueInput.hidden = !dueOn.checked;
+    dueOn.addEventListener('change', () => {
+      dueInput.hidden = !dueOn.checked;
+      if (dueOn.checked && !dueInput.value) dueInput.value = suggestDue(this.cfg.due);
+    });
     const error = h('div', { class: 'error', role: 'alert' });
     const submit = h('button', { class: 'btn primary', type: 'submit', text: 'Add' });
 
@@ -797,6 +831,7 @@ export class App {
       this.cfg.assignees.fallback
         ? h('div', { class: 'meta hint', text: 'Showing WordPress users until Teamwork is connected (Feedback → Settings). Then this lists your Teamwork project members.' })
         : null,
+      h('div', { class: 'field due-field' }, h('label', { class: 'check' }, dueOn, ' Set date?'), dueInput),
       shotBox,
       h('div', { class: 'actions' }, h('button', { class: 'btn link', type: 'button', text: 'Cancel', onclick: () => this.closeCard() }), submit)
     );
@@ -819,6 +854,7 @@ export class App {
             priority: priority.value as Priority,
             assignee_id: Number(assignee.value),
             assignee_source: this.cfg.assignees.source,
+            due_date: dueOn.checked && dueInput.value ? dueInput.value : null,
             page_path: this.pagePath,
             page_query: currentQuery(),
             page_title: document.title,
@@ -828,6 +864,7 @@ export class App {
           shotBlob ?? blob
         );
         if (shotUrl) URL.revokeObjectURL(shotUrl);
+        if (item.due_next) this.cfg.due = item.due_next; // keeps the batch date for the next item
         this.closeCard();
         this.upsert(item);
         const s = this.states.get(item.id);
@@ -880,6 +917,13 @@ export class App {
     const priority = select('priority', (Object.keys(labels.priority) as Priority[]).map((k) => [k, labels.priority[k]]), item.priority, {
       onchange: () => void save({ priority: priority.value as Priority }),
     });
+    const dueInput = h('input', {
+      type: 'date',
+      name: 'due_date',
+      value: item.due_date ?? '',
+      class: item.overdue ? 'overdue' : '',
+      onchange: () => void save({ due_date: dueInput.value || null }),
+    }) as HTMLInputElement;
 
     const reply = h('textarea', { placeholder: 'Reply… (type @ to mention)', rows: 2 }) as HTMLTextAreaElement;
     const replyField = h('label', { class: 'field mention-container' }, reply);
@@ -947,6 +991,7 @@ export class App {
           )
         : null,
       h('div', { class: 'row' }, h('label', { class: 'field' }, h('span', { text: 'Status' }), status), h('label', { class: 'field' }, h('span', { text: 'Priority' }), priority)),
+      h('label', { class: 'field' }, h('span', { text: item.overdue ? 'Due date · overdue' : 'Due date' }), dueInput),
       item.assignee_locked
         ? h(
             'div',

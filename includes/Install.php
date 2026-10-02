@@ -79,6 +79,7 @@ final class Install {
 				tw_assignee_name varchar(190) NOT NULL DEFAULT '',
 				round smallint(5) unsigned NOT NULL DEFAULT 1,
 				screenshot varchar(255) NOT NULL DEFAULT '',
+				due_date date NULL DEFAULT NULL,
 				tw_sync_state varchar(20) NOT NULL DEFAULT '',
 				tw_sync_error text NULL,
 				created_at datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
@@ -87,7 +88,8 @@ final class Install {
 				KEY page_hash (page_hash),
 				KEY status (status),
 				KEY assignee_id (assignee_id),
-				KEY round (round)
+				KEY round (round),
+				KEY due_date (due_date)
 			) {$charset};"
 		);
 

@@ -67,7 +67,7 @@ export class Api {
 
   updateItem(
     id: number,
-    changes: Partial<Pick<Item, 'title' | 'description' | 'status' | 'priority' | 'type' | 'assignee_id' | 'anchor'>> & { assignee_source?: 'teamwork' | 'wordpress' }
+    changes: Partial<Pick<Item, 'title' | 'description' | 'status' | 'priority' | 'type' | 'assignee_id' | 'anchor' | 'due_date'>> & { assignee_source?: 'teamwork' | 'wordpress' }
   ): Promise<Item> {
     return this.request('PATCH', `/items/${id}`, changes);
   }

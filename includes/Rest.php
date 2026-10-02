@@ -207,6 +207,14 @@ final class Rest {
 			return self::invalid( 'assignee_id', $assignee->get_error_message() );
 		}
 
+		$due = null;
+		if ( isset( $p['due_date'] ) && '' !== $p['due_date'] && null !== $p['due_date'] ) {
+			$due = DueDates::sanitize( $p['due_date'] );
+			if ( ! $due ) {
+				return self::invalid( 'due_date', __( 'That due date isn’t a valid date.', 'feedback-collector' ) );
+			}
+		}
+
 		$context    = self::sanitize_context( is_array( $p['context'] ?? null ) ? $p['context'] : array() );
 		$breakpoint = $context['breakpoint'] ?? '';
 
@@ -222,6 +230,7 @@ final class Rest {
 				'anchor'      => is_array( $p['anchor'] ?? null ) ? self::sanitize_anchor( $p['anchor'] ) : null,
 				'context'     => $context,
 				'breakpoint'  => $breakpoint,
+				'due_date'    => $due,
 			)
 		);
 		if ( ! $id ) {
@@ -241,12 +250,19 @@ final class Rest {
 			}
 		}
 
+		// Starts the reviewer's batch, or moves it to this date if they changed it mid-batch.
+		if ( $due ) {
+			DueDates::remember( get_current_user_id(), $due );
+		}
+
 		do_action( 'fbc_item_created', $id );
 
 		$out = self::present( Items::get( $id ) );
 		if ( '' !== $shot_error ) {
 			$out['screenshot_error'] = $shot_error;
 		}
+		// The next suggestion, so an open page keeps the batch without reloading.
+		$out['due_next'] = DueDates::client_config( get_current_user_id() );
 		$response = new WP_REST_Response( $out );
 		$response->set_status( 201 );
 		return $response;
@@ -395,9 +411,27 @@ final class Rest {
 		if ( array_key_exists( 'anchor', $p ) ) {
 			$changes['anchor'] = is_array( $p['anchor'] ) ? self::sanitize_anchor( $p['anchor'] ) : null;
 		}
+		$due_changed = false;
+		if ( array_key_exists( 'due_date', $p ) ) {
+			$due = null === $p['due_date'] || '' === $p['due_date'] ? null : DueDates::sanitize( $p['due_date'] );
+			if ( null !== $p['due_date'] && '' !== $p['due_date'] && ! $due ) {
+				return self::invalid( 'due_date', __( 'That due date isn’t a valid date.', 'feedback-collector' ) );
+			}
+			if ( $due !== DueDates::sanitize( (string) $item['due_date'] ) ) {
+				$changes['due_date'] = $due;
+				$due_changed         = true;
+			}
+		}
 
 		if ( ! Items::update( $id, $changes ) ) {
 			return new WP_Error( 'fbc_db', __( 'Could not update feedback.', 'feedback-collector' ), array( 'status' => 500 ) );
+		}
+		if ( $due_changed ) {
+			// Mid-batch, a changed date carries forward to the reviewer's next items.
+			if ( $changes['due_date'] && DueDates::batch( get_current_user_id() ) ) {
+				DueDates::remember( get_current_user_id(), $changes['due_date'] );
+			}
+			do_action( 'fbc_item_due_changed', $id );
 		}
 		$out             = self::present( Items::get( $id ) );
 		$out['comments'] = Items::comments( $id );
@@ -499,6 +533,8 @@ final class Rest {
 			'context'         => $item['context'],
 			'breakpoint'      => $item['breakpoint'],
 			'round'           => (int) $item['round'],
+			'due_date'        => DueDates::sanitize( (string) $item['due_date'] ),
+			'overdue'         => DueDates::overdue( $item ),
 			'screenshot_url'  => Screenshots::url( $item ),
 			'reporter_id'     => $item['reporter_id'],
 			'reporter_name'   => $reporter ? $reporter->display_name : '',

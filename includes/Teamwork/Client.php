@@ -398,6 +398,17 @@ final class Client {
 	}
 
 	/**
+	 * Updates fields on a task (PATCH v3).
+	 *
+	 * @param int                  $task_id Task ID.
+	 * @param array<string, mixed> $fields  Task fields, e.g. array( 'dueAt' => '2026-10-04' ), or null to clear one.
+	 */
+	public function update_task( int $task_id, array $fields ): true|WP_Error {
+		$data = $this->request( 'PATCH', "/projects/api/v3/tasks/{$task_id}.json", array(), array( 'task' => $fields ) );
+		return is_wp_error( $data ) ? $data : true;
+	}
+
+	/**
 	 * Browser URL for a task.
 	 *
 	 * @param int $task_id Task.

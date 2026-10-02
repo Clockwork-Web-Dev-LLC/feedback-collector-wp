@@ -2,7 +2,7 @@
 // and the right-click → menu → composer → POST flow runs. It cannot prove layout
 // (happy-dom has no real rects), so pin *positions* are covered by the browser pass.
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
-import { App } from '../src/overlay/app';
+import { App, addDays, suggestDue } from '../src/overlay/app';
 import { OVERLAY_HOST_ID } from '../src/overlay/anchor';
 import type { Config, Item } from '../src/overlay/types';
 
@@ -86,7 +86,9 @@ beforeEach(() => {
     }
     if (method === 'POST' && url.endsWith('/items')) {
       const b = body as Partial<Item>;
-      const item = makeItem({ id: 42, type: b.type, title: b.title, anchor: b.anchor ?? null, page_path: b.page_path });
+      const item = makeItem({ id: 42, type: b.type, title: b.title, anchor: b.anchor ?? null, page_path: b.page_path, due_date: b.due_date ?? null });
+      // Like the server: a dated item starts/moves the reviewer's batch and returns the next suggestion.
+      if (b.due_date) item.due_next = { onByDefault: true, days: 3, hours: 3, suggest: b.due_date, batchUntil: Math.floor(Date.now() / 1000) + 3 * 3600, today: '2026-10-01' };
       return new Response(JSON.stringify(item), { status: 201 });
     }
     return new Response(JSON.stringify({ message: 'nope' }), { status: 404 });
@@ -533,3 +535,70 @@ describe('app lifecycle and mentions', () => {
   });
 });
 
+describe('due dates', () => {
+  const due = (over: Partial<NonNullable<Config['due']>> = {}): NonNullable<Config['due']> => ({ onByDefault: true, days: 3, hours: 3, suggest: '2026-10-04', batchUntil: 0, today: '2026-10-01', ...over });
+  const openComposer = async (c: Config) => {
+    const app = createApp(c);
+    app.init();
+    await app.setMode(true);
+    document.getElementById('cta')?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 150, clientY: 210 }));
+    (shadow()?.querySelector('.menu button') as HTMLButtonElement).click();
+    const form = shadow()?.querySelector('form.composer') as HTMLFormElement;
+    return {
+      form,
+      on: form.querySelector('input[name="due_on"]') as HTMLInputElement,
+      date: form.querySelector('input[name="due_date"]') as HTMLInputElement,
+      submit: async (title: string) => {
+        (form.querySelector('input[name="title"]') as HTMLInputElement).value = title;
+        form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+        await tick();
+        await tick();
+        return calls.filter((c) => c.method === 'POST').pop()?.body as Record<string, unknown>;
+      },
+    };
+  };
+
+  it('suggestDue: batch date while the batch runs, N days out after it ends', () => {
+    const now = Date.UTC(2026, 9, 1, 12);
+    expect(suggestDue(due({ suggest: '2026-10-09', batchUntil: now / 1000 + 60 }), now)).toBe('2026-10-09');
+    expect(suggestDue(due({ suggest: '2026-10-09', batchUntil: now / 1000 - 60 }), now)).not.toBe('2026-10-09');
+    expect(suggestDue(due({ suggest: '2026-10-04', batchUntil: 0 }), now)).toBe('2026-10-04');
+    expect(suggestDue(undefined, now)).toBe('');
+    expect(addDays('2026-12-30', 3)).toBe('2027-01-02');
+    expect(addDays('2028-02-28', 1)).toBe('2028-02-29');
+  });
+
+  it('"Set date?" is ticked by default and sends the suggested date', async () => {
+    const c = await openComposer({ ...cfg(), due: due() });
+    expect(c.on.checked).toBe(true);
+    expect(c.date.hidden).toBe(false);
+    expect(c.date.value).toBe('2026-10-04');
+    const body = await c.submit('Dated');
+    expect(body.due_date).toBe('2026-10-04');
+  });
+
+  it('off by default: unticked, no date sent; ticking fills the suggestion', async () => {
+    const c = await openComposer({ ...cfg(), due: due({ onByDefault: false }) });
+    expect(c.on.checked).toBe(false);
+    expect(c.date.hidden).toBe(true);
+    c.date.value = '';
+    c.on.checked = true;
+    c.on.dispatchEvent(new Event('change'));
+    expect(c.date.hidden).toBe(false);
+    expect(c.date.value).toBe('2026-10-04');
+    c.on.checked = false;
+    c.on.dispatchEvent(new Event('change'));
+    const body = await c.submit('Undated');
+    expect(body.due_date).toBeNull();
+  });
+
+  it('a date changed mid-batch is suggested for the next item', async () => {
+    const c = await openComposer({ ...cfg(), due: due() });
+    c.date.value = '2026-10-09';
+    await c.submit('First of the batch');
+    document.getElementById('cta')?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 150, clientY: 210 }));
+    (shadow()?.querySelector('.menu button') as HTMLButtonElement).click();
+    const next = shadow()?.querySelector('form.composer input[name="due_date"]') as HTMLInputElement;
+    expect(next.value).toBe('2026-10-09');
+  });
+});

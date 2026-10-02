@@ -23,18 +23,26 @@ Internal QA for **staging** WordPress sites. A teammate turns on Feedback mode, 
   - Items whose element can't be found anymore are listed as **Orphaned**, with a “Pin again” link to place them on a new element.
 - **Feedback** in wp-admin holds the full list: filters, search, sorting, bulk status changes, a detail screen with all captured context, and **View on page**, which opens the page with the pin open.
 
+## Due dates
+
+- **Set date?** in the composer gives the item a due date. It starts ticked, with the date 3 days out filled in; untick it for no date, or pick another day.
+- **Batches:** items a reviewer files in one sitting share a due date. The first item starts a batch; everything they file within 3 hours of it reuses that date. Change the date mid-batch and the rest of the batch follows. After 3 hours the next item starts a fresh batch. Batches are per reviewer.
+- **Edit later** in the pin's card or on the item screen. The Feedback list has a sortable **Due** column, with overdue items in red.
+- **Teamwork** gets the date on push (Teamwork dates are day-only, like these). Editing it here updates the task; changing it in Teamwork syncs back.
+- **Settings → Due dates:** whether "Set date?" starts ticked, how many days out (default 3), and the batch window in hours (default 3; 0 turns batches off).
+
 ## Branding (white-label)
 
-**Feedback → Branding** controls every name, logo and color the plugin shows:
+**Feedback → Branding** has a **Use custom branding** switch. Off (the default), the plugin shows "Feedback Collector" in small text with the default colors and no logo. On, the values below control every name, logo and color the plugin shows:
 - the Plugins-screen name, author and URL
 - the menu label, page titles and header band
 - the on-page toolbar
 - the "Reported by … (Name #id)" line in Teamwork tasks
 
-Defaults are Clockwork: logo, purple `#6953C4`, header `#2D2062`, lime accent `#7EFF83`. The look matches Clockwork Companion.
+Default colors are Clockwork's: purple `#6953C4`, header `#2D2062`, lime accent `#7EFF83`. The look matches Clockwork Companion. Switching custom branding off keeps your saved values for next time.
 
 - **Colors:** text on any brand color is picked by contrast, so a light brand color never gets white text. Links and tabs use a darkened version of the primary color that reaches WCAG AA on white.
-- **Logo:** the logo sits on the header color, so use a light logo on a dark header. With a custom name and no logo, the header shows the label as text, and the menu icon switches from the Clockwork sparkle to a neutral bubble.
+- **Logo:** optional; pick one from the Media Library. It sits on the header color, so use a light logo on a dark header. Without one, the header shows the label as small text.
 - **Credit:** an optional "Powered by Clockwork Feedback Collector" line shows when white-labeled.
 - **In code:** the `fbc_branding` filter can set any value, and overrides what's saved.
 
@@ -88,8 +96,8 @@ bun run typecheck
 
 **Tests:**
 - `bun test` runs the overlay suites: the pin-anchoring engine and overlay boot.
-- `bun run test:wp` runs the WordPress integration suites in `tests/wp/` (REST and permissions, Teamwork push/sync against a mocked API, assignees, API-key storage). It runs inside a local WordPress with the plugin active, through wp-cli; set `WP="php wp-cli.phar --path=/path/to/wp"` if `wp` isn't on your PATH.
-- Every suite deletes only the rows it created and restores the settings it changed.
+- `bun run test:wp` runs the WordPress integration suites in `tests/wp/` (REST and permissions, Teamwork push/sync against a mocked API, assignees, rounds, screenshots, API-key storage, branding, due dates) through wp-cli; set `WP="php wp-cli.phar --path=/path/to/wp"` if `wp` isn't on your PATH.
+- They run against a **throwaway copy** of the site's database (`*_scratch`), created fresh for each run and dropped after, so nothing a test does can touch the real site. Every suite refuses to run against any other database. One-time setup (a `DB_NAME` switch in the local `wp-config.php` and a MySQL grant) is described at the top of `tests/wp/run.sh`.
 - Never point the WordPress suites at a real staging or production site.
 
 - **PHP:** `phpcs` with the bundled `phpcs.xml.dist` (WordPress standard).

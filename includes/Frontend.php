@@ -150,6 +150,7 @@ final class Frontend {
 			'assetsUrl' => FBC_URL . 'dist/',
 			'version'   => VERSION,
 			'shots'     => Screenshots::enabled(),
+			'due'       => DueDates::client_config( get_current_user_id() ),
 			'labels'    => Items::labels(),
 			'page'      => array(
 				'postId'   => $queried instanceof \WP_Post ? (int) $queried->ID : 0,
