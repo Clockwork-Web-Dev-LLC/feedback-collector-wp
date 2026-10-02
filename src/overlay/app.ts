@@ -338,6 +338,7 @@ export class App {
       if (i >= 0) this.allItems[i] = item;
       else this.allItems.push(item);
     }
+    this.updateScopeBadges();
   }
 
   private remove(id: number): void {
@@ -345,6 +346,7 @@ export class App {
     s?.pin?.remove();
     this.states.delete(id);
     if (this.allItems) this.allItems = this.allItems.filter((x) => x.id !== id);
+    this.updateScopeBadges();
   }
 
   // ---------------------------------------------------------------- resolve + pins
@@ -1553,12 +1555,35 @@ export class App {
     this.sidebar?.remove();
     const f = this.filters;
     const labels = this.cfg.labels;
-    const scope = select('scope', [['page', 'This page'], ['all', 'All pages']], f.scope, {
-      onchange: () => {
-        f.scope = scope.value as SidebarFilters['scope'];
-        void this.renderSidebarList();
+
+    const pageTab = h(
+      'button',
+      {
+        type: 'button',
+        class: `scope-tab ${f.scope === 'page' ? 'active' : ''}`,
+        'data-scope': 'page',
+        'aria-selected': String(f.scope === 'page'),
+        role: 'tab',
+        onclick: () => this.setScope('page'),
       },
-    });
+      h('span', { class: 'tab-label', text: 'This page' }),
+      h('span', { class: 'tab-badge', text: String(this.states.size) })
+    );
+    const allTab = h(
+      'button',
+      {
+        type: 'button',
+        class: `scope-tab ${f.scope === 'all' ? 'active' : ''}`,
+        'data-scope': 'all',
+        'aria-selected': String(f.scope === 'all'),
+        role: 'tab',
+        onclick: () => this.setScope('all'),
+      },
+      h('span', { class: 'tab-label', text: 'All pages' }),
+      h('span', { class: 'tab-badge', text: this.allItems ? String(this.allItems.length) : '' })
+    );
+    const scopeSwitch = h('div', { class: 'scope-switch', role: 'tablist', 'aria-label': 'Feedback scope' }, pageTab, allTab);
+
     const type = select('type', [['', 'All types'], ...TYPES.map((t): [string, string] => [t, labels.type[t]])], f.type, {
       onchange: () => {
         f.type = type.value as SidebarFilters['type'];
@@ -1602,13 +1627,49 @@ export class App {
         'header',
         {},
         h('h2', {}, this.cfg.brand?.label ?? 'Feedback', h('button', { class: 'x', type: 'button', 'aria-label': 'Close list', text: '×', onclick: () => this.closeSidebar() })),
-        h('div', { class: 'filters' }, scope, type, status, round, bp, h('label', {}, mine, 'Assigned to me'))
+        scopeSwitch,
+        h('div', { class: 'filters' }, type, status, round, bp, h('label', {}, mine, 'Assigned to me'))
       ),
       h('div', { class: 'list' })
     );
     this.root.append(this.sidebar);
     this.renderToolbar();
     void this.renderSidebarList();
+
+    if (!this.allItems) {
+      void this.api
+        .listItems()
+        .then(({ items }) => {
+          this.allItems = items;
+          this.updateScopeBadges();
+          if (this.filters.scope === 'all' || items.length > this.states.size) {
+            void this.renderSidebarList();
+          }
+        })
+        .catch(() => {});
+    }
+  }
+
+  private setScope(scope: 'page' | 'all'): void {
+    if (this.filters.scope === scope) return;
+    this.filters.scope = scope;
+    if (this.sidebar) {
+      const tabs = this.sidebar.querySelectorAll<HTMLButtonElement>('.scope-tab');
+      tabs.forEach((tab) => {
+        const isCurrent = tab.dataset.scope === scope;
+        tab.classList.toggle('active', isCurrent);
+        tab.setAttribute('aria-selected', String(isCurrent));
+      });
+    }
+    void this.renderSidebarList();
+  }
+
+  private updateScopeBadges(): void {
+    if (!this.sidebar) return;
+    const pageBadge = this.sidebar.querySelector<HTMLElement>('.scope-tab[data-scope="page"] .tab-badge');
+    const allBadge = this.sidebar.querySelector<HTMLElement>('.scope-tab[data-scope="all"] .tab-badge');
+    if (pageBadge) pageBadge.textContent = String(this.states.size);
+    if (allBadge) allBadge.textContent = this.allItems ? String(this.allItems.length) : '';
   }
 
   private closeSidebar(): void {
@@ -1656,6 +1717,7 @@ export class App {
         list.replaceChildren(h('div', { class: 'empty', text: 'Loading…' }));
         try {
           this.allItems = (await this.api.listItems()).items;
+          this.updateScopeBadges();
         } catch (err) {
           list.replaceChildren(h('div', { class: 'empty', text: (err as Error).message }));
           return;
@@ -1717,7 +1779,50 @@ export class App {
       const title = key === 'hidden' ? `${sec.nodes.length} at other breakpoints` : sec.title;
       nodes.push(h('h3', { text: title }), ...sec.nodes);
     }
-    list.replaceChildren(...(nodes.length ? nodes : [h('div', { class: 'empty', text: 'No feedback on this page yet. Right-click anything to add some.' })]));
+    const totalAcrossSite = this.allItems ? this.allItems.length : 0;
+    const otherCount = totalAcrossSite - this.states.size;
+    if (nodes.length > 0 && otherCount > 0) {
+      nodes.push(
+        h(
+          'div',
+          { class: 'list-footer-prompt' },
+          h(
+            'button',
+            {
+              type: 'button',
+              class: 'btn-view-all',
+              onclick: () => this.setScope('all'),
+            },
+            `View ${otherCount} more on other pages (${totalAcrossSite} total) →`
+          )
+        )
+      );
+    }
+    if (!nodes.length) {
+      const emptyNodes: Node[] = [
+        h('div', { class: 'empty', text: 'No feedback on this page yet. Right-click anything to add some.' }),
+      ];
+      if (totalAcrossSite > 0) {
+        emptyNodes.push(
+          h(
+            'div',
+            { class: 'list-empty-action' },
+            h(
+              'button',
+              {
+                type: 'button',
+                class: 'btn-view-all',
+                onclick: () => this.setScope('all'),
+              },
+              `View all ${totalAcrossSite} items on other pages →`
+            )
+          )
+        );
+      }
+      list.replaceChildren(...emptyNodes);
+      return;
+    }
+    list.replaceChildren(...nodes);
   }
 
   private focusItem(id: number): void {

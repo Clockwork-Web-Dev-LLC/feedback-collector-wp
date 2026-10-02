@@ -75,7 +75,7 @@ beforeEach(() => {
     const raw = init?.body;
     const body = raw instanceof FormData ? { form: true, data: JSON.parse(String(raw.get('data'))), file: raw.get('screenshot') } : raw ? JSON.parse(String(raw)) : undefined;
     calls.push({ method, url, headers, body });
-    if (method === 'GET' && url.includes('/items&') ) {
+    if (method === 'GET' && (url.includes('/items&') || url.endsWith('/items') || url.includes('/items?'))) {
       return new Response(JSON.stringify({ items: serverItems, total: serverItems.length }), { status: 200 });
     }
     const itemMatch = url.match(/\/items\/(\d+)/);
@@ -393,6 +393,46 @@ describe('toolbar placement', () => {
     await app.setMode(true);
     const root = shadow()?.querySelector('.fbc') as HTMLElement;
     expect(root.style.getPropertyValue('--top-offset')).toBe('32px');
+  });
+
+  it('renders scope switch tabs in sidebar and switches between this page and all pages', async () => {
+    serverItems = [
+      makeItem({ id: 10, title: 'Item on this page', page_path: '/services/' }),
+      makeItem({ id: 11, title: 'Item on homepage', page_path: '/' }),
+    ];
+    const app = createApp(cfg());
+    app.init();
+    await app.setMode(true);
+    await tick();
+
+    const listBtn = [...toolbar().querySelectorAll('button')].find((b) => b.textContent?.includes('List')) as HTMLButtonElement;
+    listBtn.click();
+    await tick();
+
+    const sidebar = shadow()?.querySelector('.sidebar') as HTMLElement;
+    expect(sidebar).toBeTruthy();
+
+    const tabs = [...sidebar.querySelectorAll<HTMLButtonElement>('.scope-tab')];
+    expect(tabs.length).toBe(2);
+
+    const pageTab = tabs.find((t) => t.dataset.scope === 'page')!;
+    const allTab = tabs.find((t) => t.dataset.scope === 'all')!;
+
+    expect(pageTab.classList.contains('active')).toBe(true);
+    expect(allTab.classList.contains('active')).toBe(false);
+
+    // Initial render shows This page item
+    expect(sidebar.textContent).toContain('Item on this page');
+
+    // Switch to All pages
+    allTab.click();
+    await tick();
+    await tick();
+
+    expect(allTab.classList.contains('active')).toBe(true);
+    expect(pageTab.classList.contains('active')).toBe(false);
+    expect(sidebar.textContent).toContain('Item on this page');
+    expect(sidebar.textContent).toContain('Item on homepage');
   });
 });
 
