@@ -81,9 +81,10 @@ final class Teamwork {
 				'key_enc'       => '',
 				'project_id'    => 0,
 				'project_name'  => '',
-				'tasklist_id'   => 0,
-				'tasklist_name' => '',
-				'round'         => 0, // Legacy counter; Rounds::current() is the source of truth.
+				'tasklist_id'      => 0,
+				'tasklist_name'    => '',
+				'tasklist_private' => false,
+				'round'            => 0, // Legacy counter; Rounds::current() is the source of truth.
 				'round_lists'   => array(), // round => array( 'id' => task list ID, 'name' => list name ).
 				'auto_push'     => false,
 				'send_email'    => true,
@@ -177,13 +178,14 @@ final class Teamwork {
 	}
 
 	/**
-	 * Creates a custom task list in the selected project, maps it to the round and makes it active.
+	 * Creates a custom-named task list in the selected project, maps it to a round, and makes it active.
 	 *
-	 * @param string   $name  Task list name.
-	 * @param int|null $round Round (defaults to current).
+	 * @param string    $name       Task list name.
+	 * @param int|null  $round      Round (defaults to current).
+	 * @param bool|null $is_private Whether the list is private (defaults to saved tasklist_private setting).
 	 * @return int|WP_Error New task list ID.
 	 */
-	public static function create_custom_list( string $name, ?int $round = null ): int|WP_Error {
+	public static function create_custom_list( string $name, ?int $round = null, ?bool $is_private = null ): int|WP_Error {
 		$client = self::client();
 		$s      = self::settings();
 		if ( ! $client || ! $s['project_id'] ) {
@@ -193,18 +195,21 @@ final class Teamwork {
 		if ( '' === $name ) {
 			return new WP_Error( 'fbc_tw_empty_name', __( 'Task list name cannot be empty.', 'feedback-collector' ) );
 		}
-		$round = $round ?? Rounds::current();
-		$id    = $client->create_tasklist( (int) $s['project_id'], $name );
+		$round      = $round ?? Rounds::current();
+		$is_private = null === $is_private ? ! empty( $s['tasklist_private'] ) : (bool) $is_private;
+		$id         = $client->create_tasklist( (int) $s['project_id'], $name, $is_private );
 		if ( is_wp_error( $id ) ) {
 			return $id;
 		}
 		$s['round_lists'][ $round ] = array(
-			'id'   => $id,
-			'name' => $name,
+			'id'      => $id,
+			'name'    => $name,
+			'private' => $is_private,
 		);
 		$s['round']                 = max( (int) $s['round'], $round );
 		$s['tasklist_id']           = $id;
 		$s['tasklist_name']         = $name;
+		$s['tasklist_private']      = $is_private;
 		self::save( $s );
 		return $id;
 	}
@@ -212,13 +217,14 @@ final class Teamwork {
 	/**
 	 * Creates "QA – Round N – date" in the selected project, maps it to the round and makes it active.
 	 *
-	 * @param int $round Round.
+	 * @param int       $round      Round.
+	 * @param bool|null $is_private Whether the list is private (defaults to saved tasklist_private setting).
 	 * @return int|WP_Error New task list ID.
 	 */
-	public static function create_round_list( int $round ): int|WP_Error {
+	public static function create_round_list( int $round, ?bool $is_private = null ): int|WP_Error {
 		/* translators: 1: round number, 2: date */
 		$name = sprintf( __( 'QA – Round %1$d – %2$s', 'feedback-collector' ), $round, wp_date( 'Y-m-d' ) );
-		return self::create_custom_list( $name, $round );
+		return self::create_custom_list( $name, $round, $is_private );
 	}
 
 	/**
@@ -947,10 +953,24 @@ final class Teamwork {
 				);
 				echo '<button type="submit" name="fbc_tw_create_list_btn" value="1" class="button button-secondary" style="white-space:nowrap;">' . esc_html__( 'Create list now', 'feedback-collector' ) . '</button>';
 				echo '</div>';
+
+				$is_priv = ! empty( $s['tasklist_private'] );
+				echo '<div style="margin-top:10px;display:flex;gap:18px;align-items:center;">';
+				echo '<span style="font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:0.5px;color:#50575e;">' . esc_html__( 'Privacy:', 'feedback-collector' ) . '</span>';
+				echo '<label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">';
+				echo '<input type="radio" name="tw_new_list_privacy" value="public"' . checked( ! $is_priv, true, false ) . ' /> ';
+				esc_html_e( 'Public (everyone in project)', 'feedback-collector' );
+				echo '</label>';
+				echo '<label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;">';
+				echo '<input type="radio" name="tw_new_list_privacy" value="private"' . checked( $is_priv, true, false ) . ' /> ';
+				esc_html_e( 'Private (restricted)', 'feedback-collector' );
+				echo '</label>';
+				echo '</div>';
+
 				printf(
 					'<p class="description">%s</p>',
 					/* translators: %d: round number */
-					sprintf( esc_html__( 'Creates a new list in this project and sets it as the active QA list for Round %d.', 'feedback-collector' ), $current_round )
+					sprintf( esc_html__( 'Creates a new list in this project and sets it as the active QA list for Round %d. Private lists are only visible to project administrators and assigned users in Teamwork.', 'feedback-collector' ), $current_round )
 				);
 				echo '</div>';
 				echo '</fieldset>';
@@ -960,7 +980,7 @@ final class Teamwork {
 					var modeExisting = document.querySelector(\'input[name="tw_list_mode"][value="existing"]\');
 					var modeNew = document.querySelector(\'input[name="tw_list_mode"][value="new"]\');
 					var existingPanel = document.getElementById("fbc-tw-existing-list-panel");
-					var newPanel = document.getElementById("fbc-tw-list-new-panel");
+					var newPanel = document.getElementById("fbc-tw-new-list-panel");
 					var selectList = document.getElementById("fbc-tw-list");
 					var newListName = document.getElementById("fbc-tw-new-list-name");
 
@@ -1067,15 +1087,27 @@ final class Teamwork {
 						/* translators: 1: round number, 2: date */
 						$new_name = sprintf( __( 'QA – Round %1$d – %2$s', 'feedback-collector' ), Rounds::current(), wp_date( 'Y-m-d' ) );
 					}
-					$created_id = self::create_custom_list( $new_name );
+					$is_private = false;
+					if ( isset( $_POST['tw_new_list_privacy'] ) ) {
+						$is_private = 'private' === sanitize_key( wp_unslash( $_POST['tw_new_list_privacy'] ) );
+					} elseif ( ! empty( $_POST['tw_new_list_private'] ) ) {
+						$is_private = true;
+					}
+
+					$created_id = self::create_custom_list( $new_name, null, $is_private );
 					if ( ! is_wp_error( $created_id ) ) {
-						$s = self::settings(); // Reload updated settings from create_custom_list.
-						/* translators: %s: list name */
-						set_transient( 'fbc_tw_created_list_msg', sprintf( __( 'Created “%s” and set it as the active QA task list.', 'feedback-collector' ), $new_name ), 30 );
+						$s             = self::settings(); // Reload updated settings from create_custom_list.
+						$privacy_label = $is_private ? __( 'Private', 'feedback-collector' ) : __( 'Public', 'feedback-collector' );
+						/* translators: 1: list name, 2: privacy label */
+						set_transient( 'fbc_tw_created_list_msg', sprintf( __( 'Created “%1$s” (%2$s) and set it as the active QA task list.', 'feedback-collector' ), $new_name, $privacy_label ), 30 );
 					} else {
 						set_transient( 'fbc_tw_error_msg', $created_id->get_error_message(), 30 );
 					}
-				} elseif ( isset( $_POST['tw_tasklist'] ) ) {
+				} else {
+					if ( isset( $_POST['tw_new_list_privacy'] ) ) {
+						$s['tasklist_private'] = 'private' === sanitize_key( wp_unslash( $_POST['tw_new_list_privacy'] ) );
+					}
+					if ( isset( $_POST['tw_tasklist'] ) ) {
 					$list = absint( $_POST['tw_tasklist'] );
 					if ( $list !== (int) $s['tasklist_id'] ) {
 						$s['tasklist_id']   = $list;
@@ -1095,6 +1127,7 @@ final class Teamwork {
 					}
 				}
 			}
+		}
 		}
 		// These checkboxes only render once Teamwork is connected. An absent checkbox means
 		// "unchecked" only if it was on the form; otherwise the first save (pasting the key)

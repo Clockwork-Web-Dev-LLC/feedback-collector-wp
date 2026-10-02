@@ -43,6 +43,7 @@ add_filter(
 		$path = (string) wp_parse_url( $url, PHP_URL_PATH );
 		$json = static fn( $c, $b ) => array( 'response' => array( 'code' => $c, 'message' => '' ), 'body' => wp_json_encode( $b ), 'headers' => array(), 'cookies' => array() );
 		if ( 'POST' === $args['method'] && '/projects/100/tasklists.json' === $path ) {
+			$fbc_mock['last_list_payload'] = json_decode( $args['body'], true );
 			return $json( 201, array( 'TASKLISTID' => (string) ++$fbc_mock['lists'] ) );
 		}
 		if ( 'POST' === $args['method'] && preg_match( '#/tasklists/(\d+)/tasks\.json$#', $path, $m ) ) {
@@ -147,6 +148,9 @@ $empty_err = Teamwork::create_custom_list( '   ', 3 );
 $check( 'create_custom_list rejects empty name', is_wp_error( $empty_err ) && 'fbc_tw_empty_name' === $empty_err->get_error_code() );
 $custom_id = Teamwork::create_custom_list( 'Sprint 42 QA List', 3 );
 $s         = get_option( 'fbc_teamwork' );
-$check( 'create_custom_list creates and maps custom named list', 303 === $custom_id && 'Sprint 42 QA List' === $s['tasklist_name'] && 'Sprint 42 QA List' === $s['round_lists'][3]['name'] );
+$check( 'create_custom_list creates and maps custom named list', 303 === $custom_id && 'Sprint 42 QA List' === $s['tasklist_name'] && 'Sprint 42 QA List' === $s['round_lists'][3]['name'] && false === ( $fbc_mock['last_list_payload']['todo-list']['private'] ?? null ) );
+$private_id = Teamwork::create_custom_list( 'Sprint 42 Private QA List', 3, true );
+$s          = get_option( 'fbc_teamwork' );
+$check( 'create_custom_list with private=true records private status', 304 === $private_id && true === $s['tasklist_private'] && true === ( $s['round_lists'][3]['private'] ?? false ) && true === ( $fbc_mock['last_list_payload']['todo-list']['private'] ?? null ) );
 
 printf( "\n%d passed, %d failed\n", $n[0], $n[1] );

@@ -200,9 +200,10 @@ final class Client {
 	 *
 	 * @param int    $project_id Project.
 	 * @param string $name       List name.
+	 * @param bool   $is_private Whether the task list is private. Default false.
 	 * @return int|WP_Error New task list ID.
 	 */
-	public function create_tasklist( int $project_id, string $name ): int|WP_Error {
+	public function create_tasklist( int $project_id, string $name, bool $is_private = false ): int|WP_Error {
 		$data = $this->request(
 			'POST',
 			"/projects/{$project_id}/tasklists.json",
@@ -211,7 +212,7 @@ final class Client {
 				'todo-list' => array(
 					'name'        => $name,
 					'description' => sprintf( /* translators: %s: plugin name */ __( 'QA feedback pushed from %s.', 'feedback-collector' ), \FeedbackCollector\Branding::text( 'name' ) ),
-					'private'     => false,
+					'private'     => $is_private,
 				),
 			)
 		);

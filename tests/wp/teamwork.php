@@ -71,7 +71,10 @@ add_filter( 'pre_http_request', function ( $pre, $args, $url ) {
 	if ( 'GET' === $args['method'] && preg_match( '#^/projects/api/v3/tasks/(\d+)/comments\.json$#', (string) $path ) ) {
 		return $json( 200, array( 'comments' => $mock['comments'] ?? array(), 'meta' => array( 'page' => array( 'hasMore' => false ) ) ) );
 	}
-	if ( 'POST' === $args['method'] && '/projects/100/tasklists.json' === $path ) return $json( 201, array( 'TASKLISTID' => '301', 'STATUS' => 'OK' ) );
+	if ( 'POST' === $args['method'] && '/projects/100/tasklists.json' === $path ) {
+		$mock['last_tasklist_payload'] = json_decode( $args['body'], true );
+		return $json( 201, array( 'TASKLISTID' => '301', 'STATUS' => 'OK' ) );
+	}
 	return $json( 404, array( 'message' => 'unmocked ' . $path ) );
 }, 10, 3 );
 
@@ -179,6 +182,9 @@ check( 'second sync uses updatedAfter window', true ); // window computed from l
 $client = Teamwork::client();
 $list = $client->create_tasklist( 100, 'QA – Round 2 – 2026-10-01' );
 check( 'create QA list hits v1 and returns TASKLISTID', 301 === $list && in_array( 'POST /projects/100/tasklists.json', $mock['calls'], true ) );
+check( 'create QA list defaults to private=false', false === ( $mock['last_tasklist_payload']['todo-list']['private'] ?? null ) );
+$list_priv = $client->create_tasklist( 100, 'QA – Private List', true );
+check( 'create QA list with is_private=true sends private=true', 301 === $list_priv && true === ( $mock['last_tasklist_payload']['todo-list']['private'] ?? null ) );
 
 // 7. Key never leaves the server
 $present = wp_json_encode( Rest::present( Items::get( $id ) ) );
