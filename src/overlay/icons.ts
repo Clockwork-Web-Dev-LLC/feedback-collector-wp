@@ -14,3 +14,20 @@ export function deviceIcon(id: string): HTMLSpanElement {
   span.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${PATHS[id] ?? ''}</svg>`;
   return span;
 }
+
+export function shotIcon(): HTMLSpanElement {
+  const span = document.createElement('span');
+  span.className = 'shot-toggle-icon';
+  span.setAttribute('aria-hidden', 'true');
+  span.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>';
+  return span;
+}
+
+export function chevronIcon(): HTMLSpanElement {
+  const span = document.createElement('span');
+  span.className = 'shot-toggle-chevron';
+  span.setAttribute('aria-hidden', 'true');
+  span.innerHTML = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>';
+  return span;
+}
+

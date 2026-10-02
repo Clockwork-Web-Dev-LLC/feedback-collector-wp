@@ -605,6 +605,43 @@ describe('app lifecycle and mentions', () => {
     item.click();
     expect(reply.value).toBe('Hey @Admin ');
   });
+
+  it('popover screenshot defaults to collapsed and expands on toggle click', async () => {
+    serverItems = [
+      makeItem({
+        id: 11,
+        title: 'Collapsible screenshot test',
+        screenshot_url: 'http://localhost/shot.png',
+      }),
+    ];
+    const app = createApp(cfg());
+    app.init();
+    await app.setMode(true);
+    await app.openPopover(11, { x: 50, y: 50 });
+    const card = shadow()?.querySelector('.card.popover') as HTMLElement;
+    expect(card).not.toBeNull();
+
+    const shot = card.querySelector('.shot--collapsible') as HTMLElement;
+    expect(shot).not.toBeNull();
+    expect(shot.classList.contains('is-expanded')).toBe(false);
+
+    const toggle = shot.querySelector('button.shot-toggle') as HTMLButtonElement;
+    expect(toggle).not.toBeNull();
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle.textContent).toContain('View screenshot');
+
+    // Click toggle to expand
+    toggle.click();
+    expect(shot.classList.contains('is-expanded')).toBe(true);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(toggle.textContent).toContain('Hide screenshot');
+
+    // Click toggle again to collapse
+    toggle.click();
+    expect(shot.classList.contains('is-expanded')).toBe(false);
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle.textContent).toContain('View screenshot');
+  });
 });
 
 describe('due dates', () => {

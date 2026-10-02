@@ -4,7 +4,7 @@ import type { Anchor } from './anchor';
 import { Api } from './api';
 import { breakpoint, captureContext, currentPagePath, currentQuery } from './capture';
 import { h, relativeTime, select } from './dom';
-import { deviceIcon } from './icons';
+import { chevronIcon, deviceIcon, shotIcon } from './icons';
 import type { Config, Item, ItemStatus, ItemType, Priority } from './types';
 
 const TYPES: ItemType[] = ['bug', 'tweak', 'change', 'comment'];
@@ -980,33 +980,61 @@ export class App {
       orphan,
       item.description ? this.renderMentionText('desc', item.description) : null,
       item.screenshot_url
-        ? h(
-            'div',
-            { class: 'shot' },
-            h('a', { href: item.screenshot_url, target: '_blank', rel: 'noopener', title: 'Open full screenshot' }, h('img', { src: item.screenshot_url, alt: 'Screenshot from when this was filed' })),
-            h(
-              'div',
-              { class: 'shot-actions' },
-              h('button', {
+        ? (() => {
+            let expanded = false;
+            let toggleText: HTMLElement;
+            const toggleBtn = h(
+              'button',
+              {
                 type: 'button',
-                class: 'btn link',
-                text: '✎ Annotate',
-                onclick: async () => {
-                  try {
-                    const res = await fetch(item.screenshot_url as string, { credentials: 'same-origin', cache: 'no-store' });
-                    const edited = await this.annotate(await res.blob());
-                    if (!edited) return;
-                    const updated = await this.api.replaceScreenshot(item.id, edited);
-                    this.upsert(updated);
-                    this.toast(`Annotations saved on #${item.id}`);
-                    void this.openPopover(id, { x: parseFloat(card.style.left) - 8, y: parseFloat(card.style.top) - 8 });
-                  } catch (err) {
-                    this.toast((err as Error).message, true);
-                  }
+                class: 'shot-toggle',
+                'aria-expanded': 'false',
+                onclick: () => {
+                  expanded = !expanded;
+                  shotWrap.classList.toggle('is-expanded', expanded);
+                  toggleBtn.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+                  toggleText.textContent = expanded ? 'Hide screenshot' : 'View screenshot';
                 },
-              })
-            )
-          )
+              },
+              h('span', { class: 'shot-toggle-lead' }, shotIcon(), (toggleText = h('span', { class: 'shot-toggle-label', text: 'View screenshot' }))),
+              chevronIcon()
+            );
+
+            const shotBody = h(
+              'div',
+              { class: 'shot-body' },
+              h(
+                'div',
+                { class: 'shot-inner' },
+                h('a', { href: item.screenshot_url, target: '_blank', rel: 'noopener', title: 'Open full screenshot' }, h('img', { src: item.screenshot_url, alt: 'Screenshot from when this was filed' })),
+                h(
+                  'div',
+                  { class: 'shot-actions' },
+                  h('button', {
+                    type: 'button',
+                    class: 'btn link',
+                    text: '✎ Annotate',
+                    onclick: async () => {
+                      try {
+                        const res = await fetch(item.screenshot_url as string, { credentials: 'same-origin', cache: 'no-store' });
+                        const edited = await this.annotate(await res.blob());
+                        if (!edited) return;
+                        const updated = await this.api.replaceScreenshot(item.id, edited);
+                        this.upsert(updated);
+                        this.toast(`Annotations saved on #${item.id}`);
+                        void this.openPopover(id, { x: parseFloat(card.style.left) - 8, y: parseFloat(card.style.top) - 8 });
+                      } catch (err) {
+                        this.toast((err as Error).message, true);
+                      }
+                    },
+                  })
+                )
+              )
+            );
+
+            const shotWrap = h('div', { class: 'shot shot--collapsible' }, toggleBtn, shotBody);
+            return shotWrap;
+          })()
         : null,
       h('div', { class: 'row' }, h('label', { class: 'field' }, h('span', { text: 'Status' }), status), h('label', { class: 'field' }, h('span', { text: 'Priority' }), priority)),
       h('label', { class: 'field' }, h('span', { text: item.overdue ? 'Due date · overdue' : 'Due date' }), dueInput),
