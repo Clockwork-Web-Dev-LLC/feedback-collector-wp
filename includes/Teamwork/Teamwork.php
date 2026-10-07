@@ -413,6 +413,8 @@ final class Teamwork {
 		);
 		/* translators: 1: task ID, 2: task list name */
 		Items::add_comment( $id, sprintf( __( 'pushed to Teamwork as task #%1$d in %2$s', 'feedback-collector' ), $task_id, $s['tasklist_name'] ?: __( 'the QA list', 'feedback-collector' ) ), 'activity' );
+		// Comments written before the push were skipped by the comment hook (no task yet).
+		self::push_pending_comments( $client, $id, $task_id );
 		return $task_id;
 	}
 
@@ -765,6 +767,8 @@ final class Teamwork {
 				}
 				++$checked;
 				self::sync_task_comments( $client, (int) $row['id'], (int) $task['id'] );
+				// Retry any reviewer comment whose earlier send failed.
+				self::push_pending_comments( $client, (int) $row['id'], (int) $task['id'] );
 				$completed = 'completed' === ( $task['status'] ?? '' ) || ! empty( $task['completedAt'] );
 				$target    = null;
 				if ( $completed && 'resolved' !== $row['status'] ) {
@@ -1434,6 +1438,7 @@ final class Teamwork {
 			return;
 		}
 
+		// Not pushed yet: push() sends this comment along with the task.
 		$item = Items::get( $item_id );
 		if ( ! $item || empty( $item['tw_task_id'] ) ) {
 			return;
@@ -1444,18 +1449,69 @@ final class Teamwork {
 			return;
 		}
 
+		self::send_comment( $client, $comment_id, (int) $item['tw_task_id'], $body, $user_id );
+	}
+
+	/**
+	 * Sends one WordPress comment to a Teamwork task and records the Teamwork comment ID.
+	 *
+	 * @param Client $client     Client.
+	 * @param int    $comment_id WordPress comment ID.
+	 * @param int    $task_id    Teamwork task ID.
+	 * @param string $body       Comment text.
+	 * @param int    $user_id    Author ID.
+	 */
+	private static function send_comment( Client $client, int $comment_id, int $task_id, string $body, int $user_id ): bool {
 		$user   = get_userdata( $user_id );
 		$author = $user ? $user->display_name : __( 'A reviewer', 'feedback-collector' );
 		$brand  = Branding::text( 'name' );
 		/* translators: 1: author name, 2: branding name, 3: comment body */
 		$tw_body = sprintf( "From %1\$s via %2\$s:\n\n%3\$s", $author, $brand, $body );
 
-		$res = $client->create_task_comment( (int) $item['tw_task_id'], $tw_body );
-		if ( ! is_wp_error( $res ) && $res > 0 ) {
-			global $wpdb;
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery
-			$wpdb->update( Items::comments_table(), array( 'tw_comment_id' => $res ), array( 'id' => $comment_id ) );
+		$res = $client->create_task_comment( $task_id, $tw_body );
+		if ( is_wp_error( $res ) || $res <= 0 ) {
+			return false;
 		}
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$wpdb->update( Items::comments_table(), array( 'tw_comment_id' => $res ), array( 'id' => $comment_id ) );
+		return true;
+	}
+
+	/**
+	 * Sends an item's reviewer comments that are not in Teamwork yet: ones written before
+	 * the push, and ones whose earlier send failed. Activity entries stay in WordPress.
+	 *
+	 * @param Client $client  Client.
+	 * @param int    $item_id Item ID.
+	 * @param int    $task_id Teamwork task ID.
+	 * @return array{sent: int, failed: int}
+	 */
+	public static function push_pending_comments( Client $client, int $item_id, int $task_id ): array {
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$rows   = $wpdb->get_results( $wpdb->prepare( "SELECT id, body, user_id FROM %i WHERE item_id = %d AND kind = 'comment' AND tw_comment_id = 0 AND user_id > 0 ORDER BY id ASC", Items::comments_table(), $item_id ), ARRAY_A );
+		$result = array(
+			'sent'   => 0,
+			'failed' => 0,
+		);
+		foreach ( $rows ?: array() as $row ) {
+			$ok = self::send_comment( $client, (int) $row['id'], $task_id, (string) $row['body'], (int) $row['user_id'] );
+			++$result[ $ok ? 'sent' : 'failed' ];
+		}
+		return $result;
+	}
+
+	/**
+	 * Item IDs that are in Teamwork but still have reviewer comments that are not.
+	 *
+	 * @return array<int, int>
+	 */
+	public static function items_with_pending_comments(): array {
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$ids = $wpdb->get_col( $wpdb->prepare( "SELECT DISTINCT c.item_id FROM %i c JOIN %i i ON i.id = c.item_id WHERE i.tw_task_id > 0 AND c.kind = 'comment' AND c.tw_comment_id = 0 AND c.user_id > 0 ORDER BY c.item_id ASC", Items::comments_table(), Items::table() ) );
+		return array_map( 'intval', $ids ?: array() );
 	}
 
 	/**

@@ -665,6 +665,62 @@ class FeedbackCommand {
 	}
 
 	/**
+	 * Sends reviewer comments that never reached Teamwork for items that are already pushed.
+	 *
+	 * Covers comments written before an item was pushed, and comments whose send failed.
+	 * Safe to re-run: comments already in Teamwork are never sent twice.
+	 *
+	 * ## OPTIONS
+	 *
+	 * [--dry-run]
+	 * : List the items and comment counts without sending anything.
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     $ wp feedback push-teamwork-comments --dry-run
+	 *     $ wp feedback push-teamwork-comments
+	 *
+	 * @subcommand push-teamwork-comments
+	 */
+	public function push_teamwork_comments( array $args, array $assoc_args ): void {
+		$client = Teamwork::client();
+		if ( ! $client ) {
+			WP_CLI::error( 'Teamwork is not ready. Configure credentials and select a project in Feedback → Settings.' );
+		}
+
+		$ids = Teamwork::items_with_pending_comments();
+		if ( ! $ids ) {
+			WP_CLI::success( 'Every reviewer comment on a pushed item is already in Teamwork.' );
+			return;
+		}
+
+		$dry    = ! empty( $assoc_args['dry-run'] );
+		$sent   = 0;
+		$failed = 0;
+		foreach ( $ids as $id ) {
+			$item    = Items::get( $id );
+			$task_id = (int) $item['tw_task_id'];
+			if ( $dry ) {
+				$pending = count( array_filter( Items::comments( $id ), static fn( array $c ): bool => 'comment' === $c['kind'] && 0 === $c['tw_comment_id'] && $c['user_id'] > 0 ) );
+				WP_CLI::line( sprintf( 'Item #%1$d → task #%2$d: %3$d comment(s) to send', $id, $task_id, $pending ) );
+				continue;
+			}
+			$res     = Teamwork::push_pending_comments( $client, $id, $task_id );
+			$sent   += $res['sent'];
+			$failed += $res['failed'];
+			WP_CLI::line( sprintf( 'Item #%1$d → task #%2$d: sent %3$d, failed %4$d', $id, $task_id, $res['sent'], $res['failed'] ) );
+		}
+
+		if ( $dry ) {
+			WP_CLI::success( sprintf( '%d item(s) have comments to send. Run without --dry-run to send them.', count( $ids ) ) );
+		} elseif ( $failed > 0 ) {
+			WP_CLI::warning( sprintf( 'Sent %1$d comment(s); %2$d failed and will be retried on the next sync or run.', $sent, $failed ) );
+		} else {
+			WP_CLI::success( sprintf( 'Sent %d comment(s) to Teamwork.', $sent ) );
+		}
+	}
+
+	/**
 	 * Shows an inventory of stored feedback data, screenshots, and comments.
 	 *
 	 * ## OPTIONS

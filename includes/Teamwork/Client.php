@@ -419,23 +419,21 @@ final class Client {
 	}
 
 	/**
-	 * Creates a comment on a task.
+	 * Creates a comment on a task. Uses the v1 endpoint: v3 can list task comments but
+	 * answers 404 "entity not found" to a POST on the same path.
 	 *
 	 * @param int    $task_id Task ID.
 	 * @param string $body    Comment text.
-	 * @param bool   $notify  Whether to notify task followers/assignees.
 	 * @return int|WP_Error Teamwork comment ID.
 	 */
-	public function create_task_comment( int $task_id, string $body, bool $notify = true ): int|WP_Error {
+	public function create_task_comment( int $task_id, string $body ): int|WP_Error {
 		$payload = array(
-			'comment'        => array(
-				'body' => $body,
-			),
-			'commentOptions' => array(
-				'notify' => $notify,
+			'comment' => array(
+				'body'         => $body,
+				'content-type' => 'text',
 			),
 		);
-		$data = $this->request( 'POST', "/projects/api/v3/tasks/{$task_id}/comments.json", array(), $payload );
+		$data = $this->request( 'POST', "/tasks/{$task_id}/comments.json", array(), $payload );
 		if ( is_wp_error( $data ) ) {
 			return $data;
 		}

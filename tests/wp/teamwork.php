@@ -64,9 +64,11 @@ add_filter( 'pre_http_request', function ( $pre, $args, $url ) {
 	if ( '/projects/api/v3/projects/999/tasks.json' === $path ) return $json( 403, array( 'errors' => array( array( 'detail' => 'no access to project' ) ) ) );
 	// Any other project (e.g. real items already on this site): nothing changed. Never a real request.
 	if ( preg_match( '#^/projects/api/v3/projects/\d+/tasks\.json$#', (string) $path ) ) return $json( 200, array( 'tasks' => array(), 'meta' => array( 'page' => array( 'hasMore' => false ) ) ) );
-	if ( 'POST' === $args['method'] && preg_match( '#^/projects/api/v3/tasks/(\d+)/comments\.json$#', (string) $path ) ) {
+	if ( 'POST' === $args['method'] && preg_match( '#^/tasks/(\d+)/comments\.json$#', (string) $path ) ) {
+		if ( ! empty( $mock['fail_comment'] ) ) return $json( 500, array( 'errors' => array( array( 'detail' => 'comment failed' ) ) ) );
+		$mock['comment_posts'] = ( $mock['comment_posts'] ?? 0 ) + 1;
 		$mock['last_comment_payload'] = json_decode( $args['body'], true );
-		return $json( 201, array( 'comment' => array( 'id' => 88881 ) ) );
+		return $json( 201, array( 'commentId' => '88881', 'STATUS' => 'OK' ) );
 	}
 	if ( 'GET' === $args['method'] && preg_match( '#^/projects/api/v3/tasks/(\d+)/comments\.json$#', (string) $path ) ) {
 		return $json( 200, array( 'comments' => $mock['comments'] ?? array(), 'meta' => array( 'page' => array( 'hasMore' => false ) ) ) );
@@ -235,6 +237,30 @@ check( 'pulled comment attributes author', str_contains( $tw_comment['body'], 'B
 
 $second_sync = Teamwork::sync_task_comments( $client, $id, 9001 );
 check( 'comment sync is idempotent (does not duplicate)', 0 === $second_sync );
+
+// Comments written before the push go to Teamwork with it; activity entries do not.
+$mock['comments'] = array();
+$pre              = mk( 'Commented before push', array( 'description' => '' ) );
+$pre_c1           = Items::add_comment( $pre, 'The details are in this comment' );
+$pre_c2           = Items::add_comment( $pre, 'And a second one' );
+Items::add_comment( $pre, 'status changed', 'activity' );
+$posts_before = $mock['comment_posts'] ?? 0;
+Teamwork::push( $pre );
+$pre_ids = $wpdb->get_col( $wpdb->prepare( "SELECT tw_comment_id FROM %i WHERE item_id = %d AND kind = 'comment' ORDER BY id", Items::comments_table(), $pre ) );
+check( 'push sends comments written before the push', array( '88881', '88881' ) === $pre_ids && 2 === ( $mock['comment_posts'] - $posts_before ) );
+check( 'pre-push comment keeps author and branding prefix', str_contains( $mock['last_comment_payload']['comment']['body'] ?? '', 'And a second one' ) && str_contains( $mock['last_comment_payload']['comment']['body'], 'via Clockwork' ) );
+check( 'Anti: activity entries are not sent to Teamwork', 2 === ( $mock['comment_posts'] - $posts_before ) );
+check( 'Anti: nothing left pending after the push', ! in_array( $pre, Teamwork::items_with_pending_comments(), true ) );
+$posts_before = $mock['comment_posts'];
+check( 'Anti: re-running the sender sends nothing twice', array( 'sent' => 0, 'failed' => 0 ) === Teamwork::push_pending_comments( $client, $pre, (int) Items::get( $pre )['tw_task_id'] ) && $posts_before === $mock['comment_posts'] );
+
+// A failed send stays pending and goes out on retry (backfill / sync).
+$mock['fail_comment'] = true;
+$fail_c               = Items::add_comment( $pre, 'Sent while Teamwork was down' );
+$mock['fail_comment'] = false;
+check( 'failed send leaves the comment pending', 0 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT tw_comment_id FROM %i WHERE id = %d', Items::comments_table(), $fail_c ) ) && in_array( $pre, Teamwork::items_with_pending_comments(), true ) );
+$retry = Teamwork::push_pending_comments( $client, $pre, (int) Items::get( $pre )['tw_task_id'] );
+check( 'retry sends exactly the failed comment', array( 'sent' => 1, 'failed' => 0 ) === $retry && 88881 === (int) $wpdb->get_var( $wpdb->prepare( 'SELECT tw_comment_id FROM %i WHERE id = %d', Items::comments_table(), $fail_c ) ) );
 
 // 10. Due dates: pushed as dueAt, edits go to Teamwork, Teamwork changes come back.
 $mock['patches'] = array();
