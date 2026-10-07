@@ -181,6 +181,7 @@ bun run typecheck
 - `bun test` runs the overlay suites: the pin-anchoring engine and overlay boot.
 - `bun run test:wp` runs the WordPress integration suites in `tests/wp/` (REST and permissions, Teamwork push/sync against a mocked API, assignees, rounds, screenshots, API-key storage, branding, due dates) through wp-cli; set `WP="php wp-cli.phar --path=/path/to/wp"` if `wp` isn't on your PATH.
 - They run against a **throwaway copy** of the site's database (`*_scratch`), created fresh for each run and dropped after, so nothing a test does can touch the real site. Every suite refuses to run against any other database. One-time setup (a `DB_NAME` switch in the local `wp-config.php` and a MySQL grant) is described at the top of `tests/wp/run.sh`.
+- To point wp-cli at your test site without `WP=…`, add a gitignored `wp-cli.local.yml` in the repo root containing `path: ../your-test-wp`, with the plugin symlinked into that site's `wp-content/plugins/feedback-collector`.
 - Never point the WordPress suites at a real staging or production site.
 
 - **PHP:** `phpcs` with the bundled `phpcs.xml.dist` (WordPress standard).
