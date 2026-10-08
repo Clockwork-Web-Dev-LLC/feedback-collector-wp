@@ -1136,10 +1136,17 @@ select {
 
 /* Screen recording */
 .toolbar .rec-start {
-  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 8px;
 }
-.toolbar .rec-start::first-letter {
-  color: #ff5a5f;
+.toolbar .rec-start-dot {
+  display: block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #ff5a5f;
 }
 .toolbar.recording {
   gap: 8px;

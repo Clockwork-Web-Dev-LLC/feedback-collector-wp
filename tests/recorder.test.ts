@@ -297,7 +297,7 @@ describe('Recorder', () => {
 
 describe('overlay', () => {
   const shadow = () => document.getElementById(OVERLAY_HOST_ID)?.shadowRoot ?? null;
-  const button = (label: string) => [...(shadow()?.querySelectorAll('.toolbar button') ?? [])].find((b) => b.textContent?.includes(label)) as HTMLButtonElement | undefined;
+  const button = (label: string) => [...(shadow()?.querySelectorAll('.toolbar button') ?? [])].find((b) => b.textContent?.includes(label) || b.getAttribute('aria-label')?.includes(label)) as HTMLButtonElement | undefined;
   let app: App | null = null;
   afterEach(() => {
     app?.destroy();

@@ -25,9 +25,9 @@ Internal QA for **staging** WordPress sites. A teammate turns on Feedback mode, 
 
 ## Screen recordings
 
-**● Record** on the toolbar records the page with your voice, like Loom, and files it as feedback.
+The **red dot** (Record) on the toolbar records the page with your voice, like Loom, and files it as feedback.
 
-1. Click **● Record**. Chrome asks for the microphone, then to share **this tab**; allow both. (Without a mic it still records, silently.)
+1. Click the **red dot**. Chrome asks for the microphone, then to share **this tab**; allow both. (Without a mic it still records, silently.)
 2. Show the problem and talk it through. Your pointer and every click show up in the video as a yellow dot and an orange ripple.
 3. Click **■ Stop** (or Chrome's own "Stop sharing"). It stops by itself at the time limit (3 minutes by default).
 4. Watch the preview, add a title and type, and click **Add**.

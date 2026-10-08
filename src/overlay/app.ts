@@ -1505,7 +1505,7 @@ export class App {
       }),
       h('button', { type: 'button', text: 'Page note', onclick: () => this.openComposer('comment', null, window.innerWidth / 2 - 170, 120) }),
       this.canRecordHere()
-        ? h('button', { type: 'button', class: 'rec-start', title: `Record this tab with your voice (up to ${clock((this.cfg.video?.maxSeconds ?? 180) * 1000)})`, text: '● Record', onclick: () => void this.startRecording() })
+        ? h('button', { type: 'button', class: 'icon-btn rec-start', title: `Record this tab with your voice (up to ${clock((this.cfg.video?.maxSeconds ?? 180) * 1000)})`, 'aria-label': 'Record this tab with your voice', onclick: () => void this.startRecording() }, h('span', { class: 'rec-start-dot', 'aria-hidden': 'true' }))
         : null,
       h(
         'button',
