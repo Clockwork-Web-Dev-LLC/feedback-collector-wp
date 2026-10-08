@@ -1,5 +1,5 @@
 // Screenshot annotator (Fabric.js, MIT). Built separately as dist/annotator.js and loaded
-// only when someone annotates. Exposes window.FBCAnnotator.open().
+// only when someone annotates. Exposes window.FBCOLAnnotator.open().
 import { Canvas, FabricImage, FabricObject, Group, IText, Line, PencilBrush, Point, Rect, Triangle } from 'fabric';
 import type { TPointerEventInfo, TPointerEvent } from 'fabric';
 
@@ -308,8 +308,8 @@ export function open(opts: AnnotateOptions): Promise<Blob | null> {
 
 declare global {
   interface Window {
-    FBCAnnotator?: { open: typeof open };
+    FBCOLAnnotator?: { open: typeof open };
   }
 }
 
-window.FBCAnnotator = { open };
+window.FBCOLAnnotator = { open };

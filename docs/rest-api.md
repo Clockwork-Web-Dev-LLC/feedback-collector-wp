@@ -2,12 +2,12 @@
 
 Namespace: `feedback-collector/v1` (e.g. `/wp-json/feedback-collector/v1/items`, or `/?rest_route=/feedback-collector/v1/items` with plain permalinks).
 
-Every route requires a logged-in user with the `fbc_review` capability. Browser requests use WordPress cookie auth and **must** send `X-WP-Nonce` (from `wp_create_nonce( 'wp_rest' )`). Without the nonce, the request is treated as logged out and gets a 401.
+Every route requires a logged-in user with the `fbcol_review` capability. Browser requests use WordPress cookie auth and **must** send `X-WP-Nonce` (from `wp_create_nonce( 'wp_rest' )`). Without the nonce, the request is treated as logged out and gets a 401.
 
 | Status | Meaning |
 |--------|---------|
 | 401 | Not logged in, or cookie without a valid nonce |
-| 403 | Logged in without `fbc_review`, or deleting someone else's item as a non-admin |
+| 403 | Logged in without `fbcol_review`, or deleting someone else's item as a non-admin |
 | 400 | Validation failed; `data.field` names the field |
 | 404 | Item not found |
 
@@ -47,7 +47,7 @@ Returns `{ "items": Item[], "total": number }`, oldest first, capped at 500.
 }
 ```
 
-`anchor: null` creates a page note that isn't tied to an element. `title` and `type` are required. `assignee_id` must be a user with `fbc_review`.
+`anchor: null` creates a page note that isn't tied to an element. `title` and `type` are required. `assignee_id` must be a user with `fbcol_review`.
 
 Optional `recording: { "token": "…", "duration": 83, "events": [{ "t": 42000, "kind": "click", "label": "\"Pay now\" (button.pay)" }] }` attaches a screen recording uploaded under that token (see `/recordings`). `duration` is in seconds, `t` in milliseconds; `kind` is `click` or `error`. A bad or expired token never loses the feedback: the item is saved and the response carries `video_error`.
 

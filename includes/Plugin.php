@@ -19,10 +19,11 @@ final class Plugin {
 	 */
 	public static function boot(): void {
 		add_action( 'init', array( self::class, 'load_textdomain' ) );
+		// After Teamwork registers its cron intervals, so a migration can reschedule its jobs.
+		Teamwork\Teamwork::register();
 		Install::maybe_upgrade();
 		Rest::register();
 		Frontend::register();
-		Teamwork\Teamwork::register();
 		if ( is_admin() ) {
 			Admin\Admin::register();
 		}

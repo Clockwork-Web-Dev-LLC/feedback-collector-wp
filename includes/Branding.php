@@ -11,11 +11,11 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Resolves branding from defaults (Clockwork), the saved option, and the
- * `fbc_branding` filter, in that order.
+ * `fbcol_branding` filter, in that order.
  */
 final class Branding {
 
-	public const OPTION = 'fbc_branding';
+	public const OPTION = 'fbcol_branding';
 
 	/**
 	 * Clockwork defaults. The palette matches Clockwork Companion.
@@ -26,8 +26,8 @@ final class Branding {
 		$default_logo = '';
 		if ( defined( 'PLUGIN_FILE' ) && function_exists( 'plugins_url' ) ) {
 			$default_logo = plugins_url( 'assets/clockwork-logo.png', PLUGIN_FILE );
-		} elseif ( defined( 'FBC_URL' ) ) {
-			$default_logo = FBC_URL . 'assets/clockwork-logo.png';
+		} elseif ( defined( 'FBCOL_URL' ) ) {
+			$default_logo = FBCOL_URL . 'assets/clockwork-logo.png';
 		}
 
 		return array(
@@ -75,7 +75,7 @@ final class Branding {
 		}
 		// Custom branding off: the defaults (Clockwork colors, "Feedback Collector", no logo).
 		$b = self::enabled() ? self::saved() : self::defaults();
-		$b = (array) apply_filters( 'fbc_branding', $b );
+		$b = (array) apply_filters( 'fbcol_branding', $b );
 		$cache = $b;
 		return $b;
 	}

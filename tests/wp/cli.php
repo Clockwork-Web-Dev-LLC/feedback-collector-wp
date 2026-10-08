@@ -5,11 +5,11 @@ use FeedbackCollector\Cli\FeedbackCommand;
 use FeedbackCollector\Items;
 
 global $wpdb;
-$fbc_max = (int) $wpdb->get_var( 'SELECT COALESCE(MAX(id),0) FROM ' . Items::table() );
+$fbcol_max = (int) $wpdb->get_var( 'SELECT COALESCE(MAX(id),0) FROM ' . Items::table() );
 register_shutdown_function(
-	static function () use ( $fbc_max ) {
+	static function () use ( $fbcol_max ) {
 		global $wpdb;
-		foreach ( $wpdb->get_col( $wpdb->prepare( 'SELECT id FROM ' . Items::table() . ' WHERE id > %d', $fbc_max ) ) as $id ) {
+		foreach ( $wpdb->get_col( $wpdb->prepare( 'SELECT id FROM ' . Items::table() . ' WHERE id > %d', $fbcol_max ) ) as $id ) {
 			Items::delete( (int) $id );
 		}
 		echo "cleanup done\n";

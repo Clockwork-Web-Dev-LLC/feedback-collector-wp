@@ -30,13 +30,13 @@ final class Admin {
 	 */
 	public static function register(): void {
 		add_action( 'admin_menu', array( self::class, 'menu' ) );
-		add_action( 'admin_post_fbc_update', array( self::class, 'handle_update' ) );
-		add_action( 'admin_post_fbc_comment', array( self::class, 'handle_comment' ) );
-		add_action( 'admin_post_fbc_settings', array( self::class, 'handle_settings' ) );
-		add_action( 'admin_post_fbc_branding', array( self::class, 'handle_branding' ) );
-		add_action( 'admin_post_fbc_start_round', array( self::class, 'handle_start_round' ) );
-		add_action( 'admin_post_fbc_purge', array( self::class, 'handle_purge' ) );
-		add_action( 'admin_post_fbc_export_csv', array( self::class, 'handle_export_csv' ) );
+		add_action( 'admin_post_fbcol_update', array( self::class, 'handle_update' ) );
+		add_action( 'admin_post_fbcol_comment', array( self::class, 'handle_comment' ) );
+		add_action( 'admin_post_fbcol_settings', array( self::class, 'handle_settings' ) );
+		add_action( 'admin_post_fbcol_branding', array( self::class, 'handle_branding' ) );
+		add_action( 'admin_post_fbcol_start_round', array( self::class, 'handle_start_round' ) );
+		add_action( 'admin_post_fbcol_purge', array( self::class, 'handle_purge' ) );
+		add_action( 'admin_post_fbcol_export_csv', array( self::class, 'handle_export_csv' ) );
 		// Late, so Clockwork Companion's stylesheet is already enqueued and can be removed.
 		add_action( 'admin_enqueue_scripts', array( Layout::class, 'enqueue' ), 100 );
 		add_filter( 'all_plugins', array( Branding::class, 'plugins_list' ) );
@@ -81,7 +81,7 @@ final class Admin {
 	 * @param array<string, mixed> $item Item.
 	 */
 	public static function view_on_page_url( array $item ): string {
-		return add_query_arg( 'fbc_item', (int) $item['id'], Items::page_url( $item ) );
+		return add_query_arg( 'fbcol_item', (int) $item['id'], Items::page_url( $item ) );
 	}
 
 	/**
@@ -116,11 +116,11 @@ final class Admin {
 				}
 			}
 		} else {
-			$done = (int) apply_filters( 'fbc_handle_bulk_action', 0, $action, $ids );
+			$done = (int) apply_filters( 'fbcol_handle_bulk_action', 0, $action, $ids );
 		}
 
 		$back = remove_query_arg( array( 'ids', 'action', 'action2', '_wpnonce', '_wp_http_referer' ), wp_get_referer() ?: admin_url( 'admin.php?page=' . self::SLUG ) );
-		wp_safe_redirect( add_query_arg( 'fbc_done', $done, $back ) );
+		wp_safe_redirect( add_query_arg( 'fbcol_done', $done, $back ) );
 		exit;
 	}
 
@@ -146,26 +146,26 @@ final class Admin {
 			sprintf( __( 'QA Round %d is in progress. Turn on Feedback mode from the admin bar to add more.', 'feedback-collector' ), $current ),
 			static function () use ( $table, $current ): void {
 				// phpcs:disable WordPress.Security.NonceVerification.Recommended
-				if ( isset( $_GET['fbc_done'] ) ) {
-					$n = absint( $_GET['fbc_done'] );
+				if ( isset( $_GET['fbcol_done'] ) ) {
+					$n = absint( $_GET['fbcol_done'] );
 					/* translators: %d: number of items */
 					printf( '<div class="notice notice-success is-dismissible"><p>%s</p></div>', esc_html( sprintf( _n( '%d item updated.', '%d items updated.', $n, 'feedback-collector' ), $n ) ) );
 				}
-				if ( isset( $_GET['fbc_round_started'] ) ) {
+				if ( isset( $_GET['fbcol_round_started'] ) ) {
 					$msg = sprintf(
 						/* translators: %d: round number */
 						__( 'Round %d started. New feedback goes into this round.', 'feedback-collector' ),
-						absint( $_GET['fbc_round_started'] )
+						absint( $_GET['fbcol_round_started'] )
 					);
-					if ( isset( $_GET['fbc_round_tw'] ) ) {
-						$msg .= ' ' . ( '1' === $_GET['fbc_round_tw']
+					if ( isset( $_GET['fbcol_round_tw'] ) ) {
+						$msg .= ' ' . ( '1' === $_GET['fbcol_round_tw']
 							? __( 'Its Teamwork QA list was created and is now active.', 'feedback-collector' )
 							: __( 'The Teamwork QA list could not be created; create it in Settings.', 'feedback-collector' ) );
 					}
 					printf( '<div class="notice notice-success is-dismissible"><p>%s</p></div>', esc_html( $msg ) );
 				}
 				// phpcs:enable
-				do_action( 'fbc_list_notices' );
+				do_action( 'fbcol_list_notices' );
 
 				// Per-round summary: what's left from earlier rounds at a glance. Each chip filters the list.
 				$active_round = (int) ( ItemsTable::filters()['round'] ?? 0 );
@@ -173,14 +173,14 @@ final class Admin {
 				printf(
 					'<a class="fbc-round%s" href="%s">%s</a>',
 					0 === $active_round ? ' is-active' : '',
-					esc_url( remove_query_arg( array( 'fbc_round', 'paged' ) ) ),
+					esc_url( remove_query_arg( array( 'fbcol_round', 'paged' ) ) ),
 					esc_html__( 'All rounds', 'feedback-collector' )
 				);
 				foreach ( Rounds::summary() as $round => $counts ) {
 					printf(
 						'<a class="fbc-round%1$s" href="%2$s"><strong>%3$s</strong> <span>%4$s</span></a>',
 						$round === $active_round ? ' is-active' : '',
-						esc_url( add_query_arg( 'fbc_round', $round, remove_query_arg( 'paged' ) ) ),
+						esc_url( add_query_arg( 'fbcol_round', $round, remove_query_arg( 'paged' ) ) ),
 						esc_html(
 							$round === $current
 								/* translators: %d: round number */
@@ -209,11 +209,11 @@ final class Admin {
 				Layout::card_close();
 			},
 			static function () use ( $current ): void {
-				do_action( 'fbc_list_header_actions' );
+				do_action( 'fbcol_list_header_actions' );
 				if ( current_user_can( 'manage_options' ) ) {
 					printf( '<form method="post" action="%s">', esc_url( admin_url( 'admin-post.php' ) ) );
-					wp_nonce_field( 'fbc_start_round' );
-					echo '<input type="hidden" name="action" value="fbc_start_round" />';
+					wp_nonce_field( 'fbcol_start_round' );
+					echo '<input type="hidden" name="action" value="fbcol_start_round" />';
 					printf(
 						'<button type="submit" class="button button-primary" onclick="return confirm(%1$s)">%2$s</button>',
 						esc_attr( wp_json_encode( sprintf( /* translators: %d: next round */ __( 'Start QA Round %d? New feedback will go into the new round. Existing items keep their round.', 'feedback-collector' ), $current + 1 ) ) ),
@@ -257,7 +257,7 @@ final class Admin {
 
 				printf( '<a class="fbc-admin__back" href="%s">&larr; %s</a>', esc_url( admin_url( 'admin.php?page=' . self::SLUG ) ), esc_html__( 'All feedback', 'feedback-collector' ) );
 				// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-				if ( isset( $_GET['fbc_saved'] ) ) {
+				if ( isset( $_GET['fbcol_saved'] ) ) {
 					echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Saved.', 'feedback-collector' ) . '</p></div>';
 				}
 
@@ -324,8 +324,8 @@ final class Admin {
 					echo '</ul>';
 				}
 				printf( '<form method="post" action="%s">', esc_url( admin_url( 'admin-post.php' ) ) );
-				wp_nonce_field( 'fbc_comment_' . $item['id'] );
-				printf( '<input type="hidden" name="action" value="fbc_comment" /><input type="hidden" name="id" value="%d" />', (int) $item['id'] );
+				wp_nonce_field( 'fbcol_comment_' . $item['id'] );
+				printf( '<input type="hidden" name="action" value="fbcol_comment" /><input type="hidden" name="id" value="%d" />', (int) $item['id'] );
 				echo '<p><textarea name="body" rows="3" class="large-text" required placeholder="' . esc_attr__( 'Reply…', 'feedback-collector' ) . '"></textarea></p>';
 				submit_button( __( 'Add reply', 'feedback-collector' ), 'secondary', 'submit', false );
 				echo '</form>';
@@ -358,8 +358,8 @@ final class Admin {
 
 				Layout::card_open( __( 'Triage', 'feedback-collector' ) );
 				printf( '<form method="post" action="%s">', esc_url( admin_url( 'admin-post.php' ) ) );
-				wp_nonce_field( 'fbc_update_' . $item['id'] );
-				printf( '<input type="hidden" name="action" value="fbc_update" /><input type="hidden" name="id" value="%d" />', (int) $item['id'] );
+				wp_nonce_field( 'fbcol_update_' . $item['id'] );
+				printf( '<input type="hidden" name="action" value="fbcol_update" /><input type="hidden" name="id" value="%d" />', (int) $item['id'] );
 				foreach ( array(
 					'status'   => array( __( 'Status', 'feedback-collector' ), $labels['status'], $item['status'] ),
 					'priority' => array( __( 'Priority', 'feedback-collector' ), $labels['priority'], $item['priority'] ),
@@ -401,7 +401,7 @@ final class Admin {
 				echo '</form>';
 				Layout::card_close();
 
-				do_action( 'fbc_detail_sidebar', $item );
+				do_action( 'fbcol_detail_sidebar', $item );
 
 				echo '</div></div>';
 			}
@@ -428,7 +428,7 @@ final class Admin {
 	 */
 	public static function handle_update(): void {
 		$id = isset( $_POST['id'] ) ? absint( $_POST['id'] ) : 0;
-		check_admin_referer( 'fbc_update_' . $id );
+		check_admin_referer( 'fbcol_update_' . $id );
 		if ( ! current_user_can( CAP ) ) {
 			wp_die( esc_html__( 'Not allowed.', 'feedback-collector' ), 403 );
 		}
@@ -463,9 +463,9 @@ final class Admin {
 		}
 		Items::update( $id, $changes );
 		if ( $due_changed ) {
-			do_action( 'fbc_item_due_changed', $id );
+			do_action( 'fbcol_item_due_changed', $id );
 		}
-		wp_safe_redirect( add_query_arg( 'fbc_saved', 1, self::item_url( $id ) ) );
+		wp_safe_redirect( add_query_arg( 'fbcol_saved', 1, self::item_url( $id ) ) );
 		exit;
 	}
 
@@ -474,7 +474,7 @@ final class Admin {
 	 */
 	public static function handle_comment(): void {
 		$id = isset( $_POST['id'] ) ? absint( $_POST['id'] ) : 0;
-		check_admin_referer( 'fbc_comment_' . $id );
+		check_admin_referer( 'fbcol_comment_' . $id );
 		if ( ! current_user_can( CAP ) ) {
 			wp_die( esc_html__( 'Not allowed.', 'feedback-collector' ), 403 );
 		}
@@ -495,28 +495,28 @@ final class Admin {
 			__( 'Settings', 'feedback-collector' ),
 			__( 'Who can leave feedback, what happens on uninstall, and the Teamwork connection.', 'feedback-collector' ),
 			static function (): void {
-				$roles   = (array) get_option( 'fbc_review_roles', array( 'administrator', 'editor' ) );
-				$cleanup = (bool) get_option( 'fbc_delete_on_uninstall' );
+				$roles   = (array) get_option( 'fbcol_review_roles', array( 'administrator', 'editor' ) );
+				$cleanup = (bool) get_option( 'fbcol_delete_on_uninstall' );
 
 				// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-				if ( isset( $_GET['fbc_saved'] ) ) {
-					$created_msg = get_transient( 'fbc_tw_created_list_msg' );
+				if ( isset( $_GET['fbcol_saved'] ) ) {
+					$created_msg = get_transient( 'fbcol_tw_created_list_msg' );
 					if ( $created_msg ) {
-						delete_transient( 'fbc_tw_created_list_msg' );
+						delete_transient( 'fbcol_tw_created_list_msg' );
 						echo '<div class="notice notice-success is-dismissible"><p>' . esc_html( $created_msg ) . '</p></div>';
 					} else {
 						echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Settings saved.', 'feedback-collector' ) . '</p></div>';
 					}
 				}
-				$err_msg = get_transient( 'fbc_tw_error_msg' );
+				$err_msg = get_transient( 'fbcol_tw_error_msg' );
 				if ( $err_msg ) {
-					delete_transient( 'fbc_tw_error_msg' );
+					delete_transient( 'fbcol_tw_error_msg' );
 					echo '<div class="notice notice-error is-dismissible"><p>' . esc_html( $err_msg ) . '</p></div>';
 				}
 
 				printf( '<form method="post" action="%s">', esc_url( admin_url( 'admin-post.php' ) ) );
-				wp_nonce_field( 'fbc_settings' );
-				echo '<input type="hidden" name="action" value="fbc_settings" />';
+				wp_nonce_field( 'fbcol_settings' );
+				echo '<input type="hidden" name="action" value="fbcol_settings" />';
 
 				Layout::card_open( __( 'Reviewers', 'feedback-collector' ) );
 				echo '<table class="form-table" role="presentation">';
@@ -587,13 +587,13 @@ final class Admin {
 
 				Layout::card_open( __( 'Teamwork', 'feedback-collector' ) );
 				echo '<table class="form-table" role="presentation">';
-				do_action( 'fbc_settings_rows' );
+				do_action( 'fbcol_settings_rows' );
 				echo '</table>';
 				Layout::card_close();
 
 				submit_button();
 				echo '</form>';
-				do_action( 'fbc_settings_after' );
+				do_action( 'fbcol_settings_after' );
 				self::render_remove_card();
 			}
 		);
@@ -603,7 +603,7 @@ final class Admin {
 	 * Saves settings and syncs the review capability onto roles.
 	 */
 	public static function handle_settings(): void {
-		check_admin_referer( 'fbc_settings' );
+		check_admin_referer( 'fbcol_settings' );
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'Not allowed.', 'feedback-collector' ), 403 );
 		}
@@ -618,8 +618,8 @@ final class Admin {
 				$role->remove_cap( CAP );
 			}
 		}
-		update_option( 'fbc_review_roles', $roles, false );
-		update_option( 'fbc_delete_on_uninstall', ! empty( $_POST['delete_on_uninstall'] ), false );
+		update_option( 'fbcol_review_roles', $roles, false );
+		update_option( 'fbcol_delete_on_uninstall', ! empty( $_POST['delete_on_uninstall'] ), false );
 		update_option( \FeedbackCollector\Screenshots::OPTION, empty( $_POST['screenshots'] ) ? '0' : '1', false );
 		update_option( \FeedbackCollector\Videos::OPTION, empty( $_POST['videos'] ) ? '0' : '1', false );
 		if ( isset( $_POST['video_max_minutes'] ) ) {
@@ -634,9 +634,9 @@ final class Admin {
 			update_option( DueDates::OPT_HOURS, max( 0, min( 72, absint( $_POST['due_batch_hours'] ) ) ), false );
 		}
 
-		do_action( 'fbc_save_settings' );
+		do_action( 'fbcol_save_settings' );
 
-		wp_safe_redirect( add_query_arg( 'fbc_saved', 1, admin_url( 'admin.php?page=' . self::SLUG . '-settings' ) ) );
+		wp_safe_redirect( add_query_arg( 'fbcol_saved', 1, admin_url( 'admin.php?page=' . self::SLUG . '-settings' ) ) );
 		exit;
 	}
 
@@ -654,16 +654,16 @@ final class Admin {
 				$d = Branding::defaults();
 
 				// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-				if ( isset( $_GET['fbc_saved'] ) ) {
+				if ( isset( $_GET['fbcol_saved'] ) ) {
 					echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Branding saved.', 'feedback-collector' ) . '</p></div>';
 				}
-				if ( has_filter( 'fbc_branding' ) ) {
-					echo '<div class="fbc-callout">' . esc_html__( 'Some values are being set in code with the fbc_branding filter and override what you save here.', 'feedback-collector' ) . '</div>';
+				if ( has_filter( 'fbcol_branding' ) ) {
+					echo '<div class="fbc-callout">' . esc_html__( 'Some values are being set in code with the fbcol_branding filter and override what you save here.', 'feedback-collector' ) . '</div>';
 				}
 
 				printf( '<form method="post" action="%s">', esc_url( admin_url( 'admin-post.php' ) ) );
-				wp_nonce_field( 'fbc_branding' );
-				echo '<input type="hidden" name="action" value="fbc_branding" />';
+				wp_nonce_field( 'fbcol_branding' );
+				echo '<input type="hidden" name="action" value="fbcol_branding" />';
 
 				$text = static function ( string $key, string $label, string $help = '' ) use ( $b, $d ): void {
 					printf(
@@ -678,7 +678,7 @@ final class Admin {
 
 				Layout::card_open( __( 'Custom branding', 'feedback-collector' ) );
 				printf(
-					'<p><label class="fbc-toggle"><input type="checkbox" class="fbc-toggle__input" id="fbc-b-enabled" name="branding[enabled]" value="1"%1$s /><span class="fbc-toggle__track" aria-hidden="true"><span class="fbc-toggle__knob"></span></span> <strong>%2$s</strong></label> <span id="fbc-b-enabled-status" class="description" role="status" data-saving="%4$s"></span></p><p class="description">%3$s</p>',
+					'<p><label class="fbcol-toggle"><input type="checkbox" class="fbc-toggle__input" id="fbc-b-enabled" name="branding[enabled]" value="1"%1$s /><span class="fbc-toggle__track" aria-hidden="true"><span class="fbc-toggle__knob"></span></span> <strong>%2$s</strong></label> <span id="fbc-b-enabled-status" class="description" role="status" data-saving="%4$s"></span></p><p class="description">%3$s</p>',
 					checked( ! empty( $b['enabled'] ), true, false ),
 					esc_html__( 'Use custom branding', 'feedback-collector' ),
 					esc_html__( 'Off: the plugin shows “Feedback Collector” with the default colors and no logo. On: the name, logo and colors below apply everywhere. Flipping the switch saves right away; your settings are kept when you switch it off.', 'feedback-collector' ),
@@ -752,7 +752,7 @@ final class Admin {
 	private static function render_remove_card(): void {
 		$inv = \FeedbackCollector\Cleanup::inventory();
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		if ( isset( $_GET['fbc_purge_error'] ) ) {
+		if ( isset( $_GET['fbcol_purge_error'] ) ) {
 			echo '<div class="notice notice-error"><p>' . esc_html__( 'Type DELETE in the box to confirm.', 'feedback-collector' ) . '</p></div>';
 		}
 		Layout::card_open( __( 'Remove all data', 'feedback-collector' ) );
@@ -775,8 +775,8 @@ final class Admin {
 			) . '</div>';
 		}
 		printf( '<form method="post" action="%s" class="fbc-remove-form">', esc_url( admin_url( 'admin-post.php' ) ) );
-		wp_nonce_field( 'fbc_purge' );
-		echo '<input type="hidden" name="action" value="fbc_purge" />';
+		wp_nonce_field( 'fbcol_purge' );
+		echo '<input type="hidden" name="action" value="fbcol_purge" />';
 		printf(
 			'<p><label for="fbc-purge-confirm">%1$s</label><br /><input type="text" id="fbc-purge-confirm" name="confirm" autocomplete="off" class="regular-text" placeholder="DELETE" /></p>',
 			esc_html__( 'Type DELETE to confirm. This cannot be undone.', 'feedback-collector' )
@@ -790,13 +790,13 @@ final class Admin {
 	 * Removes all plugin data, then deactivates the plugin.
 	 */
 	public static function handle_purge(): void {
-		check_admin_referer( 'fbc_purge' );
+		check_admin_referer( 'fbcol_purge' );
 		if ( ! current_user_can( 'manage_options' ) || ! current_user_can( 'activate_plugins' ) ) {
 			wp_die( esc_html__( 'Not allowed.', 'feedback-collector' ), 403 );
 		}
 		$confirm = isset( $_POST['confirm'] ) ? trim( sanitize_text_field( wp_unslash( $_POST['confirm'] ) ) ) : '';
 		if ( 'DELETE' !== $confirm ) {
-			wp_safe_redirect( add_query_arg( 'fbc_purge_error', 1, admin_url( 'admin.php?page=' . self::SLUG . '-settings' ) ) );
+			wp_safe_redirect( add_query_arg( 'fbcol_purge_error', 1, admin_url( 'admin.php?page=' . self::SLUG . '-settings' ) ) );
 			exit;
 		}
 		\FeedbackCollector\Cleanup::purge();
@@ -809,17 +809,17 @@ final class Admin {
 	 * Starts the next QA round (and its Teamwork list when connected).
 	 */
 	public static function handle_start_round(): void {
-		check_admin_referer( 'fbc_start_round' );
+		check_admin_referer( 'fbcol_start_round' );
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'Not allowed.', 'feedback-collector' ), 403 );
 		}
 		$result = Rounds::start_next();
 		$args   = array(
 			'page'              => self::SLUG,
-			'fbc_round_started' => $result['round'],
+			'fbcol_round_started' => $result['round'],
 		);
 		if ( null !== $result['teamwork'] ) {
-			$args['fbc_round_tw'] = is_wp_error( $result['teamwork'] ) ? '0' : '1';
+			$args['fbcol_round_tw'] = is_wp_error( $result['teamwork'] ) ? '0' : '1';
 		}
 		wp_safe_redirect( add_query_arg( $args, admin_url( 'admin.php' ) ) );
 		exit;
@@ -829,7 +829,7 @@ final class Admin {
 	 * Saves or resets branding.
 	 */
 	public static function handle_branding(): void {
-		check_admin_referer( 'fbc_branding' );
+		check_admin_referer( 'fbcol_branding' );
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'Not allowed.', 'feedback-collector' ), 403 );
 		}
@@ -839,7 +839,7 @@ final class Admin {
 			$input = isset( $_POST['branding'] ) && is_array( $_POST['branding'] ) ? wp_unslash( $_POST['branding'] ) : array(); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Branding::sanitize() sanitizes every field.
 			update_option( Branding::OPTION, Branding::sanitize( $input ), false );
 		}
-		wp_safe_redirect( add_query_arg( 'fbc_saved', 1, admin_url( 'admin.php?page=' . self::SLUG . '-branding' ) ) );
+		wp_safe_redirect( add_query_arg( 'fbcol_saved', 1, admin_url( 'admin.php?page=' . self::SLUG . '-branding' ) ) );
 		exit;
 	}
 
@@ -847,7 +847,7 @@ final class Admin {
 	 * Exports feedback items as a CSV file matching active filters.
 	 */
 	public static function handle_export_csv(): void {
-		check_admin_referer( 'fbc_export_csv' );
+		check_admin_referer( 'fbcol_export_csv' );
 		if ( ! current_user_can( CAP ) ) {
 			wp_die( esc_html__( 'Not allowed.', 'feedback-collector' ), 403 );
 		}
@@ -928,7 +928,7 @@ final class Admin {
 				$reporter_name = $reporter ? $reporter->display_name : ( (string) ( $item['reporter_email'] ?? '' ) );
 				$assignee_name = Assignees::name( $item );
 				$tw_task_id    = (int) ( $item['tw_task_id'] ?? 0 );
-				$tw_url        = $tw_task_id > 0 ? (string) apply_filters( 'fbc_teamwork_task_url', '', $tw_task_id ) : '';
+				$tw_url        = $tw_task_id > 0 ? (string) apply_filters( 'fbcol_teamwork_task_url', '', $tw_task_id ) : '';
 
 				fputcsv(
 					$out,

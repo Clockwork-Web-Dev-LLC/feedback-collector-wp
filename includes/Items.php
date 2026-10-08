@@ -51,7 +51,7 @@ final class Items {
 	 */
 	public static function table(): string {
 		global $wpdb;
-		return $wpdb->prefix . 'fbc_items';
+		return $wpdb->prefix . 'fbcol_items';
 	}
 
 	/**
@@ -59,7 +59,7 @@ final class Items {
 	 */
 	public static function comments_table(): string {
 		global $wpdb;
-		return $wpdb->prefix . 'fbc_comments';
+		return $wpdb->prefix . 'fbcol_comments';
 	}
 
 	/**
@@ -396,7 +396,7 @@ final class Items {
 		);
 		$insert_id = $ok ? (int) $wpdb->insert_id : 0;
 		if ( $insert_id ) {
-			do_action( 'fbc_comment_created', $insert_id, $item_id, $body, $author_id, $kind, $tw_comment_id );
+			do_action( 'fbcol_comment_created', $insert_id, $item_id, $body, $author_id, $kind, $tw_comment_id );
 		}
 		return $insert_id;
 	}

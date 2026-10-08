@@ -22,8 +22,8 @@ defined( 'ABSPATH' ) || exit;
 final class Videos {
 
 	public const DIR         = 'fbc-videos';
-	public const OPTION      = 'fbc_videos';
-	public const OPT_MAX     = 'fbc_video_max_seconds';
+	public const OPTION      = 'fbcol_videos';
+	public const OPT_MAX     = 'fbcol_video_max_seconds';
 	public const DEFAULT_MAX = 180;
 	/** Hard ceiling for one recording, whatever the length setting. */
 	public const MAX_BYTES = 200 * MB_IN_BYTES;
@@ -103,7 +103,7 @@ final class Videos {
 		self::sweep();
 		$token = wp_generate_password( 32, false, false );
 		if ( false === file_put_contents( self::session_path( $user_id, $token ), '' ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
-			return new WP_Error( 'fbc_io', __( 'Could not start the recording upload.', 'feedback-collector' ), array( 'status' => 500 ) );
+			return new WP_Error( 'fbcol_io', __( 'Could not start the recording upload.', 'feedback-collector' ), array( 'status' => 500 ) );
 		}
 		return $token;
 	}
@@ -126,7 +126,7 @@ final class Videos {
 		}
 		$len = strlen( $bytes );
 		if ( $len < 1 || $len > self::CHUNK_MAX ) {
-			return new WP_Error( 'fbc_invalid', __( 'That piece of the recording is empty or too large.', 'feedback-collector' ), array( 'status' => 400 ) );
+			return new WP_Error( 'fbcol_invalid', __( 'That piece of the recording is empty or too large.', 'feedback-collector' ), array( 'status' => 400 ) );
 		}
 		clearstatcache( true, $path );
 		$size = (int) filesize( $path );
@@ -135,7 +135,7 @@ final class Videos {
 		}
 		if ( $offset !== $size ) {
 			return new WP_Error(
-				'fbc_offset',
+				'fbcol_offset',
 				__( 'A piece of the recording is out of order.', 'feedback-collector' ),
 				array(
 					'status' => 409,
@@ -144,13 +144,13 @@ final class Videos {
 			);
 		}
 		if ( 0 === $offset && ! str_starts_with( $bytes, self::MAGIC ) ) {
-			return new WP_Error( 'fbc_invalid', __( 'The recording is not a WebM video.', 'feedback-collector' ), array( 'status' => 400 ) );
+			return new WP_Error( 'fbcol_invalid', __( 'The recording is not a WebM video.', 'feedback-collector' ), array( 'status' => 400 ) );
 		}
 		if ( $size + $len > self::MAX_BYTES ) {
-			return new WP_Error( 'fbc_too_large', __( 'The recording is too large.', 'feedback-collector' ), array( 'status' => 413 ) );
+			return new WP_Error( 'fbcol_too_large', __( 'The recording is too large.', 'feedback-collector' ), array( 'status' => 413 ) );
 		}
 		if ( false === file_put_contents( $path, $bytes, FILE_APPEND | LOCK_EX ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
-			return new WP_Error( 'fbc_io', __( 'Could not save the recording.', 'feedback-collector' ), array( 'status' => 500 ) );
+			return new WP_Error( 'fbcol_io', __( 'Could not save the recording.', 'feedback-collector' ), array( 'status' => 500 ) );
 		}
 		return $size + $len;
 	}
@@ -181,7 +181,7 @@ final class Videos {
 	public static function attach( int $item_id, int $user_id, string $token, int $duration, array $events = array() ): string|WP_Error {
 		$item = Items::get( $item_id );
 		if ( ! $item ) {
-			return new WP_Error( 'fbc_not_found', __( 'Feedback item not found.', 'feedback-collector' ), array( 'status' => 404 ) );
+			return new WP_Error( 'fbcol_not_found', __( 'Feedback item not found.', 'feedback-collector' ), array( 'status' => 404 ) );
 		}
 		$path = self::session_file( $user_id, $token );
 		if ( '' === $path ) {
@@ -191,12 +191,12 @@ final class Videos {
 		$head = (string) file_get_contents( $path, false, null, 0, 4 ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 		if ( self::MAGIC !== $head ) {
 			wp_delete_file( $path );
-			return new WP_Error( 'fbc_invalid', __( 'The recording is empty or not a WebM video.', 'feedback-collector' ), array( 'status' => 400 ) );
+			return new WP_Error( 'fbcol_invalid', __( 'The recording is empty or not a WebM video.', 'feedback-collector' ), array( 'status' => 400 ) );
 		}
 
 		$name = sprintf( '%d-%s.webm', $item_id, wp_generate_password( 24, false, false ) );
 		if ( ! rename( $path, self::dir() . '/' . $name ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.rename_rename
-			return new WP_Error( 'fbc_io', __( 'Could not save the recording.', 'feedback-collector' ), array( 'status' => 500 ) );
+			return new WP_Error( 'fbcol_io', __( 'Could not save the recording.', 'feedback-collector' ), array( 'status' => 500 ) );
 		}
 
 		self::delete_file( $item );
@@ -302,6 +302,6 @@ final class Videos {
 	 * The error for an unknown, expired or someone else's session.
 	 */
 	private static function no_session(): WP_Error {
-		return new WP_Error( 'fbc_no_session', __( 'That recording upload has expired. Record it again.', 'feedback-collector' ), array( 'status' => 404 ) );
+		return new WP_Error( 'fbcol_no_session', __( 'That recording upload has expired. Record it again.', 'feedback-collector' ), array( 'status' => 404 ) );
 	}
 }

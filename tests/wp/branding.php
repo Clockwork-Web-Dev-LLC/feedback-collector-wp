@@ -12,7 +12,7 @@ $check = static function ( string $label, bool $ok ) use ( &$n ): void {
 $d = Branding::defaults();
 $check( 'default header label is "Feedback Collector"', 'Feedback Collector' === $d['product_label'] );
 $check( 'Clockwork logo by default', '' !== $d['logo_url'] && str_ends_with( (string) $d['logo_url'], 'assets/clockwork-logo.png' ) );
-$check( 'bundled Clockwork logo shipped', file_exists( FBC_DIR . 'assets/clockwork-logo.png' ) );
+$check( 'bundled Clockwork logo shipped', file_exists( FBCOL_DIR . 'assets/clockwork-logo.png' ) );
 
 $s = Branding::sanitize( array( 'name' => 'Acme QA', 'logo_url' => 'https://example.com/acme.png' ) );
 $check( 'custom logo saved', 'https://example.com/acme.png' === $s['logo_url'] );

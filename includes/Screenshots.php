@@ -18,7 +18,7 @@ final class Screenshots {
 
 	public const DIR       = 'fbc-screenshots';
 	public const MAX_BYTES = 3 * MB_IN_BYTES;
-	public const OPTION    = 'fbc_screenshots';
+	public const OPTION    = 'fbcol_screenshots';
 
 	private const MIMES = array(
 		IMAGETYPE_JPEG => 'jpg',
@@ -84,21 +84,21 @@ final class Screenshots {
 	public static function save_bytes( int $item_id, string $bytes ): string|WP_Error {
 		$item = Items::get( $item_id );
 		if ( ! $item ) {
-			return new WP_Error( 'fbc_not_found', __( 'Feedback item not found.', 'feedback-collector' ), array( 'status' => 404 ) );
+			return new WP_Error( 'fbcol_not_found', __( 'Feedback item not found.', 'feedback-collector' ), array( 'status' => 404 ) );
 		}
 		if ( '' === $bytes || strlen( $bytes ) > self::MAX_BYTES ) {
-			return new WP_Error( 'fbc_invalid', __( 'The screenshot is empty or too large.', 'feedback-collector' ), array( 'status' => 400 ) );
+			return new WP_Error( 'fbcol_invalid', __( 'The screenshot is empty or too large.', 'feedback-collector' ), array( 'status' => 400 ) );
 		}
 		// Real image check: never trust the client's file name or MIME type.
 		$info = getimagesizefromstring( $bytes );
 		if ( ! $info || ! isset( self::MIMES[ $info[2] ] ) || $info[0] < 1 || $info[1] < 1 || $info[0] > 8000 || $info[1] > 8000 ) {
-			return new WP_Error( 'fbc_invalid', __( 'The screenshot is not a valid JPEG, PNG or WebP image.', 'feedback-collector' ), array( 'status' => 400 ) );
+			return new WP_Error( 'fbcol_invalid', __( 'The screenshot is not a valid JPEG, PNG or WebP image.', 'feedback-collector' ), array( 'status' => 400 ) );
 		}
 
 		$name = sprintf( '%d-%s.%s', $item_id, wp_generate_password( 24, false, false ), self::MIMES[ $info[2] ] );
 		$path = self::dir() . '/' . $name;
 		if ( false === file_put_contents( $path, $bytes ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
-			return new WP_Error( 'fbc_io', __( 'Could not save the screenshot.', 'feedback-collector' ), array( 'status' => 500 ) );
+			return new WP_Error( 'fbcol_io', __( 'Could not save the screenshot.', 'feedback-collector' ), array( 'status' => 500 ) );
 		}
 
 		self::delete_file( $item );

@@ -13,23 +13,23 @@ use FeedbackCollector\Items;
 use FeedbackCollector\Videos;
 use FeedbackCollector\Teamwork\Teamwork;
 
-global $wpdb, $fbc_mock;
+global $wpdb, $fbcol_mock;
 wp_set_current_user( 1 );
-$fbc_max     = (int) $wpdb->get_var( 'SELECT COALESCE(MAX(id),0) FROM ' . Items::table() );
-$fbc_backups = array();
-foreach ( array( 'fbc_teamwork', 'fbc_tw_state', 'fbc_round', 'fbc_assignee_source', 'fbc_screenshots', Videos::OPTION, Videos::OPT_MAX ) as $o ) {
-	$fbc_backups[ $o ] = get_option( $o, null );
+$fbcol_max     = (int) $wpdb->get_var( 'SELECT COALESCE(MAX(id),0) FROM ' . Items::table() );
+$fbcol_backups = array();
+foreach ( array( 'fbcol_teamwork', 'fbcol_tw_state', 'fbcol_round', 'fbcol_assignee_source', 'fbcol_screenshots', Videos::OPTION, Videos::OPT_MAX ) as $o ) {
+	$fbcol_backups[ $o ] = get_option( $o, null );
 }
 register_shutdown_function(
-	static function () use ( $fbc_max, $fbc_backups ) {
+	static function () use ( $fbcol_max, $fbcol_backups ) {
 		global $wpdb;
-		foreach ( $wpdb->get_col( $wpdb->prepare( 'SELECT id FROM ' . Items::table() . ' WHERE id > %d', $fbc_max ) ) as $id ) {
+		foreach ( $wpdb->get_col( $wpdb->prepare( 'SELECT id FROM ' . Items::table() . ' WHERE id > %d', $fbcol_max ) ) as $id ) {
 			Items::delete( (int) $id );
 		}
-		foreach ( $fbc_backups as $o => $v ) {
+		foreach ( $fbcol_backups as $o => $v ) {
 			null === $v ? delete_option( $o ) : update_option( $o, $v );
 		}
-		delete_transient( 'fbc_tw_people_list_100' );
+		delete_transient( 'fbcol_tw_people_list_100' );
 		echo "cleanup done\n";
 	}
 );
@@ -55,8 +55,8 @@ $start = static function () use ( $post ): string {
 	return (string) ( $post( '/recordings' )->get_data()['token'] ?? '' );
 };
 $session_file = static fn( int $user, string $token ) => Videos::dir() . "/rec-$user-$token.part";
-delete_option( 'fbc_teamwork' );
-delete_option( 'fbc_assignee_source' );
+delete_option( 'fbcol_teamwork' );
+delete_option( 'fbcol_assignee_source' );
 update_option( Videos::OPTION, '1' );
 delete_option( Videos::OPT_MAX );
 
@@ -91,7 +91,7 @@ $check( 'Anti: oversize pieces are refused', is_wp_error( Videos::append( 1, $ba
 // Another reviewer can't write to (or attach) this session.
 $other = (int) ( get_users( array( 'exclude' => array( 1 ), 'number' => 1, 'fields' => 'ID' ) )[0] ?? 0 );
 if ( ! $other ) {
-	$other = wp_insert_user( array( 'user_login' => 'fbc_video_other_' . wp_generate_password( 6, false ), 'user_pass' => wp_generate_password(), 'role' => 'editor' ) );
+	$other = wp_insert_user( array( 'user_login' => 'fbcol_video_other_' . wp_generate_password( 6, false ), 'user_pass' => wp_generate_password(), 'role' => 'editor' ) );
 }
 $foreign = Videos::append( (int) $other, $token, strlen( $webm ), 'more' );
 $check( 'Anti: another user cannot append to someone else\'s session (404)', is_wp_error( $foreign ) && 404 === $foreign->get_error_data()['status'] );
@@ -99,7 +99,7 @@ $check( 'Anti: another user cannot append to someone else\'s session (404)', is_
 // 3. Create an item with the recording.
 $seen = null;
 add_action(
-	'fbc_item_created',
+	'fbcol_item_created',
 	static function ( $new_id ) use ( &$seen ) {
 		$seen = Items::get( (int) $new_id )['video'];
 	}
@@ -130,7 +130,7 @@ $d    = $res->get_data();
 $item = Items::get( (int) $d['id'] );
 $check( 'create with a recording → 201 with video_url and duration', 201 === $res->get_status() && str_contains( (string) $d['video_url'], '/uploads/fbc-videos/' ) && 83 === $d['video_duration'] );
 $check( 'the session file became the item\'s .webm (id + 24 random chars)', (bool) preg_match( '/^' . $item['id'] . '-[A-Za-z0-9]{24}\.webm$/', (string) $item['video'] ) && ! is_file( $session_file( 1, $token ) ) && strlen( $webm ) === filesize( Videos::path( $item ) ) );
-$check( 'recording already stored when fbc_item_created fires (auto-push sees it)', is_string( $seen ) && '' !== $seen );
+$check( 'recording already stored when fbcol_item_created fires (auto-push sees it)', is_string( $seen ) && '' !== $seen );
 $check(
 	'timeline is whitelisted and sorted by time',
 	array(
@@ -166,7 +166,7 @@ Items::delete( (int) $item['id'] );
 $check( 'deleting an item deletes its recording', '' !== $vpath && ! is_file( $vpath ) );
 
 // 6. Teamwork: attached, linked, timeline in the description.
-$fbc_mock = array(
+$fbcol_mock = array(
 	'put'     => 200,
 	'payload' => null,
 	'puts'    => array(),
@@ -174,22 +174,22 @@ $fbc_mock = array(
 add_filter(
 	'pre_http_request',
 	static function ( $pre, $args, $url ) {
-		global $fbc_mock;
+		global $fbcol_mock;
 		$path = (string) wp_parse_url( $url, PHP_URL_PATH );
 		$json = static fn( $c, $b ) => array( 'response' => array( 'code' => $c, 'message' => '' ), 'body' => wp_json_encode( $b ), 'headers' => array(), 'cookies' => array() );
 		if ( '/projects/api/v1/pendingfiles/presignedurl.json' === $path ) {
-			return $json( 200, array( 'ref' => 'tf_vid' . count( $fbc_mock['puts'] ), 'url' => 'https://s3.example.com/upload?sig=1' ) );
+			return $json( 200, array( 'ref' => 'tf_vid' . count( $fbcol_mock['puts'] ), 'url' => 'https://s3.example.com/upload?sig=1' ) );
 		}
 		if ( 'PUT' === $args['method'] && str_starts_with( $url, 'https://s3.example.com/' ) ) {
-			$fbc_mock['puts'][] = array(
+			$fbcol_mock['puts'][] = array(
 				'auth' => $args['headers']['Authorization'] ?? null,
 				'len'  => strlen( (string) $args['body'] ),
 			);
-			return $json( $fbc_mock['put'], array() );
+			return $json( $fbcol_mock['put'], array() );
 		}
 		if ( 'POST' === $args['method'] && preg_match( '#/tasklists/(\d+)/tasks\.json$#', $path ) ) {
-			$fbc_mock['payload'] = json_decode( (string) $args['body'], true );
-			return $json( 201, array( 'task' => array( 'id' => 9800 + count( $fbc_mock['puts'] ) ) ) );
+			$fbcol_mock['payload'] = json_decode( (string) $args['body'], true );
+			return $json( 201, array( 'task' => array( 'id' => 9800 + count( $fbcol_mock['puts'] ) ) ) );
 		}
 		if ( '/projects/api/v3/tags.json' === $path ) {
 			return $json( 200, array( 'tags' => array( array( 'id' => 1, 'name' => 'Bug' ) ) ) );
@@ -206,9 +206,9 @@ $_POST = array( 'tw_site' => 'https://x.teamwork.com', 'tw_key' => 'fake-key' );
 Teamwork::save_settings();
 $_POST = array();
 update_option(
-	'fbc_teamwork',
+	'fbcol_teamwork',
 	array_merge(
-		get_option( 'fbc_teamwork' ),
+		get_option( 'fbcol_teamwork' ),
 		array(
 			'project_id'  => 100,
 			'tasklist_id' => 200,
@@ -222,20 +222,20 @@ $tok = $start();
 $post( "/recordings/$tok", $webm, array( 'offset' => 0 ) );
 Videos::attach( $tid, 1, $tok, 95, array( array( 't' => 42000, 'kind' => 'click', 'label' => '"Pay now" (button.pay)' ) ) );
 $res  = Teamwork::push( $tid );
-$desc = (string) ( $fbc_mock['payload']['task']['description'] ?? '' );
+$desc = (string) ( $fbcol_mock['payload']['task']['description'] ?? '' );
 $check( 'push with a recording succeeds', ! is_wp_error( $res ) );
-$check( 'recording PUT to storage without Teamwork auth, full bytes', 1 === count( $fbc_mock['puts'] ) && null === $fbc_mock['puts'][0]['auth'] && strlen( $webm ) === $fbc_mock['puts'][0]['len'] );
-$check( 'task has the recording attached', array( array( 'reference' => 'tf_vid0' ) ) === ( $fbc_mock['payload']['attachments']['pendingFiles'] ?? null ) );
+$check( 'recording PUT to storage without Teamwork auth, full bytes', 1 === count( $fbcol_mock['puts'] ) && null === $fbcol_mock['puts'][0]['auth'] && strlen( $webm ) === $fbcol_mock['puts'][0]['len'] );
+$check( 'task has the recording attached', array( array( 'reference' => 'tf_vid0' ) ) === ( $fbcol_mock['payload']['attachments']['pendingFiles'] ?? null ) );
 $check( 'description links to the recording with its length', str_contains( $desc, 'watch video (1:35)' ) && str_contains( $desc, '/fbc-videos/' ) );
 $check( 'description lists the timeline', str_contains( $desc, '0:42 · clicked `"Pay now" (button.pay)`' ) );
 
-$fbc_mock['put'] = 500;
+$fbcol_mock['put'] = 500;
 $fid             = Items::create( array( 'type' => 'bug', 'title' => 'push with failing video upload' ) );
 $tok             = $start();
 $post( "/recordings/$tok", $webm, array( 'offset' => 0 ) );
 Videos::attach( $fid, 1, $tok, 10 );
 $res = Teamwork::push( $fid );
-$check( 'a failed recording upload never blocks the push', ! is_wp_error( $res ) && ! isset( $fbc_mock['payload']['attachments'] ) );
+$check( 'a failed recording upload never blocks the push', ! is_wp_error( $res ) && ! isset( $fbcol_mock['payload']['attachments'] ) );
 $notes = array_column( Items::comments( $fid ), 'body' );
 $check( 'the failed attachment is noted on the item', (bool) array_filter( $notes, static fn( $b ) => str_contains( $b, 'recording was not attached' ) ) );
 
@@ -247,6 +247,6 @@ $removed  = Cleanup::purge_videos();
 $vdir = trailingslashit( wp_upload_dir( null, false )['basedir'] ) . Videos::DIR; // not Videos::dir(), which recreates it
 $check( 'purge_videos deletes every recording and partial upload, and the folder', $removed >= 2 && ! is_dir( $vdir ) );
 $check( 'items whose file is gone report no video_url', '' === FeedbackCollector\Rest::present( Items::get( $tid ) )['video_url'] );
-$check( 'uninstall.php always deletes recordings, before the keep-data check', (bool) preg_match( '/purge_videos\(\);.*fbc_delete_on_uninstall/s', (string) file_get_contents( FBC_DIR . 'uninstall.php' ) ) );
+$check( 'uninstall.php always deletes recordings, before the keep-data check', (bool) preg_match( '/purge_videos\(\);.*fbcol_delete_on_uninstall/s', (string) file_get_contents( FBCOL_DIR . 'uninstall.php' ) ) );
 
 printf( "\n%d passed, %d failed\n", $n[0], $n[1] );

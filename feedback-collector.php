@@ -19,12 +19,12 @@ namespace FeedbackCollector;
 defined( 'ABSPATH' ) || exit;
 
 const VERSION     = '0.3.0';
-const DB_VERSION  = '8';
-const CAP         = 'fbc_review';
+const DB_VERSION  = '9';
+const CAP         = 'fbcol_review';
 const PLUGIN_FILE = __FILE__;
 
-define( 'FBC_DIR', plugin_dir_path( __FILE__ ) );
-define( 'FBC_URL', plugin_dir_url( __FILE__ ) );
+define( 'FBCOL_DIR', plugin_dir_path( __FILE__ ) );
+define( 'FBCOL_URL', plugin_dir_url( __FILE__ ) );
 
 spl_autoload_register(
 	static function ( string $class_name ): void {
@@ -32,7 +32,7 @@ spl_autoload_register(
 			return;
 		}
 		$relative = substr( $class_name, strlen( __NAMESPACE__ ) + 1 );
-		$path     = FBC_DIR . 'includes/' . str_replace( '\\', '/', $relative ) . '.php';
+		$path     = FBCOL_DIR . 'includes/' . str_replace( '\\', '/', $relative ) . '.php';
 		if ( is_readable( $path ) ) {
 			require $path;
 		}

@@ -5,12 +5,12 @@ use FeedbackCollector\DueDates;
 use FeedbackCollector\Items;
 
 global $wpdb;
-$fbc_max = (int) $wpdb->get_var( 'SELECT COALESCE(MAX(id),0) FROM ' . Items::table() );
+$fbcol_max = (int) $wpdb->get_var( 'SELECT COALESCE(MAX(id),0) FROM ' . Items::table() );
 $users   = array();
 register_shutdown_function(
-	static function () use ( $fbc_max, &$users ) {
+	static function () use ( $fbcol_max, &$users ) {
 		global $wpdb;
-		foreach ( $wpdb->get_col( $wpdb->prepare( 'SELECT id FROM ' . Items::table() . ' WHERE id > %d', $fbc_max ) ) as $id ) {
+		foreach ( $wpdb->get_col( $wpdb->prepare( 'SELECT id FROM ' . Items::table() . ' WHERE id > %d', $fbcol_max ) ) as $id ) {
 			Items::delete( (int) $id );
 		}
 		require_once ABSPATH . 'wp-admin/includes/user.php';
@@ -20,8 +20,8 @@ register_shutdown_function(
 		echo "cleanup done\n";
 	}
 );
-add_filter( 'pre_http_request', static fn() => new WP_Error( 'fbc_test_offline', 'Network disabled in tests' ) );
-update_option( 'fbc_assignee_source', 'wordpress' );
+add_filter( 'pre_http_request', static fn() => new WP_Error( 'fbcol_test_offline', 'Network disabled in tests' ) );
+update_option( 'fbcol_assignee_source', 'wordpress' );
 
 $n     = array( 0, 0 );
 $check = static function ( string $label, bool $ok ) use ( &$n ): void {
@@ -38,7 +38,7 @@ $call = static function ( string $method, string $route, ?array $body = null ): 
 	return array( $r->get_status(), $r->get_data() );
 };
 $mk_user = static function () use ( &$users ): int {
-	$id      = wp_insert_user( array( 'user_login' => 'fbc_due_' . wp_generate_password( 6, false ), 'user_pass' => wp_generate_password(), 'user_email' => 'due-' . wp_generate_password( 6, false ) . '@example.com', 'role' => 'administrator' ) );
+	$id      = wp_insert_user( array( 'user_login' => 'fbcol_due_' . wp_generate_password( 6, false ), 'user_pass' => wp_generate_password(), 'user_email' => 'due-' . wp_generate_password( 6, false ) . '@example.com', 'role' => 'administrator' ) );
 	$users[] = $id;
 	return $id;
 };

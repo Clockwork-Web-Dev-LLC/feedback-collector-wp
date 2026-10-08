@@ -32,7 +32,7 @@ Feedback Collector is fundamentally composed of two distinct systems that commun
 │                        BACKEND SERVER                                  │
 │                                                                        │
 │   WordPress REST Controller (`/wp-json/feedback-collector/v1/items`)   │
-│   ├── Auth: Cookie session + X-WP-Nonce (`fbc_review` capability)      │
+│   ├── Auth: Cookie session + X-WP-Nonce (`fbcol_review` capability)      │
 │   ├── Storage: `wp_fbc_items` + `wp_fbc_comments` custom MySQL tables  │
 │   ├── Screenshots: Written to `wp-content/uploads/feedback-collector/` │
 │   └── Teamwork Sync: API client pushes tasks & maps completion status   │

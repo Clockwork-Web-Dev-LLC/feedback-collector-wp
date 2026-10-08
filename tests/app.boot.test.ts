@@ -55,8 +55,8 @@ function createApp(config = cfg()): App {
 afterEach(() => {
   for (const a of activeApps) a.destroy();
   activeApps = [];
-  delete window.FBCCapture;
-  delete window.FBCAnnotator;
+  delete window.FBCOLCapture;
+  delete window.FBCOLAnnotator;
 });
 
 beforeEach(() => {
@@ -427,7 +427,7 @@ describe('screenshots', () => {
 
   it('Anti: nothing is captured automatically; the composer offers Screenshot', async () => {
     let captures = 0;
-    window.FBCCapture = { captureViewport: async () => (captures++, new Blob([new Uint8Array([1])], { type: 'image/jpeg' })) };
+    window.FBCOLCapture = { captureViewport: async () => (captures++, new Blob([new Uint8Array([1])], { type: 'image/jpeg' })) };
     const app = createApp({ ...cfg(), shots: true, assetsUrl: 'x/' });
     app.init();
     await app.setMode(true);
@@ -445,12 +445,12 @@ describe('screenshots', () => {
     const post = calls.find((c) => c.method === 'POST');
     expect((post?.body as { title?: string })?.title).toBe('Text only'); // plain JSON body, no multipart
     expect(captures).toBe(0);
-    delete window.FBCCapture;
+    delete window.FBCOLCapture;
   });
 
   it('Screenshot captures on request (marked at the pin) and sends item + screenshot in one multipart request', async () => {
     const marks: Array<{ x: number; y: number } | null> = [];
-    window.FBCCapture = {
+    window.FBCOLCapture = {
       captureViewport: async (opts) => {
         marks.push(opts.marker);
         return new Blob([new Uint8Array([0xff, 0xd8, 0xff])], { type: 'image/jpeg' });
@@ -480,11 +480,11 @@ describe('screenshots', () => {
     expect(b.data?.anchor).toBeTruthy();
     expect(b.file).toBeInstanceOf(Blob);
     expect(post?.headers['Content-Type']).toBeUndefined(); // browser sets the multipart boundary
-    delete window.FBCCapture;
+    delete window.FBCOLCapture;
   });
 
   it('Remove takes the screenshot off again and brings back the choice', async () => {
-    window.FBCCapture = { captureViewport: async () => new Blob([new Uint8Array([1])], { type: 'image/jpeg' }) };
+    window.FBCOLCapture = { captureViewport: async () => new Blob([new Uint8Array([1])], { type: 'image/jpeg' }) };
     const app = createApp({ ...cfg(), shots: true, assetsUrl: 'x/' });
     app.init();
     await app.setMode(true);
@@ -505,7 +505,7 @@ describe('screenshots', () => {
     await tick();
     const post = calls.find((c) => c.method === 'POST');
     expect((post?.body as { title?: string })?.title).toBe('No screenshot'); // plain JSON body, no multipart
-    delete window.FBCCapture;
+    delete window.FBCOLCapture;
   });
 });
 
@@ -513,10 +513,10 @@ describe('annotation', () => {
   it('Annotate swaps in the edited image; Esc while annotating never closes the composer', async () => {
     const original = new Blob([new Uint8Array([1, 2, 3])], { type: 'image/jpeg' });
     const edited = new Blob([new Uint8Array([9, 9, 9, 9])], { type: 'image/jpeg' });
-    window.FBCCapture = { captureViewport: async () => original };
+    window.FBCOLCapture = { captureViewport: async () => original };
     let release: (b: Blob | null) => void = () => {};
     let mountedIn: HTMLElement | null = null;
-    window.FBCAnnotator = {
+    window.FBCOLAnnotator = {
       open: (opts) => {
         mountedIn = opts.mount;
         expect(opts.image).toBe(original);
@@ -550,8 +550,8 @@ describe('annotation', () => {
     await tick();
     const post = calls.find((c) => c.method === 'POST');
     expect((post?.body as { file?: Blob }).file?.size).toBe(edited.size); // the annotated image was sent
-    delete window.FBCCapture;
-    delete window.FBCAnnotator;
+    delete window.FBCOLCapture;
+    delete window.FBCOLAnnotator;
   });
 });
 

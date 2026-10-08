@@ -61,15 +61,15 @@ Default colors are Clockwork's: purple `#6953C4`, header `#2D2062`, lime accent 
 - **Colors:** text on any brand color is picked by contrast, so a light brand color never gets white text. Links and tabs use a darkened version of the primary color that reaches WCAG AA on white.
 - **Logo:** optional; pick one from the Media Library. It sits on the header color, so use a light logo on a dark header. Without one, the header shows the label as small text.
 - **Credit:** an optional "Powered by Clockwork Feedback Collector" line shows when white-labeled.
-- **In code:** the `fbc_branding` filter can set any value, and overrides what's saved.
+- **In code:** the `fbcol_branding` filter can set any value, and overrides what's saved.
 
-Internal identifiers stay neutral and never change with branding: the `feedback-collector` folder, text domain and REST namespace, and the `fbc_` tables, options and capability. Clockwork Companion's admin stylesheet is kept off these screens even when the menu label contains "Clockwork".
+Internal identifiers stay neutral and never change with branding: the `feedback-collector` folder, text domain and REST namespace, and the `fbcol_` tables, options and capability. Clockwork Companion's admin stylesheet is kept off these screens even when the menu label contains "Clockwork".
 
 ## Teamwork
 
 Create a dedicated Teamwork user (e.g. "QA Bot") and add it only to the projects it needs. Log in to Teamwork as that user, click the profile icon, then **Edit My Details** → **API & Mobile** → **Show your Token**, and copy the key.
 
-In **Feedback → Settings**, paste the Teamwork site URL and the key. The key is stored **encrypted in the database** and is never shown again or sent to the browser. If the site's security salts change (e.g. after a migration), Settings asks you to paste it again. Advanced, optional: `FBC_TEAMWORK_API_KEY` / `FBC_TEAMWORK_SITE` constants in `wp-config.php` override the stored values.
+In **Feedback → Settings**, paste the Teamwork site URL and the key. The key is stored **encrypted in the database** and is never shown again or sent to the browser. If the site's security salts change (e.g. after a migration), Settings asks you to paste it again. Advanced, optional: `FBCOL_TEAMWORK_API_KEY` / `FBCOL_TEAMWORK_SITE` constants in `wp-config.php` override the stored values.
 
 Then, in **Feedback → Settings**:
 

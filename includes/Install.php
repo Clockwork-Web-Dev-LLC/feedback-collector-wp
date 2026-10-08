@@ -18,18 +18,25 @@ final class Install {
 	 * Runs on plugin activation.
 	 */
 	public static function activate(): void {
+		if ( Migrate::needed() ) {
+			Migrate::run();
+		}
 		self::create_tables();
 		self::grant_default_caps();
-		update_option( 'fbc_db_version', DB_VERSION, false );
+		update_option( 'fbcol_db_version', DB_VERSION, false );
 	}
 
 	/**
 	 * Re-runs dbDelta when the stored schema version is behind.
 	 */
 	public static function maybe_upgrade(): void {
-		if ( get_option( 'fbc_db_version' ) !== DB_VERSION ) {
+		// 0.3 and earlier stored everything under fbc_: rename it once, before anything reads it.
+		if ( Migrate::needed() ) {
+			Migrate::run();
+		}
+		if ( get_option( 'fbcol_db_version' ) !== DB_VERSION ) {
 			self::create_tables();
-			update_option( 'fbc_db_version', DB_VERSION, false );
+			update_option( 'fbcol_db_version', DB_VERSION, false );
 		}
 	}
 
@@ -53,8 +60,8 @@ final class Install {
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
 		$charset  = $wpdb->get_charset_collate();
-		$items    = $wpdb->prefix . 'fbc_items';
-		$comments = $wpdb->prefix . 'fbc_comments';
+		$items    = $wpdb->prefix . 'fbcol_items';
+		$comments = $wpdb->prefix . 'fbcol_comments';
 
 		dbDelta(
 			"CREATE TABLE {$items} (

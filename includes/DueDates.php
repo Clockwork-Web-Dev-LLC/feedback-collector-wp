@@ -22,10 +22,10 @@ defined( 'ABSPATH' ) || exit;
  */
 final class DueDates {
 
-	public const OPT_DEFAULT = 'fbc_due_default';
-	public const OPT_DAYS    = 'fbc_due_days';
-	public const OPT_HOURS   = 'fbc_due_batch_hours';
-	public const BATCH_META  = 'fbc_due_batch';
+	public const OPT_DEFAULT = 'fbcol_due_default';
+	public const OPT_DAYS    = 'fbcol_due_days';
+	public const OPT_HOURS   = 'fbcol_due_batch_hours';
+	public const BATCH_META  = 'fbcol_due_batch';
 
 	public const DEFAULT_DAYS  = 3;
 	public const DEFAULT_HOURS = 3;

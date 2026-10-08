@@ -1,5 +1,5 @@
 // Screenshot capture, built separately as dist/capture.js and loaded only when a reviewer
-// files feedback, so the core overlay stays small. Exposes window.FBCCapture.
+// files feedback, so the core overlay stays small. Exposes window.FBCOLCapture.
 import { snapdom } from '@zumer/snapdom';
 
 export interface CaptureOptions {
@@ -77,7 +77,7 @@ export async function captureViewport(opts: CaptureOptions): Promise<Blob> {
   const offsetY = bodyRect.top + window.scrollY;
   const result = await snapdom(document.body, {
     clip: { x: window.scrollX + offsetX, y: window.scrollY + offsetY, width: window.innerWidth, height: window.innerHeight },
-    exclude: ['#fbc-root', '#wpadminbar'],
+    exclude: ['#fbcol-root', '#wpadminbar'],
     excludeMode: 'hide',
     backgroundColor: getComputedStyle(document.body).backgroundColor || '#ffffff',
     plugins: [redactInputs],
@@ -101,8 +101,8 @@ export async function captureViewport(opts: CaptureOptions): Promise<Blob> {
 
 declare global {
   interface Window {
-    FBCCapture?: { captureViewport: typeof captureViewport };
+    FBCOLCapture?: { captureViewport: typeof captureViewport };
   }
 }
 
-window.FBCCapture = { captureViewport };
+window.FBCOLCapture = { captureViewport };

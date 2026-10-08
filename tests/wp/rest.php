@@ -12,22 +12,22 @@ require __DIR__ . '/_guard.php';
 use FeedbackCollector\Items;
 
 global $wpdb;
-$fbc_max_id   = (int) $wpdb->get_var( 'SELECT COALESCE(MAX(id),0) FROM ' . Items::table() );
-$fbc_users    = array();
-$fbc_backup_s = get_option( 'fbc_assignee_source', null );
+$fbcol_max_id   = (int) $wpdb->get_var( 'SELECT COALESCE(MAX(id),0) FROM ' . Items::table() );
+$fbcol_users    = array();
+$fbcol_backup_s = get_option( 'fbcol_assignee_source', null );
 // Never touch a real Teamwork account from a test: block all outbound HTTP, and use
 // WordPress users as assignees even if this site has Teamwork connected.
-add_filter( 'pre_http_request', static fn() => new WP_Error( 'fbc_test_offline', 'Network disabled in tests' ) );
-update_option( 'fbc_assignee_source', 'wordpress' );
+add_filter( 'pre_http_request', static fn() => new WP_Error( 'fbcol_test_offline', 'Network disabled in tests' ) );
+update_option( 'fbcol_assignee_source', 'wordpress' );
 register_shutdown_function(
-	static function () use ( $fbc_max_id, &$fbc_users, $fbc_backup_s ) {
+	static function () use ( $fbcol_max_id, &$fbcol_users, $fbcol_backup_s ) {
 		global $wpdb;
-		foreach ( $wpdb->get_col( $wpdb->prepare( 'SELECT id FROM ' . Items::table() . ' WHERE id > %d', $fbc_max_id ) ) as $id ) {
+		foreach ( $wpdb->get_col( $wpdb->prepare( 'SELECT id FROM ' . Items::table() . ' WHERE id > %d', $fbcol_max_id ) ) as $id ) {
 			Items::delete( (int) $id );
 		}
-		null === $fbc_backup_s ? delete_option( 'fbc_assignee_source' ) : update_option( 'fbc_assignee_source', $fbc_backup_s );
+		null === $fbcol_backup_s ? delete_option( 'fbcol_assignee_source' ) : update_option( 'fbcol_assignee_source', $fbcol_backup_s );
 		require_once ABSPATH . 'wp-admin/includes/user.php';
-		foreach ( $fbc_users as $uid ) {
+		foreach ( $fbcol_users as $uid ) {
 			wp_delete_user( $uid );
 		}
 		echo "cleanup done\n";
@@ -51,16 +51,16 @@ $call  = static function ( string $method, string $route, ?array $body = null, a
 	$res = rest_do_request( $q );
 	return array( $res->get_status(), $res->get_data() );
 };
-$make_user = static function ( string $role ) use ( &$fbc_users ): int {
+$make_user = static function ( string $role ) use ( &$fbcol_users ): int {
 	$id          = wp_insert_user(
 		array(
-			'user_login' => 'fbc_test_' . $role . '_' . wp_generate_password( 6, false ),
+			'user_login' => 'fbcol_test_' . $role . '_' . wp_generate_password( 6, false ),
 			'user_pass'  => wp_generate_password(),
 			'user_email' => 'fbc-test-' . wp_generate_password( 6, false ) . '@example.com',
 			'role'       => $role,
 		)
 	);
-	$fbc_users[] = $id;
+	$fbcol_users[] = $id;
 	return $id;
 };
 
@@ -99,7 +99,7 @@ $check( 'status and assignee changes logged as activity', 2 === count( array_fil
 
 // Stale assignee list: the page picked from Teamwork people, the server now uses WordPress users.
 [ $s, $d ] = $call( 'POST', '/items', array( 'title' => 'stale list', 'type' => 'bug', 'assignee_id' => 1, 'assignee_source' => 'teamwork' ) );
-$check( 'Anti: assignee picked from a list the server no longer uses → 409, nothing created', 409 === $s && 'fbc_assignee_list_changed' === ( $d['code'] ?? '' ) );
+$check( 'Anti: assignee picked from a list the server no longer uses → 409, nothing created', 409 === $s && 'fbcol_assignee_list_changed' === ( $d['code'] ?? '' ) );
 [ $s, $d ] = $call( 'POST', '/items', array( 'title' => 'same list', 'type' => 'bug', 'assignee_id' => 1, 'assignee_source' => 'wordpress' ) );
 $check( 'assignee from the list the server uses → 201', 201 === $s && 1 === (int) $d['assignee_id'] );
 [ $s ] = $call( 'PATCH', "/items/$id", array( 'assignee_id' => 424242, 'assignee_source' => 'teamwork' ) );

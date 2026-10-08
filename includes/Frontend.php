@@ -63,7 +63,7 @@ final class Frontend {
 	 */
 	public static function hide_admin_bar_in_preview( bool $show ): bool {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		return isset( $_GET['fbc_preview'] ) ? false : $show;
+		return isset( $_GET['fbcol_preview'] ) ? false : $show;
 	}
 
 	/**
@@ -71,7 +71,7 @@ final class Frontend {
 	 */
 	public static function deep_link_login(): void {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		if ( isset( $_GET['fbc_item'] ) && ! is_user_logged_in() ) {
+		if ( ( isset( $_GET['fbcol_item'] ) || isset( $_GET['fbc_item'] ) ) && ! is_user_logged_in() ) {
 			auth_redirect();
 		}
 	}
@@ -83,14 +83,14 @@ final class Frontend {
 		if ( ! self::should_load() ) {
 			return;
 		}
-		$file = FBC_DIR . 'dist/overlay.js';
+		$file = FBCOL_DIR . 'dist/overlay.js';
 		if ( ! is_readable( $file ) ) {
 			return;
 		}
 
 		wp_enqueue_script(
-			'fbc-overlay',
-			FBC_URL . 'dist/overlay.js',
+			'fbcol-overlay',
+			FBCOL_URL . 'dist/overlay.js',
 			array(),
 			VERSION . '-' . filemtime( $file ),
 			array(
@@ -98,12 +98,12 @@ final class Frontend {
 				'strategy'  => 'defer',
 			)
 		);
-		wp_add_inline_script( 'fbc-overlay', 'window.fbcConfig = ' . wp_json_encode( self::config() ) . ';', 'before' );
+		wp_add_inline_script( 'fbcol-overlay', 'window.fbcolConfig = ' . wp_json_encode( self::config() ) . ';', 'before' );
 		// Attached here, during wp_enqueue_scripts, because by the time admin_bar_menu runs
 		// the admin-bar stylesheet has already been printed and late inline CSS is dropped.
 		wp_add_inline_style(
 			'admin-bar',
-			'#wpadminbar #wp-admin-bar-fbc-toggle .ab-icon:before{top:3px}#wpadminbar #wp-admin-bar-fbc-toggle.fbc-on>.ab-item{background:#2271b1;color:#fff}#wpadminbar .fbc-ab-count{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:#d63638;color:#fff;font-size:11px;line-height:18px;text-align:center}'
+			'#wpadminbar #wp-admin-bar-fbcol-toggle .ab-icon:before{top:3px}#wpadminbar #wp-admin-bar-fbcol-toggle.fbc-on>.ab-item{background:#2271b1;color:#fff}#wpadminbar .fbc-ab-count{display:inline-block;min-width:18px;padding:0 5px;border-radius:9px;background:#d63638;color:#fff;font-size:11px;line-height:18px;text-align:center}'
 		);
 	}
 
@@ -116,10 +116,10 @@ final class Frontend {
 			return;
 		}
 		wp_print_inline_script_tag(
-			'(function(){if(window.__fbcErrors)return;var e=window.__fbcErrors=[];function p(m){e.push(String(m).slice(0,500));if(e.length>20)e.shift();}' .
+			'(function(){if(window.__fbcolErrors)return;var e=window.__fbcolErrors=[];function p(m){e.push(String(m).slice(0,500));if(e.length>20)e.shift();}' .
 			'addEventListener("error",function(v){if(v.message)p(v.message+(v.filename?" ("+v.filename+":"+v.lineno+")":""));});' .
 			'addEventListener("unhandledrejection",function(v){var r=v.reason;p("Unhandled rejection: "+(r&&r.message?r.message:r));});})();',
-			array( 'id' => 'fbc-early-errors' )
+			array( 'id' => 'fbcol-early-errors' )
 		);
 	}
 
@@ -131,7 +131,8 @@ final class Frontend {
 	public static function config(): array {
 		$queried = get_queried_object();
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$open = isset( $_GET['fbc_item'] ) ? absint( $_GET['fbc_item'] ) : 0;
+		// ?fbc_item= is the 0.3 name, still in links inside older Teamwork tasks.
+		$open = absint( wp_unslash( $_GET['fbcol_item'] ?? $_GET['fbc_item'] ?? 0 ) );
 		$user = wp_get_current_user();
 
 		return array(
@@ -147,7 +148,7 @@ final class Frontend {
 			),
 			'assignees' => Assignees::options() + array( 'me' => Assignees::me() ),
 			'round'     => Rounds::current(),
-			'assetsUrl' => FBC_URL . 'dist/',
+			'assetsUrl' => FBCOL_URL . 'dist/',
 			'version'   => VERSION,
 			'shots'     => Screenshots::enabled(),
 			'video'     => array(
@@ -179,16 +180,16 @@ final class Frontend {
 		$open = Items::count_status( 'open' );
 		$bar->add_node(
 			array(
-				'id'    => 'fbc-toggle',
+				'id'    => 'fbcol-toggle',
 				'title' => '<span class="ab-icon dashicons dashicons-format-chat" aria-hidden="true"></span><span class="ab-label">' . esc_html( Branding::text( 'menu_label' ) ) . '</span>' . ( $open ? ' <span class="fbc-ab-count">' . (int) $open . '</span>' : '' ),
-				'href'  => '#fbc-toggle',
+				'href'  => '#fbcol-toggle',
 				'meta'  => array( 'title' => sprintf( /* translators: %s: plugin name */ __( 'Toggle %s (Alt+Shift+F)', 'feedback-collector' ), Branding::text( 'name' ) ) ),
 			)
 		);
 		$bar->add_node(
 			array(
-				'parent' => 'fbc-toggle',
-				'id'     => 'fbc-all',
+				'parent' => 'fbcol-toggle',
+				'id'     => 'fbcol-all',
 				'title'  => esc_html__( 'All feedback', 'feedback-collector' ),
 				'href'   => admin_url( 'admin.php?page=feedback-collector' ),
 			)

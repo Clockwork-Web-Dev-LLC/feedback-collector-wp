@@ -166,7 +166,7 @@ final class Rest {
 		if ( current_user_can( CAP ) ) {
 			return true;
 		}
-		return new WP_Error( 'fbc_forbidden', __( 'You do not have access to feedback.', 'feedback-collector' ), array( 'status' => is_user_logged_in() ? 403 : 401 ) );
+		return new WP_Error( 'fbcol_forbidden', __( 'You do not have access to feedback.', 'feedback-collector' ), array( 'status' => is_user_logged_in() ? 403 : 401 ) );
 	}
 
 	/**
@@ -281,10 +281,10 @@ final class Rest {
 			)
 		);
 		if ( ! $id ) {
-			return new WP_Error( 'fbc_db', __( 'Could not save feedback.', 'feedback-collector' ), array( 'status' => 500 ) );
+			return new WP_Error( 'fbcol_db', __( 'Could not save feedback.', 'feedback-collector' ), array( 'status' => 500 ) );
 		}
 
-		// Stored before fbc_item_created fires, so an auto-push already has the screenshot.
+		// Stored before fbcol_item_created fires, so an auto-push already has the screenshot.
 		// A bad image never loses the feedback itself: the item is kept and the error reported.
 		$shot_error = '';
 		$bytes      = self::uploaded_screenshot( $request );
@@ -318,7 +318,7 @@ final class Rest {
 			DueDates::remember( get_current_user_id(), $due );
 		}
 
-		do_action( 'fbc_item_created', $id );
+		do_action( 'fbcol_item_created', $id );
 
 		$out = self::present( Items::get( $id ) );
 		if ( '' !== $shot_error ) {
@@ -378,7 +378,7 @@ final class Rest {
 	 */
 	public static function start_recording(): WP_REST_Response|WP_Error {
 		if ( ! Videos::enabled() ) {
-			return new WP_Error( 'fbc_disabled', __( 'Screen recording is turned off in Feedback → Settings.', 'feedback-collector' ), array( 'status' => 403 ) );
+			return new WP_Error( 'fbcol_disabled', __( 'Screen recording is turned off in Feedback → Settings.', 'feedback-collector' ), array( 'status' => 403 ) );
 		}
 		$token = Videos::start_session( get_current_user_id() );
 		if ( is_wp_error( $token ) ) {
@@ -451,18 +451,18 @@ final class Rest {
 			return null;
 		}
 		if ( UPLOAD_ERR_OK !== (int) ( $file['error'] ?? UPLOAD_ERR_NO_FILE ) ) {
-			return new WP_Error( 'fbc_invalid', __( 'The screenshot upload failed.', 'feedback-collector' ) );
+			return new WP_Error( 'fbcol_invalid', __( 'The screenshot upload failed.', 'feedback-collector' ) );
 		}
 		$tmp = (string) $file['tmp_name'];
 		/** Filters whether a temp file is a genuine HTTP upload (tests stand in for PHP's check). */
-		if ( ! apply_filters( 'fbc_is_uploaded_file', is_uploaded_file( $tmp ), $tmp ) ) {
-			return new WP_Error( 'fbc_invalid', __( 'The screenshot upload failed.', 'feedback-collector' ) );
+		if ( ! apply_filters( 'fbcol_is_uploaded_file', is_uploaded_file( $tmp ), $tmp ) ) {
+			return new WP_Error( 'fbcol_invalid', __( 'The screenshot upload failed.', 'feedback-collector' ) );
 		}
 		if ( filesize( $tmp ) > Screenshots::MAX_BYTES ) {
-			return new WP_Error( 'fbc_invalid', __( 'The screenshot is too large.', 'feedback-collector' ) );
+			return new WP_Error( 'fbcol_invalid', __( 'The screenshot is too large.', 'feedback-collector' ) );
 		}
 		$bytes = file_get_contents( $tmp ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-		return false === $bytes ? new WP_Error( 'fbc_invalid', __( 'The screenshot upload failed.', 'feedback-collector' ) ) : $bytes;
+		return false === $bytes ? new WP_Error( 'fbcol_invalid', __( 'The screenshot upload failed.', 'feedback-collector' ) ) : $bytes;
 	}
 
 	/**
@@ -536,14 +536,14 @@ final class Rest {
 		}
 
 		if ( ! Items::update( $id, $changes ) ) {
-			return new WP_Error( 'fbc_db', __( 'Could not update feedback.', 'feedback-collector' ), array( 'status' => 500 ) );
+			return new WP_Error( 'fbcol_db', __( 'Could not update feedback.', 'feedback-collector' ), array( 'status' => 500 ) );
 		}
 		if ( $due_changed ) {
 			// Mid-batch, a changed date carries forward to the reviewer's next items.
 			if ( $changes['due_date'] && DueDates::batch( get_current_user_id() ) ) {
 				DueDates::remember( get_current_user_id(), $changes['due_date'] );
 			}
-			do_action( 'fbc_item_due_changed', $id );
+			do_action( 'fbcol_item_due_changed', $id );
 		}
 		$out             = self::present( Items::get( $id ) );
 		$out['comments'] = Items::comments( $id );
@@ -561,7 +561,7 @@ final class Rest {
 			return self::not_found();
 		}
 		if ( ! self::can_delete( $item ) ) {
-			return new WP_Error( 'fbc_forbidden', __( 'Only the reporter or an administrator can delete this.', 'feedback-collector' ), array( 'status' => 403 ) );
+			return new WP_Error( 'fbcol_forbidden', __( 'Only the reporter or an administrator can delete this.', 'feedback-collector' ), array( 'status' => 403 ) );
 		}
 		Items::delete( $item['id'] );
 		return new WP_REST_Response(
@@ -662,7 +662,7 @@ final class Rest {
 			'updated_at'      => mysql_to_rfc3339( $item['updated_at'] ),
 			'can_delete'      => self::can_delete( $item ),
 		);
-		return (array) apply_filters( 'fbc_present_item', $out, $item );
+		return (array) apply_filters( 'fbcol_present_item', $out, $item );
 	}
 
 	/**
@@ -745,7 +745,7 @@ final class Rest {
 			return null;
 		}
 		return new WP_Error(
-			'fbc_assignee_list_changed',
+			'fbcol_assignee_list_changed',
 			'teamwork' === $sent
 				? __( 'Teamwork isn’t connected on the server any more, so that Teamwork assignee can’t be used. Reload the page (or check Settings → Teamwork) and pick again.', 'feedback-collector' )
 				: __( 'The assignee list changed to Teamwork people since this page loaded. Reload the page and pick the assignee again.', 'feedback-collector' ),
@@ -758,7 +758,7 @@ final class Rest {
 
 	private static function invalid( string $field, string $message ): WP_Error {
 		return new WP_Error(
-			'fbc_invalid',
+			'fbcol_invalid',
 			$message,
 			array(
 				'status' => 400,
@@ -771,6 +771,6 @@ final class Rest {
 	 * 404 helper.
 	 */
 	private static function not_found(): WP_Error {
-		return new WP_Error( 'fbc_not_found', __( 'Feedback item not found.', 'feedback-collector' ), array( 'status' => 404 ) );
+		return new WP_Error( 'fbcol_not_found', __( 'Feedback item not found.', 'feedback-collector' ), array( 'status' => 404 ) );
 	}
 }

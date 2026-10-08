@@ -160,9 +160,9 @@ export interface NewItem {
 
 declare global {
   interface Window {
-    FBCAnnotator?: { open(opts: { image: Blob; mount: HTMLElement; colors: string[] }): Promise<Blob | null> };
-    FBCCapture?: { captureViewport(opts: { marker: { x: number; y: number } | null; color: string; maxWidth?: number; maxBytes?: number }): Promise<Blob> };
-    fbcConfig?: Config;
-    __fbcErrors?: string[];
+    FBCOLAnnotator?: { open(opts: { image: Blob; mount: HTMLElement; colors: string[] }): Promise<Blob | null> };
+    FBCOLCapture?: { captureViewport(opts: { marker: { x: number; y: number } | null; color: string; maxWidth?: number; maxBytes?: number }): Promise<Blob> };
+    fbcolConfig?: Config;
+    __fbcolErrors?: string[];
   }
 }

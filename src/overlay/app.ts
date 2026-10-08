@@ -193,7 +193,7 @@ export class App {
     }
     if (this.inPreview) {
       // Inside the device preview: always in Feedback mode, and no admin bar, even after
-      // navigating within the frame (which drops the ?fbc_preview arg the server keys on).
+      // navigating within the frame (which drops the ?fbcol_preview arg the server keys on).
       const style = document.createElement('style');
       style.textContent = '#wpadminbar{display:none!important}html{margin-top:0!important}';
       document.head.append(style);
@@ -270,7 +270,7 @@ export class App {
   }
 
   private bindAdminBar(): void {
-    const link = document.querySelector<HTMLAnchorElement>('#wp-admin-bar-fbc-toggle > a');
+    const link = document.querySelector<HTMLAnchorElement>('#wp-admin-bar-fbcol-toggle > a');
     if (link) {
       this.listen(link, 'click', ((e: MouseEvent) => {
         e.preventDefault();
@@ -295,7 +295,7 @@ export class App {
         /* storage unavailable: mode simply isn't remembered */
       }
     }
-    document.querySelector('#wp-admin-bar-fbc-toggle')?.classList.toggle('fbc-on', on);
+    document.querySelector('#wp-admin-bar-fbcol-toggle')?.classList.toggle('fbc-on', on);
 
     if (!on) {
       this.exitPinMode();
@@ -329,8 +329,9 @@ export class App {
 
   private stripDeepLinkParam(): void {
     const url = new URL(window.location.href);
-    if (url.searchParams.has('fbc_item')) {
-      url.searchParams.delete('fbc_item');
+    if (url.searchParams.has('fbcol_item') || url.searchParams.has('fbc_item')) {
+      url.searchParams.delete('fbcol_item');
+      url.searchParams.delete('fbc_item'); // 0.3 links in older Teamwork tasks
       window.history.replaceState(window.history.state, '', url.toString());
     }
   }
@@ -598,8 +599,8 @@ export class App {
     if (this.annotating) return null;
     this.annotating = true;
     try {
-      if (!window.FBCAnnotator) await this.loadBundle('annotator.js');
-      const api = window.FBCAnnotator;
+      if (!window.FBCOLAnnotator) await this.loadBundle('annotator.js');
+      const api = window.FBCOLAnnotator;
       if (!api) throw new Error('The annotator could not load.');
       const brand = this.cfg.brand?.primary ?? '#6953c4';
       return await api.open({ image, mount: this.root, colors: ['#e5383b', brand, '#ffb703', '#ffffff', '#111111'] });
@@ -635,8 +636,8 @@ export class App {
   private async startCapture(marker: { x: number; y: number } | null): Promise<Blob | null> {
     if (!this.cfg.shots || !this.cfg.assetsUrl) return null;
     try {
-      if (!window.FBCCapture) await this.loadBundle('capture.js');
-      const api = window.FBCCapture;
+      if (!window.FBCOLCapture) await this.loadBundle('capture.js');
+      const api = window.FBCOLCapture;
       if (!api) return null;
       return await api.captureViewport({ marker, color: this.cfg.brand?.primary ?? '#6953c4' });
     } catch {
@@ -1610,8 +1611,8 @@ export class App {
     this.exitPinMode();
     const reuse = this.previewEl?.querySelector<HTMLIFrameElement>('iframe');
     const url = new URL(reuse?.contentWindow?.location.href ?? window.location.href);
-    url.searchParams.delete('fbc_item');
-    url.searchParams.set('fbc_preview', '1');
+    url.searchParams.delete('fbcol_item');
+    url.searchParams.set('fbcol_preview', '1');
 
     this.previewEl?.remove();
     const frame = h('iframe', { name: PREVIEW_FRAME_NAME, title: `${label} preview`, 'data-device': label, src: url.toString() });
@@ -2017,7 +2018,7 @@ export class App {
                 this.focusItem(item.id);
               } else {
                 const url = new URL(item.page_url, window.location.origin);
-                url.searchParams.set('fbc_item', String(item.id));
+                url.searchParams.set('fbcol_item', String(item.id));
                 window.location.href = url.toString();
               }
             })

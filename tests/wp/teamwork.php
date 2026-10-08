@@ -6,35 +6,35 @@ use FeedbackCollector\Items;
 use FeedbackCollector\Rest;
 use FeedbackCollector\Teamwork\Teamwork;
 
-define( 'FBC_TEAMWORK_API_KEY', 'SECRET-KEY-123' );
+define( 'FBCOL_TEAMWORK_API_KEY', 'SECRET-KEY-123' );
 wp_set_current_user( 1 );
 
 global $wpdb, $mock;
 // Never wipe real data: remember the high-water mark and the real settings, restore both at the end.
-$fbc_max_id      = (int) $wpdb->get_var( 'SELECT COALESCE(MAX(id),0) FROM ' . Items::table() );
-$fbc_backup_tw   = get_option( 'fbc_teamwork', null );
-$fbc_backup_st   = get_option( 'fbc_tw_state', null );
+$fbcol_max_id      = (int) $wpdb->get_var( 'SELECT COALESCE(MAX(id),0) FROM ' . Items::table() );
+$fbcol_backup_tw   = get_option( 'fbcol_teamwork', null );
+$fbcol_backup_st   = get_option( 'fbcol_tw_state', null );
 // The real site's sync job (time + frequency), put back exactly as it was.
-$fbc_backup_cron = array( wp_next_scheduled( Teamwork::SYNC_HOOK ), wp_get_schedule( Teamwork::SYNC_HOOK ) );
-register_shutdown_function( static function () use ( $fbc_max_id, $fbc_backup_tw, $fbc_backup_st, $fbc_backup_cron ) {
+$fbcol_backup_cron = array( wp_next_scheduled( Teamwork::SYNC_HOOK ), wp_get_schedule( Teamwork::SYNC_HOOK ) );
+register_shutdown_function( static function () use ( $fbcol_max_id, $fbcol_backup_tw, $fbcol_backup_st, $fbcol_backup_cron ) {
 	global $wpdb;
-	$ids = $wpdb->get_col( $wpdb->prepare( 'SELECT id FROM ' . Items::table() . ' WHERE id > %d', $fbc_max_id ) );
+	$ids = $wpdb->get_col( $wpdb->prepare( 'SELECT id FROM ' . Items::table() . ' WHERE id > %d', $fbcol_max_id ) );
 	foreach ( $ids as $id ) { Items::delete( (int) $id ); }
-	null === $fbc_backup_tw ? delete_option( 'fbc_teamwork' ) : update_option( 'fbc_teamwork', $fbc_backup_tw );
-	null === $fbc_backup_st ? delete_option( 'fbc_tw_state' ) : update_option( 'fbc_tw_state', $fbc_backup_st );
+	null === $fbcol_backup_tw ? delete_option( 'fbcol_teamwork' ) : update_option( 'fbcol_teamwork', $fbcol_backup_tw );
+	null === $fbcol_backup_st ? delete_option( 'fbcol_tw_state' ) : update_option( 'fbcol_tw_state', $fbcol_backup_st );
 	wp_clear_scheduled_hook( Teamwork::QUEUE_HOOK );
 	wp_clear_scheduled_hook( Teamwork::SYNC_HOOK );
-	if ( $fbc_backup_cron[0] && $fbc_backup_cron[1] ) {
-		wp_schedule_event( $fbc_backup_cron[0], $fbc_backup_cron[1], Teamwork::SYNC_HOOK );
+	if ( $fbcol_backup_cron[0] && $fbcol_backup_cron[1] ) {
+		wp_schedule_event( $fbcol_backup_cron[0], $fbcol_backup_cron[1], Teamwork::SYNC_HOOK );
 	}
-	delete_transient( 'fbc_tw_people_100' );
-	delete_transient( 'fbc_tw_people_list_100' );
+	delete_transient( 'fbcol_tw_people_100' );
+	delete_transient( 'fbcol_tw_people_list_100' );
 	echo "cleanup: removed " . count( $ids ) . " test rows, restored settings\n";
 } );
-delete_option( 'fbc_tw_state' );
+delete_option( 'fbcol_tw_state' );
 wp_clear_scheduled_hook( Teamwork::QUEUE_HOOK );
-update_option( 'fbc_teamwork', array( 'site' => 'https://clockwork.teamwork.com', 'project_id' => 100, 'project_name' => 'Demo', 'tasklist_id' => 200, 'tasklist_name' => 'QA – Round 1', 'round' => 1, 'tags' => array() ) );
-delete_transient( 'fbc_tw_people_100' );
+update_option( 'fbcol_teamwork', array( 'site' => 'https://clockwork.teamwork.com', 'project_id' => 100, 'project_name' => 'Demo', 'tasklist_id' => 200, 'tasklist_name' => 'QA – Round 1', 'round' => 1, 'tags' => array() ) );
+delete_transient( 'fbcol_tw_people_100' );
 
 $mock = array( 'calls' => array(), 'next_task' => 9000, 'limit_after' => null, 'creates' => 0, 'tasks' => array(), 'fail_create' => false, 'auth' => array(), 'comments' => array() );
 
@@ -97,7 +97,7 @@ check( 'name is [Type] Title', '[Tweak] CTA button misaligned' === ( $p['name'] 
 check( 'Anti: no descriptionContentType sent (Teamwork 400s on HTML and unknown types)', ! isset( $p['descriptionContentType'] ) );
 check( 'Anti: no HTML tags in the description', ! preg_match( '/<[a-z\/]/i', (string) ( $p['description'] ?? '' ) ) );
 check( 'description escapes Markdown in user text', str_contains( $p['description'] ?? '', '\\*not bold\\*' ) );
-check( 'description has deep link to pin', str_contains( $p['description'] ?? '', 'fbc_item=' . $id ) );
+check( 'description has deep link to pin', str_contains( $p['description'] ?? '', 'fbcol_item=' . $id ) );
 $full_url = home_url( '/services/' );
 check( 'description leads with the full page URL as visible text', str_starts_with( (string) $p['description'], '**Page URL:** [' . $full_url . '](' . $full_url . ')' ) );
 check( 'description has breakpoint+browser+selector+errors', str_contains( $p['description'], '1440×900' ) && str_contains( $p['description'], 'Chrome 154' ) && str_contains( $p['description'], '#cta' ) && str_contains( $p['description'], 'TypeError' ) );
@@ -106,17 +106,17 @@ check( 'type tag attached (created + cached)', array( 77 ) === ( $p['tagIds'] ??
 check( 'assignee mapped by email (case-insensitive)', array( 555 ) === ( $p['assignees']['userIds'] ?? null ) );
 check( 'Basic auth uses key:x', 'Basic ' . base64_encode( 'SECRET-KEY-123:x' ) === end( $mock['auth'] ) );
 check( 'emails on by default: taskOptions.notify = true', true === ( $mock['last_payload']['taskOptions']['notify'] ?? null ) );
-$tw = get_option( 'fbc_teamwork' ); $tw['send_email'] = false; update_option( 'fbc_teamwork', $tw );
+$tw = get_option( 'fbcol_teamwork' ); $tw['send_email'] = false; update_option( 'fbcol_teamwork', $tw );
 $quiet = Teamwork::push( mk( 'Quiet push' ) );
 check( 'emails off: taskOptions.notify = false', ! is_wp_error( $quiet ) && false === ( $mock['last_payload']['taskOptions']['notify'] ?? null ) );
 check( 'emails off: task still created with assignee', array( 555 ) === ( $mock['last_payload']['task']['assignees']['userIds'] ?? null ) );
-$tw['send_email'] = true; update_option( 'fbc_teamwork', $tw );
+$tw['send_email'] = true; update_option( 'fbcol_teamwork', $tw );
 $_POST = array( 'tw_site' => 'https://clockwork.teamwork.com', 'tw_project' => '100', 'tw_tasklist' => '200' ); Teamwork::save_settings();
-check( 'first save without the options on the form keeps emails on', true === get_option( 'fbc_teamwork' )['send_email'] );
+check( 'first save without the options on the form keeps emails on', true === get_option( 'fbcol_teamwork' )['send_email'] );
 $_POST['tw_options_shown'] = '1'; Teamwork::save_settings();
-check( 'unchecked box saves send_email = false', false === get_option( 'fbc_teamwork' )['send_email'] );
+check( 'unchecked box saves send_email = false', false === get_option( 'fbcol_teamwork' )['send_email'] );
 $_POST['tw_send_email'] = '1'; Teamwork::save_settings();
-check( 'checked box saves send_email = true', true === get_option( 'fbc_teamwork' )['send_email'] );
+check( 'checked box saves send_email = true', true === get_option( 'fbcol_teamwork' )['send_email'] );
 $_POST = array();
 
 // 2. Idempotency
@@ -138,7 +138,7 @@ check( 'stops at rate limit: 5 pushed, 25 remaining', 5 === $r['pushed'] && 25 =
 check( 'retry scheduled ~30s out', $next && $next - time() >= 25 && $next - time() <= 35 );
 $mock['limit_after'] = null;
 for ( $n = 0; $n < 5; $n++ ) { $r = Teamwork::process_queue(); if ( ! $r['remaining'] ) break; }
-$pushed = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(DISTINCT tw_task_id) FROM ' . Items::table() . ' WHERE tw_task_id > 0 AND id > %d', $fbc_max_id ) );
+$pushed = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(DISTINCT tw_task_id) FROM ' . Items::table() . ' WHERE tw_task_id > 0 AND id > %d', $fbcol_max_id ) );
 check( 'all 32 items pushed, all task IDs unique (no loss, no dupes)', 32 === $pushed && 32 === $mock['creates'] );
 
 // 4. Error + retry
@@ -164,16 +164,16 @@ $mock['tasks'] = array( array( 'id' => $first['tw_task_id'], 'status' => 'reopen
 Teamwork::sync();
 check( 'reopened in Teamwork → Open in WP', 'open' === Items::get( $id )['status'] );
 check( 'Anti: sync never touches unpushed items', 'resolved' === Items::get( $unpushed )['status'] );
-$st = get_option( 'fbc_tw_state' );
+$st = get_option( 'fbcol_tw_state' );
 check( 'sync records last_sync', ! empty( $st['last_sync'] ) );
 
 // 5b. One unreachable project never blocks the others.
 $bad = mk( 'In a project the key cannot see' );
 $wpdb->update( Items::table(), array( 'tw_task_id' => 777777, 'tw_project_id' => 999, 'tw_sync_state' => 'synced' ), array( 'id' => $bad ) );
-$before_window = (int) get_option( 'fbc_tw_state' )['last_sync'];
+$before_window = (int) get_option( 'fbcol_tw_state' )['last_sync'];
 $mock['tasks'] = array( array( 'id' => $first['tw_task_id'], 'status' => 'completed', 'completedAt' => '2026-10-01T11:00:00Z' ) );
 $s  = Teamwork::sync();
-$st = get_option( 'fbc_tw_state' );
+$st = get_option( 'fbcol_tw_state' );
 check( 'failing project skipped, others still sync', ! is_wp_error( $s ) && 'resolved' === Items::get( $id )['status'] );
 check( 'failing project error recorded', str_contains( (string) $st['last_error'], 'Project 999' ) );
 check( 'Anti: sync window not advanced past a failed project', $before_window === (int) $st['last_sync'] );
@@ -200,13 +200,13 @@ wp_clear_scheduled_hook( Teamwork::SYNC_HOOK );
 Teamwork::ensure_schedule();
 $next = (int) wp_next_scheduled( Teamwork::SYNC_HOOK );
 check( 'sync runs hourly by default', 'hourly' === wp_get_schedule( Teamwork::SYNC_HOOK ) && abs( $next - ( time() + HOUR_IN_SECONDS ) ) < 10 );
-$_POST = array( 'tw_options_shown' => '1', 'tw_sync_interval' => 'fbc_five_minutes' );
+$_POST = array( 'tw_options_shown' => '1', 'tw_sync_interval' => 'fbcol_five_minutes' );
 Teamwork::save_settings();
-check( 'choosing every 5 minutes reschedules the job', 'fbc_five_minutes' === wp_get_schedule( Teamwork::SYNC_HOOK ) && (int) wp_next_scheduled( Teamwork::SYNC_HOOK ) - time() <= 5 * MINUTE_IN_SECONDS );
-check( '5-minute interval registered with WP-Cron', 300 === ( wp_get_schedules()['fbc_five_minutes']['interval'] ?? 0 ) );
+check( 'choosing every 5 minutes reschedules the job', 'fbcol_five_minutes' === wp_get_schedule( Teamwork::SYNC_HOOK ) && (int) wp_next_scheduled( Teamwork::SYNC_HOOK ) - time() <= 5 * MINUTE_IN_SECONDS );
+check( '5-minute interval registered with WP-Cron', 300 === ( wp_get_schedules()['fbcol_five_minutes']['interval'] ?? 0 ) );
 $_POST = array( 'tw_options_shown' => '1', 'tw_sync_interval' => 'every_second' );
 Teamwork::save_settings();
-check( 'Anti: unknown interval ignored, previous choice kept', 'fbc_five_minutes' === Teamwork::sync_interval() && 'fbc_five_minutes' === wp_get_schedule( Teamwork::SYNC_HOOK ) );
+check( 'Anti: unknown interval ignored, previous choice kept', 'fbcol_five_minutes' === Teamwork::sync_interval() && 'fbcol_five_minutes' === wp_get_schedule( Teamwork::SYNC_HOOK ) );
 $_POST = array( 'tw_options_shown' => '1', 'tw_sync_interval' => 'hourly' );
 Teamwork::save_settings();
 $_POST = array();
@@ -271,11 +271,11 @@ $nodue = mk( 'No due date' );
 Teamwork::push( $nodue );
 check( 'Anti: no due date → no dueAt sent', ! array_key_exists( 'dueAt', $mock['last_payload']['task'] ?? array() ) );
 Items::update( $did, array( 'due_date' => '2026-10-06' ) );
-do_action( 'fbc_item_due_changed', $did );
+do_action( 'fbcol_item_due_changed', $did );
 $last = end( $mock['patches'] );
 check( 'editing the due date PATCHes the Teamwork task', $last && (int) Items::get( $did )['tw_task_id'] === $last[0] && '2026-10-06' === ( $last[1]['task']['dueAt'] ?? '' ) );
 Items::update( $did, array( 'due_date' => null ) );
-do_action( 'fbc_item_due_changed', $did );
+do_action( 'fbcol_item_due_changed', $did );
 $last = end( $mock['patches'] );
 check( 'clearing the due date sends dueAt null', $last && array_key_exists( 'dueAt', $last[1]['task'] ) && null === $last[1]['task']['dueAt'] );
 $tw = (int) Items::get( $did )['tw_task_id'];
