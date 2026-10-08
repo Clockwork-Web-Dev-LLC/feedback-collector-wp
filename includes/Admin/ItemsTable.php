@@ -92,10 +92,10 @@ final class ItemsTable extends \WP_List_Table {
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended
 		$get = static function ( string $key1, string $key2 = '' ): string {
 			if ( isset( $_GET[ $key1 ] ) ) {
-				return (string) wp_unslash( $_GET[ $key1 ] );
+				return sanitize_text_field( wp_unslash( (string) $_GET[ $key1 ] ) );
 			}
 			if ( '' !== $key2 && isset( $_GET[ $key2 ] ) ) {
-				return (string) wp_unslash( $_GET[ $key2 ] );
+				return sanitize_text_field( wp_unslash( (string) $_GET[ $key2 ] ) );
 			}
 			return '';
 		};

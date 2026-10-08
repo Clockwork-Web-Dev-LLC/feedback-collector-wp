@@ -18,7 +18,30 @@ final class Branding {
 	public const OPTION = 'fbcol_branding';
 
 	/**
-	 * Clockwork defaults. The palette matches Clockwork Companion.
+	 * What every install shows until custom branding is switched on: the plugin's own plain
+	 * name, WordPress admin colors, no logo and no credit.
+	 *
+	 * @return array<string, string|bool>
+	 */
+	public static function neutral(): array {
+		return array(
+			'name'          => 'Feedback Collector',
+			'menu_label'    => 'Feedback',
+			'product_label' => 'Feedback Collector',
+			'author'        => '',
+			'author_uri'    => '',
+			'logo_url'      => '',
+			'primary'       => '#2271B1',
+			'dark'          => '#1D2327',
+			'accent'        => '#72AEE6',
+			'show_credit'   => false,
+			'enabled'       => false,
+		);
+	}
+
+	/**
+	 * The starting values of the Branding form once custom branding is switched on:
+	 * Clockwork's look (the palette matches Clockwork Companion). Off by default.
 	 *
 	 * @return array<string, string|bool>
 	 */
@@ -40,8 +63,8 @@ final class Branding {
 			'primary'       => '#6953C4',
 			'dark'          => '#2D2062',
 			'accent'        => '#7EFF83',
-			'show_credit'   => true,
-			'enabled'       => true, // Custom branding on by default with Clockwork branding.
+			'show_credit'   => false,
+			'enabled'       => false,
 		);
 	}
 
@@ -73,8 +96,8 @@ final class Branding {
 		if ( null !== $cache ) {
 			return $cache;
 		}
-		// Custom branding off: the defaults (Clockwork colors, "Feedback Collector", no logo).
-		$b = self::enabled() ? self::saved() : self::defaults();
+		// Custom branding off (the default): plain "Feedback Collector".
+		$b = self::enabled() ? self::saved() : self::neutral();
 		$b = (array) apply_filters( 'fbcol_branding', $b );
 		$cache = $b;
 		return $b;
@@ -90,16 +113,19 @@ final class Branding {
 	}
 
 	/**
-	 * True while the plugin carries the Clockwork brand (not white-labeled).
+	 * True while custom branding is on with Clockwork's look (not white-labeled further).
 	 */
 	public static function is_default(): bool {
+		if ( ! self::enabled() ) {
+			return false;
+		}
 		$d = self::defaults();
-		$b = self::get();
+		$b = self::saved(); // not get(): that is cached per request
 		return $b['name'] === $d['name'] && ( $b['logo_url'] === $d['logo_url'] || '' === $b['logo_url'] );
 	}
 
 	/**
-	 * The active logo URL. By default this is the bundled Clockwork logo.
+	 * The active logo URL ('' without custom branding; the bundled Clockwork logo is its starting value).
 	 */
 	public static function logo_url(): string {
 		return self::text( 'logo_url' );
@@ -198,7 +224,7 @@ final class Branding {
 	}
 
 	/**
-	 * Sidebar menu icon: the Clockwork sparkle on the default brand, a neutral speech bubble otherwise.
+	 * Sidebar menu icon: the Clockwork sparkle with Clockwork branding on, a plain speech bubble otherwise.
 	 */
 	public static function menu_icon(): string {
 		if ( ! self::is_default() ) {
@@ -219,8 +245,8 @@ final class Branding {
 	 */
 	public static function plugins_list( array $plugins ): array {
 		$basename = plugin_basename( PLUGIN_FILE );
-		if ( ! isset( $plugins[ $basename ] ) ) {
-			return $plugins;
+		if ( ! isset( $plugins[ $basename ] ) || ! self::enabled() ) {
+			return $plugins; // Not white-labeled: the plugin header as written.
 		}
 		$b = self::get();
 		foreach ( array( 'Name', 'Title' ) as $field ) {

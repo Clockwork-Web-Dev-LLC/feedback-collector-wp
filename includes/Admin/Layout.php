@@ -105,9 +105,9 @@ final class Layout {
 				<div class="fbc-admin__credit">
 					<?php
 					printf(
-						/* translators: %s: link to Clockwork */
+						/* translators: %s: link to the plugin's page */
 						esc_html__( 'Powered by %s', 'feedback-collector' ),
-						'<a href="https://clockworkwd.com" target="_blank" rel="noopener">Clockwork Feedback Collector</a>'
+						'<a href="https://wordpress.org/plugins/feedback-collector/" target="_blank" rel="noopener">Feedback Collector</a>'
 					);
 					?>
 				</div>

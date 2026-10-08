@@ -455,7 +455,8 @@ final class Teamwork {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		$rows = $wpdb->query(
 			$wpdb->prepare(
-				'UPDATE ' . Items::table() . " SET tw_sync_state = 'pushing', updated_at = %s WHERE id = %d AND tw_task_id = 0 AND ( tw_sync_state <> 'pushing' OR updated_at < %s )", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				"UPDATE %i SET tw_sync_state = 'pushing', updated_at = %s WHERE id = %d AND tw_task_id = 0 AND ( tw_sync_state <> 'pushing' OR updated_at < %s )",
+				Items::table(),
 				$now,
 				$id,
 				$stale
@@ -754,8 +755,8 @@ final class Teamwork {
 			return new WP_Error( 'fbcol_tw_not_ready', __( 'Teamwork is not connected.', 'feedback-collector' ) );
 		}
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared
-		$rows    = $wpdb->get_results( 'SELECT id, status, due_date, tw_task_id, tw_project_id FROM ' . Items::table() . ' WHERE tw_task_id > 0', ARRAY_A );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$rows    = $wpdb->get_results( $wpdb->prepare( 'SELECT id, status, due_date, tw_task_id, tw_project_id FROM %i WHERE tw_task_id > 0', Items::table() ), ARRAY_A );
 		$state   = (array) get_option( self::STATE_OPTION, array() );
 		$started = time();
 
@@ -1013,7 +1014,7 @@ final class Teamwork {
 				printf(
 					'<p class="description">%s</p>',
 					/* translators: %d: round number */
-					sprintf( esc_html__( 'Creates a new list in this project and sets it as the active QA list for Round %d. Private lists are only visible to project administrators and assigned users in Teamwork.', 'feedback-collector' ), $current_round )
+					sprintf( esc_html__( 'Creates a new list in this project and sets it as the active QA list for Round %d. Private lists are only visible to project administrators and assigned users in Teamwork.', 'feedback-collector' ), absint( $current_round ) )
 				);
 				echo '</div>';
 				echo '</fieldset>';
@@ -1583,10 +1584,14 @@ final class Teamwork {
 				continue;
 			}
 
-			// If this comment was pushed by us previously, ignore if marked with prefix.
-			$brand = Branding::text( 'name' );
-			if ( str_starts_with( $text, 'From ' ) && str_contains( $text, 'via ' . $brand . ":\n\n" ) ) {
-				continue;
+			// If this comment was pushed by us previously, ignore if marked with prefix: under the
+			// current name, or the plain / Clockwork names it may have carried before.
+			if ( str_starts_with( $text, 'From ' ) ) {
+				foreach ( array_unique( array( Branding::text( 'name' ), (string) Branding::neutral()['name'], (string) Branding::defaults()['name'] ) ) as $brand ) {
+					if ( str_contains( $text, 'via ' . $brand . ":\n\n" ) ) {
+						continue 2;
+					}
+				}
 			}
 
 			$author_name = trim( (string) ( $c['author']['firstName'] ?? $c['user']['firstName'] ?? $c['postedBy']['firstName'] ?? '' ) . ' ' . (string) ( $c['author']['lastName'] ?? $c['user']['lastName'] ?? $c['postedBy']['lastName'] ?? '' ) );

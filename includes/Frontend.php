@@ -130,9 +130,8 @@ final class Frontend {
 	 */
 	public static function config(): array {
 		$queried = get_queried_object();
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		// ?fbc_item= is the 0.3 name, still in links inside older Teamwork tasks.
-		$open = absint( wp_unslash( $_GET['fbcol_item'] ?? $_GET['fbc_item'] ?? 0 ) );
+		// A read-only deep link that opens a pin; ?fbc_item= is the 0.3 name, still in links inside older Teamwork tasks.
+		$open = absint( wp_unslash( $_GET['fbcol_item'] ?? $_GET['fbc_item'] ?? 0 ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$user = wp_get_current_user();
 
 		return array(

@@ -569,10 +569,10 @@ final class Admin {
 					checked( DueDates::on_by_default(), true, false ),
 					esc_html__( 'Give new feedback a due date by default (“Set date?” starts ticked)', 'feedback-collector' ),
 					esc_html__( 'Due', 'feedback-collector' ),
-					DueDates::days(),
+					absint( DueDates::days() ),
 					esc_html__( 'days after it’s filed (default 3)', 'feedback-collector' ),
 					esc_html__( 'Keep the same due date for', 'feedback-collector' ),
-					DueDates::batch_hours(),
+					absint( DueDates::batch_hours() ),
 					esc_html__( 'hours after a reviewer’s first item (default 3; 0 = off)', 'feedback-collector' ),
 					esc_html__( 'Items a reviewer files in one sitting share a due date: the first starts a batch, everything within the window reuses its date, and changing the date mid-batch carries forward. Teamwork gets the date too.', 'feedback-collector' )
 				);
@@ -678,7 +678,7 @@ final class Admin {
 
 				Layout::card_open( __( 'Custom branding', 'feedback-collector' ) );
 				printf(
-					'<p><label class="fbcol-toggle"><input type="checkbox" class="fbc-toggle__input" id="fbc-b-enabled" name="branding[enabled]" value="1"%1$s /><span class="fbc-toggle__track" aria-hidden="true"><span class="fbc-toggle__knob"></span></span> <strong>%2$s</strong></label> <span id="fbc-b-enabled-status" class="description" role="status" data-saving="%4$s"></span></p><p class="description">%3$s</p>',
+					'<p><label class="fbc-toggle"><input type="checkbox" class="fbc-toggle__input" id="fbc-b-enabled" name="branding[enabled]" value="1"%1$s /><span class="fbc-toggle__track" aria-hidden="true"><span class="fbc-toggle__knob"></span></span> <strong>%2$s</strong></label> <span id="fbc-b-enabled-status" class="description" role="status" data-saving="%4$s"></span></p><p class="description">%3$s</p>',
 					checked( ! empty( $b['enabled'] ), true, false ),
 					esc_html__( 'Use custom branding', 'feedback-collector' ),
 					esc_html__( 'Off: the plugin shows “Feedback Collector” with the default colors and no logo. On: the name, logo and colors below apply everywhere. Flipping the switch saves right away; your settings are kept when you switch it off.', 'feedback-collector' ),
@@ -871,8 +871,9 @@ final class Admin {
 			exit;
 		}
 
-		// UTF-8 BOM for Microsoft Excel compatibility.
-		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+		// UTF-8 BOM for Microsoft Excel compatibility. Written to the php://output stream (the
+		// download), not to a file, so WP_Filesystem doesn't apply.
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped, WordPress.WP.AlternativeFunctions.file_system_operations_fwrite
 		fwrite( $out, "\xEF\xBB\xBF" );
 
 		fputcsv(

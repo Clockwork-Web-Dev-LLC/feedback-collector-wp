@@ -217,7 +217,7 @@ check( 'status text shows last and next sync', str_contains( Teamwork::sync_stat
 $c_id  = Items::add_comment( $id, 'Please check mobile responsiveness' );
 $c_row = $wpdb->get_row( $wpdb->prepare( 'SELECT * FROM %i WHERE id = %d', Items::comments_table(), $c_id ), ARRAY_A );
 check( 'pushing WP reply creates comment in Teamwork', 88881 === (int) $c_row['tw_comment_id'] );
-check( 'pushed comment includes author and branding prefix', str_contains( $mock['last_comment_payload']['comment']['body'] ?? '', 'Clockwork' ) );
+check( 'pushed comment includes author and branding prefix', str_contains( $mock['last_comment_payload']['comment']['body'] ?? '', 'via ' . FeedbackCollector\Branding::text( 'name' ) ) );
 
 $mock['comments'] = array(
 	array(
@@ -248,7 +248,7 @@ $posts_before = $mock['comment_posts'] ?? 0;
 Teamwork::push( $pre );
 $pre_ids = $wpdb->get_col( $wpdb->prepare( "SELECT tw_comment_id FROM %i WHERE item_id = %d AND kind = 'comment' ORDER BY id", Items::comments_table(), $pre ) );
 check( 'push sends comments written before the push', array( '88881', '88881' ) === $pre_ids && 2 === ( $mock['comment_posts'] - $posts_before ) );
-check( 'pre-push comment keeps author and branding prefix', str_contains( $mock['last_comment_payload']['comment']['body'] ?? '', 'And a second one' ) && str_contains( $mock['last_comment_payload']['comment']['body'], 'via Clockwork' ) );
+check( 'pre-push comment keeps author and branding prefix', str_contains( $mock['last_comment_payload']['comment']['body'] ?? '', 'And a second one' ) && str_contains( $mock['last_comment_payload']['comment']['body'], 'via ' . FeedbackCollector\Branding::text( 'name' ) ) );
 check( 'Anti: activity entries are not sent to Teamwork', 2 === ( $mock['comment_posts'] - $posts_before ) );
 check( 'Anti: nothing left pending after the push', ! in_array( $pre, Teamwork::items_with_pending_comments(), true ) );
 $posts_before = $mock['comment_posts'];

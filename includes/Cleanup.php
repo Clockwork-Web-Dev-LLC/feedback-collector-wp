@@ -52,7 +52,8 @@ final class Cleanup {
 		$comments = $wpdb->prefix . 'fbcol_comments';
 		// phpcs:disable WordPress.DB.DirectDatabaseQuery
 		$has   = (bool) $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $items ) );
-		$count = static fn( string $sql ) => $has ? (int) $wpdb->get_var( $sql ) : 0; // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		// Each query passed in is already prepared below.
+		$count = static fn( string $sql ) => $has ? (int) $wpdb->get_var( $sql ) : 0; // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		$out   = array(
 			'items'       => $count( $wpdb->prepare( 'SELECT COUNT(*) FROM %i', $items ) ),
 			'comments'    => $count( $wpdb->prepare( 'SELECT COUNT(*) FROM %i', $comments ) ),
