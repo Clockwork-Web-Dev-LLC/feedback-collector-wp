@@ -12,7 +12,6 @@ import type { Config, Item, ItemStatus, ItemType, Priority } from './types';
 const TYPES: ItemType[] = ['bug', 'tweak', 'change', 'comment'];
 const STORAGE_KEY = 'fbc:mode';
 const CORNER_KEY = 'fbc:corner';
-const HIGHLIGHT_KEY = 'fbc:highlight';
 export const PREVIEW_FRAME_NAME = 'fbc-preview';
 const DEVICES: Array<{ id: string; label: string; w: number; h: number }> = [
   { id: 'phone', label: 'Mobile', w: 390, h: 844 },
@@ -109,8 +108,6 @@ export class App {
   private bannerEl: HTMLElement | null = null;
 
   private mode = false;
-  /** Hover highlighting outside pin mode; a per-browser preference, on by default. */
-  private highlight = true;
   private pinMode: PinModeRequest | null = null;
   private states = new Map<number, PinState>();
   private allItems: Item[] | null = null;
@@ -177,25 +174,20 @@ export class App {
 
     let stored = false;
     let localCorner: Corner | null = null;
-    let localHighlight: boolean | null = null;
     try {
       stored = window.localStorage.getItem(STORAGE_KEY) === '1';
       const corner = window.localStorage.getItem(CORNER_KEY) as Corner | null;
       if (corner && CORNERS.includes(corner)) localCorner = corner;
-      const hl = window.localStorage.getItem(HIGHLIGHT_KEY);
-      if (hl !== null) localHighlight = hl !== '0';
     } catch {
       stored = false;
     }
-    // Corner and hover highlight are per reviewer (saved on their WordPress user), so they
-    // follow them to any browser. A choice made before that, in this browser, is adopted once.
+    // The corner is per reviewer (saved on their WordPress user), so it
+    // follows them to any browser. A choice made before that, in this browser, is adopted once.
     const prefs = this.cfg.prefs ?? {};
     this.corner = prefs.corner ?? localCorner ?? this.corner;
-    this.highlight = prefs.highlight ?? localHighlight ?? true;
     if (!this.inPreview) {
       const adopt: NonNullable<Config['prefs']> = {};
       if (!prefs.corner && localCorner) adopt.corner = localCorner;
-      if (prefs.highlight === undefined && localHighlight !== null) adopt.highlight = localHighlight;
       if (Object.keys(adopt).length) this.savePrefs(adopt);
     }
     if (this.inPreview) {
@@ -504,7 +496,8 @@ export class App {
   }
 
   private onMouseMove(e: MouseEvent): void {
-    if (!this.mode || this.recorder || (this.card && !this.pinMode) || (!this.highlight && !this.pinMode) || this.inOverlay(e)) {
+    // The outline shows only while picking an element to pin (+); plain hovering stays quiet.
+    if (!this.mode || this.recorder || !this.pinMode || this.inOverlay(e)) {
       if (!this.pinMode) this.hideOutline();
       return;
     }
@@ -563,17 +556,6 @@ export class App {
     return null;
   }
 
-  private setHighlight(on: boolean): void {
-    this.highlight = on;
-    try {
-      window.localStorage.setItem(HIGHLIGHT_KEY, on ? '1' : '0');
-    } catch {
-      /* storage blocked: the account copy below still remembers it */
-    }
-    if (!this.inPreview) this.savePrefs({ highlight: on });
-    if (!on) this.hideOutline();
-    this.renderToolbar();
-  }
 
   /** Hides the hover outline, unless an element is selected (menu/composer open for it): that one stays outlined. */
   private hideOutline(): void {
@@ -1495,30 +1477,18 @@ export class App {
         : h('span', { class: 'brand', title: 'Drag to move', text: this.cfg.brand?.label ?? 'Feedback', onpointerdown: (e: Event) => this.startDrag(e as PointerEvent) }),
       h('button', {
         type: 'button',
-        class: this.pinMode ? 'on' : '',
-        title: 'Click an element to pin feedback (or right-click anywhere)',
-        text: '+ Add',
+        class: this.pinMode ? 'icon-btn on' : 'icon-btn',
+        'data-tip': 'Add feedback to an element',
+        'aria-label': 'Add feedback to an element',
         onclick: () =>
           this.pinMode
             ? this.exitPinMode()
             : this.enterPinMode({ hint: 'Click any element to add feedback', done: (el, x, y) => this.openTypeMenu(el, x, y) }),
-      }),
-      h('button', { type: 'button', text: 'Page note', onclick: () => this.openComposer('comment', null, window.innerWidth / 2 - 170, 120) }),
+      }, deviceIcon('add')),
+      h('button', { type: 'button', class: 'icon-btn', 'data-tip': 'Add a page note', 'aria-label': 'Add a note for the whole page', onclick: () => this.openComposer('comment', null, window.innerWidth / 2 - 170, 120) }, deviceIcon('note')),
       this.canRecordHere()
-        ? h('button', { type: 'button', class: 'icon-btn rec-start', title: `Record this tab with your voice (up to ${clock((this.cfg.video?.maxSeconds ?? 180) * 1000)})`, 'aria-label': 'Record this tab with your voice', onclick: () => void this.startRecording() }, h('span', { class: 'rec-start-dot', 'aria-hidden': 'true' }))
+        ? h('button', { type: 'button', class: 'icon-btn rec-start', 'data-tip': `Record your screen and voice (up to ${clock((this.cfg.video?.maxSeconds ?? 180) * 1000)})`, 'aria-label': 'Record this tab with your voice', onclick: () => void this.startRecording() }, deviceIcon('record'))
         : null,
-      h(
-        'button',
-        {
-          type: 'button',
-          class: 'icon-btn toggle',
-          'aria-pressed': String(this.highlight),
-          title: this.highlight ? 'Hover highlight is on: click to turn off' : 'Hover highlight is off: click to turn on',
-          'aria-label': 'Highlight elements on hover',
-          onclick: () => this.setHighlight(!this.highlight),
-        },
-        deviceIcon('highlight')
-      ),
       this.inPreview
         ? null
         : h(
@@ -1527,12 +1497,12 @@ export class App {
             ...DEVICES.map((d) =>
               d.id === 'desktop'
                 ? // Desktop is the real page you're already on: shown as the active view.
-                  h('button', { type: 'button', class: 'icon-btn', 'aria-pressed': 'true', title: 'Desktop: the page as you see it now', 'aria-label': 'Desktop view (current)', onclick: () => this.closePreview() }, deviceIcon(d.id))
-                : h('button', { type: 'button', class: 'icon-btn', 'aria-pressed': 'false', title: `Preview as ${d.label} (${d.w}px)`, 'aria-label': `Preview as ${d.label}, ${d.w} pixels wide`, onclick: () => this.openPreview(d.id) }, deviceIcon(d.id))
+                  h('button', { type: 'button', class: 'icon-btn', 'aria-pressed': 'true', 'data-tip': 'Desktop: the page as you see it now', 'aria-label': 'Desktop view (current)', onclick: () => this.closePreview() }, deviceIcon(d.id))
+                : h('button', { type: 'button', class: 'icon-btn', 'aria-pressed': 'false', 'data-tip': `Preview as ${d.label} (${d.w}px)`, 'aria-label': `Preview as ${d.label}, ${d.w} pixels wide`, onclick: () => this.openPreview(d.id) }, deviceIcon(d.id))
             )
           ),
       h('button', { type: 'button', class: this.sidebar ? 'on' : '', onclick: () => (this.sidebar ? this.closeSidebar() : this.openSidebar()) }, h('span', { class: 'label', text: 'List' }), count ? h('span', { class: 'count', text: String(count) }) : null),
-      h('button', { type: 'button', title: 'Exit Feedback mode (Alt+Shift+F)', 'aria-label': 'Exit Feedback mode', text: '×', onclick: () => void this.setMode(false) })
+      h('button', { type: 'button', 'data-tip': 'Exit Feedback mode (Alt+Shift+F)', 'aria-label': 'Exit Feedback mode', text: '×', onclick: () => void this.setMode(false) })
     );
     const wasPlaced = !!this.toolbar;
     // Stays hidden while the device preview covers the page (re-renders must not unhide it).

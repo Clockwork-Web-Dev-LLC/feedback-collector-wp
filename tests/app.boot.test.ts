@@ -255,37 +255,23 @@ describe('resolved pins', () => {
   });
 });
 
-describe('hover highlight toggle', () => {
+describe('hover outline', () => {
   const outlineOn = () => !!shadow()?.querySelector('.outline.on');
   const hover = () => document.getElementById('cta')?.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: 150, clientY: 210 }));
-  const toggle = () => shadow()?.querySelector('.toolbar button[aria-label="Highlight elements on hover"]') as HTMLButtonElement;
 
-  it('turns hover outlines off, still highlights in pin mode, and remembers the choice', async () => {
+  it('shows only while picking an element with +, and there is no toggle for it', async () => {
     const app = createApp(cfg());
     app.init();
     await app.setMode(true);
-    expect(toggle().getAttribute('aria-pressed')).toBe('true');
-    hover();
-    expect(outlineOn()).toBe(true);
-
-    toggle().click();
-    expect(toggle().getAttribute('aria-pressed')).toBe('false');
-    expect(outlineOn()).toBe(false);
+    expect(shadow()?.querySelector('.toolbar button[aria-label="Highlight elements on hover"]')).toBeNull();
     hover();
     expect(outlineOn()).toBe(false);
-    expect(window.localStorage.getItem('fbc:highlight')).toBe('0');
 
-    // + Add needs the outline to show what will be pinned.
-    const add = [...(shadow()?.querySelectorAll('.toolbar button') ?? [])].find((b) => b.textContent === '+ Add') as HTMLButtonElement;
+    // + needs the outline to show what will be pinned.
+    const add = shadow()?.querySelector('.toolbar button[aria-label="Add feedback to an element"]') as HTMLButtonElement;
     add.click();
     hover();
     expect(outlineOn()).toBe(true);
-
-    app.destroy();
-    const again = createApp(cfg());
-    again.init();
-    await again.setMode(true);
-    expect(toggle().getAttribute('aria-pressed')).toBe('false');
   });
 });
 
@@ -328,7 +314,7 @@ describe('toolbar placement', () => {
 
   it('per reviewer: the corner saved on their account wins over this browser', async () => {
     window.localStorage.setItem('fbc:corner', 'br');
-    const app = createApp({ ...cfg(), prefs: { corner: 'tl', highlight: false } });
+    const app = createApp({ ...cfg(), prefs: { corner: 'tl' } });
     app.init();
     await app.setMode(true);
     expect(toolbar().dataset.corner).toBe('tl');

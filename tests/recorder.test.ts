@@ -297,7 +297,7 @@ describe('Recorder', () => {
 
 describe('overlay', () => {
   const shadow = () => document.getElementById(OVERLAY_HOST_ID)?.shadowRoot ?? null;
-  const button = (label: string) => [...(shadow()?.querySelectorAll('.toolbar button') ?? [])].find((b) => b.textContent?.includes(label) || b.getAttribute('aria-label')?.includes(label)) as HTMLButtonElement | undefined;
+  const button = (label: string) => [...(shadow()?.querySelectorAll('.toolbar button') ?? [])].find((b) => b.textContent?.includes(label) || b.getAttribute('aria-label')?.includes(label) || b.getAttribute('data-tip')?.includes(label)) as HTMLButtonElement | undefined;
   let app: App | null = null;
   afterEach(() => {
     app?.destroy();
@@ -387,5 +387,30 @@ describe('overlay', () => {
     expect(block?.querySelector('summary')?.textContent).toContain('1:15');
     const rows = [...(block?.querySelectorAll('.rec-timeline li') ?? [])].map((li) => li.textContent);
     expect(rows).toEqual(['0:42clicked "Buy" (button)', '0:51JS error boom']);
+  });
+});
+
+describe('toolbar icons', () => {
+  it('+ / page note / record are icon-only, with hover labels and accessible names', async () => {
+    const app = new App(cfg());
+    app.init();
+    await app.setMode(true);
+    const s = document.getElementById(OVERLAY_HOST_ID)?.shadowRoot;
+    const byLabel = (l: string) => s?.querySelector(`.toolbar button[aria-label="${l}"]`) as HTMLButtonElement | null;
+    const add = byLabel('Add feedback to an element');
+    const note = byLabel('Add a note for the whole page');
+    const rec = byLabel('Record this tab with your voice');
+    for (const b of [add, note, rec]) {
+      expect(b).not.toBeNull();
+      expect(b?.textContent?.trim()).toBe('');
+      expect(b?.querySelector('svg')).not.toBeNull();
+      expect(b?.getAttribute('title')).toBeNull(); // no double tooltip
+    }
+    expect(note?.getAttribute('data-tip')).toBe('Add a page note');
+    expect(add?.getAttribute('data-tip')).toBe('Add feedback to an element');
+    expect(rec?.getAttribute('data-tip')).toContain('Record your screen and voice');
+    note?.click();
+    expect(s?.querySelector('form.composer')?.textContent).toContain('Whole page');
+    app.destroy();
   });
 });

@@ -14,10 +14,10 @@ Internal QA for **staging** WordPress sites. A teammate turns on Feedback mode, 
 - **Turn on Feedback mode:** click **Feedback** in the admin bar, or press **Alt+Shift+F**. A toolbar appears at the bottom right.
 - **Right-click** any element, choose a type (or press 1–4), type a title and press **Enter**.
   - **Alt+right-click** always opens the normal browser menu.
-- **+ Add** pins with a normal click instead, for trackpads and touch screens. **Page note** creates feedback for the whole page.
+- **+** pins with a normal click instead, for trackpads and touch screens. The **note** icon creates feedback for the whole page. Hover any toolbar icon to see what it does.
 - **Pins** are colored by type and turn into a green ✓ when resolved. Pins follow the List's status filter: resolved pins are hidden while it shows **Unresolved** (the default) and appear when you pick **Any status** or **Resolved**.
   - Click a pin to change its status, priority or assignee, reply or delete.
-- **Hover highlight** (the dashed-box icon on the toolbar) turns the purple element outline on or off. The choice is saved per browser. The outline always shows while picking an element with **+ Add**.
+- The purple element outline shows while picking an element with **+**, so you can see what will be pinned.
 - **List** opens the sidebar: this page or all pages, filtered by type, status or "assigned to me".
   - Items whose element is hidden at the current breakpoint are listed separately.
   - Items whose element can't be found anymore are listed as **Orphaned**, with a “Pin again” link to place them on a new element.
