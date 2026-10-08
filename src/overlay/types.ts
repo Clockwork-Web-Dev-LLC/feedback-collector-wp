@@ -137,7 +137,7 @@ export interface Config {
   video?: { enabled: boolean; maxSeconds: number };
   due?: DueConfig;
   /** The reviewer's own saved preferences (on their WordPress user); absent keys = never chosen. */
-  prefs?: { corner?: 'tl' | 'tr' | 'bl' | 'br'; highlight?: boolean };
+  prefs?: { corner?: 'tl' | 'tr' | 'bl' | 'br' };
 }
 
 export interface NewItem {

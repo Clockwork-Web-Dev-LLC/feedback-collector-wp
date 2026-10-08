@@ -1121,10 +1121,6 @@ select {
 .toolbar .icon-btn[aria-pressed='true'] {
   box-shadow: inset 0 -3px 0 var(--brand-accent);
 }
-/* An on/off toggle reads as off when dimmed, not just when it lacks the underline. */
-.toolbar .icon-btn.toggle[aria-pressed='false'] {
-  opacity: 0.55;
-}
 .preview-bar .icon-btn {
   display: inline-flex;
   align-items: center;
