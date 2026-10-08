@@ -1,9 +1,12 @@
-// Small outline icons for the toolbar (device switcher, hover highlight). Static, trusted markup (no user data), so
+// Small outline icons for the toolbar (add, page note, record, device switcher, hover highlight). Static, trusted markup (no user data), so
 // assigning it as SVG markup is safe.
 const PATHS: Record<string, string> = {
   phone: '<rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/>',
   tablet: '<rect x="4" y="2.5" width="16" height="19" rx="2"/><path d="M11 18.5h2"/>',
   desktop: '<rect x="2.5" y="4" width="19" height="12.5" rx="1.5"/><path d="M8.5 20.5h7M12 16.5v4"/>',
+  add: '<path d="M12 5v14M5 12h14"/>',
+  note: '<path d="M15.5 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8.5z"/><path d="M15 3v5a1 1 0 0 0 1 1h5M7.5 13h7M7.5 17h4"/>',
+  record: '<circle cx="12" cy="12" r="7" fill="#ff5a5f" stroke="none"/>',
   highlight: '<path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M3 16v3a2 2 0 0 0 2 2h3"/><path d="M11 11l9 3.5-3.8 1.4-1.4 3.8z"/>',
 };
 

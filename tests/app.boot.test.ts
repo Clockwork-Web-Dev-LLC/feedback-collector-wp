@@ -276,7 +276,7 @@ describe('hover highlight toggle', () => {
     expect(window.localStorage.getItem('fbc:highlight')).toBe('0');
 
     // + Add needs the outline to show what will be pinned.
-    const add = [...(shadow()?.querySelectorAll('.toolbar button') ?? [])].find((b) => b.textContent === '+ Add') as HTMLButtonElement;
+    const add = [...(shadow()?.querySelectorAll('.toolbar button') ?? [])].find((b) => b.getAttribute('aria-label') === 'Add feedback to an element') as HTMLButtonElement;
     add.click();
     hover();
     expect(outlineOn()).toBe(true);

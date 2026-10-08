@@ -1495,17 +1495,17 @@ export class App {
         : h('span', { class: 'brand', title: 'Drag to move', text: this.cfg.brand?.label ?? 'Feedback', onpointerdown: (e: Event) => this.startDrag(e as PointerEvent) }),
       h('button', {
         type: 'button',
-        class: this.pinMode ? 'on' : '',
-        title: 'Click an element to pin feedback (or right-click anywhere)',
-        text: '+ Add',
+        class: this.pinMode ? 'icon-btn on' : 'icon-btn',
+        'data-tip': 'Add feedback to an element',
+        'aria-label': 'Add feedback to an element',
         onclick: () =>
           this.pinMode
             ? this.exitPinMode()
             : this.enterPinMode({ hint: 'Click any element to add feedback', done: (el, x, y) => this.openTypeMenu(el, x, y) }),
-      }),
-      h('button', { type: 'button', text: 'Page note', onclick: () => this.openComposer('comment', null, window.innerWidth / 2 - 170, 120) }),
+      }, deviceIcon('add')),
+      h('button', { type: 'button', class: 'icon-btn', 'data-tip': 'Add a page note', 'aria-label': 'Add a note for the whole page', onclick: () => this.openComposer('comment', null, window.innerWidth / 2 - 170, 120) }, deviceIcon('note')),
       this.canRecordHere()
-        ? h('button', { type: 'button', class: 'icon-btn rec-start', title: `Record this tab with your voice (up to ${clock((this.cfg.video?.maxSeconds ?? 180) * 1000)})`, 'aria-label': 'Record this tab with your voice', onclick: () => void this.startRecording() }, h('span', { class: 'rec-start-dot', 'aria-hidden': 'true' }))
+        ? h('button', { type: 'button', class: 'icon-btn rec-start', 'data-tip': `Record your screen and voice (up to ${clock((this.cfg.video?.maxSeconds ?? 180) * 1000)})`, 'aria-label': 'Record this tab with your voice', onclick: () => void this.startRecording() }, deviceIcon('record'))
         : null,
       h(
         'button',
@@ -1513,7 +1513,7 @@ export class App {
           type: 'button',
           class: 'icon-btn toggle',
           'aria-pressed': String(this.highlight),
-          title: this.highlight ? 'Hover highlight is on: click to turn off' : 'Hover highlight is off: click to turn on',
+          'data-tip': this.highlight ? 'Hover highlight is on: click to turn off' : 'Hover highlight is off: click to turn on',
           'aria-label': 'Highlight elements on hover',
           onclick: () => this.setHighlight(!this.highlight),
         },
@@ -1527,12 +1527,12 @@ export class App {
             ...DEVICES.map((d) =>
               d.id === 'desktop'
                 ? // Desktop is the real page you're already on: shown as the active view.
-                  h('button', { type: 'button', class: 'icon-btn', 'aria-pressed': 'true', title: 'Desktop: the page as you see it now', 'aria-label': 'Desktop view (current)', onclick: () => this.closePreview() }, deviceIcon(d.id))
-                : h('button', { type: 'button', class: 'icon-btn', 'aria-pressed': 'false', title: `Preview as ${d.label} (${d.w}px)`, 'aria-label': `Preview as ${d.label}, ${d.w} pixels wide`, onclick: () => this.openPreview(d.id) }, deviceIcon(d.id))
+                  h('button', { type: 'button', class: 'icon-btn', 'aria-pressed': 'true', 'data-tip': 'Desktop: the page as you see it now', 'aria-label': 'Desktop view (current)', onclick: () => this.closePreview() }, deviceIcon(d.id))
+                : h('button', { type: 'button', class: 'icon-btn', 'aria-pressed': 'false', 'data-tip': `Preview as ${d.label} (${d.w}px)`, 'aria-label': `Preview as ${d.label}, ${d.w} pixels wide`, onclick: () => this.openPreview(d.id) }, deviceIcon(d.id))
             )
           ),
       h('button', { type: 'button', class: this.sidebar ? 'on' : '', onclick: () => (this.sidebar ? this.closeSidebar() : this.openSidebar()) }, h('span', { class: 'label', text: 'List' }), count ? h('span', { class: 'count', text: String(count) }) : null),
-      h('button', { type: 'button', title: 'Exit Feedback mode (Alt+Shift+F)', 'aria-label': 'Exit Feedback mode', text: '×', onclick: () => void this.setMode(false) })
+      h('button', { type: 'button', 'data-tip': 'Exit Feedback mode (Alt+Shift+F)', 'aria-label': 'Exit Feedback mode', text: '×', onclick: () => void this.setMode(false) })
     );
     const wasPlaced = !!this.toolbar;
     // Stays hidden while the device preview covers the page (re-renders must not unhide it).

@@ -1135,18 +1135,53 @@ select {
 }
 
 /* Screen recording */
-.toolbar .rec-start {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px 8px;
+/* Hover labels for the toolbar's icon buttons: instant (no native-tooltip delay), and they open
+   away from the screen edge the toolbar is docked to. */
+.toolbar [data-tip] {
+  position: relative;
 }
-.toolbar .rec-start-dot {
-  display: block;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: #ff5a5f;
+.toolbar [data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 10px);
+  transform: translateX(-50%) translateY(4px);
+  padding: 5px 9px;
+  border-radius: 6px;
+  background: #111;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.3;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  z-index: 1;
+}
+.toolbar[data-corner^='t'] [data-tip]::after {
+  bottom: auto;
+  top: calc(100% + 10px);
+  transform: translateX(-50%) translateY(-4px);
+}
+.toolbar [data-tip]:hover::after,
+.toolbar [data-tip]:focus-visible::after {
+  opacity: 1;
+  transform: translateX(-50%);
+}
+/* Edge buttons: keep the label on screen. */
+.toolbar[data-corner$='r'] > [data-tip]:last-child::after {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+.toolbar.dragging [data-tip]::after {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .toolbar [data-tip]::after {
+    transition: none;
+  }
 }
 .toolbar.recording {
   gap: 8px;
