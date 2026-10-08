@@ -15,6 +15,7 @@ Internal QA for **staging** WordPress sites. A teammate turns on Feedback mode, 
 - **Right-click** any element, choose a type (or press 1–4), type a title and press **Enter**.
   - **Alt+right-click** always opens the normal browser menu.
 - **+** pins with a normal click instead, for trackpads and touch screens. The **note** icon creates feedback for the whole page. Hover any toolbar icon to see what it does.
+- **Show it:** the feedback form has **Screenshot** and **Video** buttons. Nothing is captured until you pick one, and an item carries one or the other. A screenshot can be annotated, retaken or removed; a video can be re-recorded or removed.
 - **Pins** are colored by type and turn into a green ✓ when resolved. Pins follow the List's status filter: resolved pins are hidden while it shows **Unresolved** (the default) and appear when you pick **Any status** or **Resolved**.
   - Click a pin to change its status, priority or assignee, reply or delete.
 - The purple element outline shows while picking an element with **+**, so you can see what will be pinned.
@@ -25,19 +26,19 @@ Internal QA for **staging** WordPress sites. A teammate turns on Feedback mode, 
 
 ## Screen recordings
 
-The **red dot** (Record) on the toolbar records the page with your voice, like Loom, and files it as feedback.
+Any feedback can carry a recording of the page with your voice, like Loom: pinned to an element (right-click or **+**) or for the whole page (the **note** icon).
 
-1. Click the **red dot**. Chrome asks for the microphone, then to share **this tab**; allow both. (Without a mic it still records, silently.)
+1. Start feedback as usual, then click **Video** under **Show it**. The form steps aside while you record; the element you picked stays outlined. Chrome asks for the microphone, then to share **this tab**; allow both. (Without a mic it still records, silently.)
 2. Show the problem and talk it through. Your pointer and every click show up in the video as a yellow dot and an orange ripple.
-3. Click **■ Stop** (or Chrome's own "Stop sharing"). It stops by itself at the time limit (3 minutes by default).
-4. Watch the preview, add a title and type, and click **Add**.
+3. Click **■ Stop** (or Chrome's own "Stop sharing"). It stops by itself at the time limit (3 minutes by default). **Discard** throws it away.
+4. The same form comes back with everything you'd typed and the video in place. Watch it, then click **Add**.
 
 - **It uploads while you record**, in small pieces every 2 seconds, so saving is almost instant and no host upload limit gets in the way. If the connection drops, the whole video is sent again on save.
 - **Clicks and JavaScript errors are logged with timestamps.** The pin card and the Feedback detail screen list them under the player; click a time to jump there. Field values are never logged.
 - **Teamwork** gets the video attached to the task, plus a link and the timeline (e.g. "0:42 · clicked `"Pay now" (button.pay)`") in the description.
-- **Chrome and Edge only**, on a desktop. Other browsers don't show the button. A recording stays on one page: leaving the page asks first, and ends the recording.
+- **Chrome and Edge only**, on a desktop. Other browsers don't show **Video**. A recording stays on one page: leaving the page asks first, and ends the recording.
 - **Storage:** `uploads/fbc-videos/`, with unguessable file names, at roughly 10–15 MB a minute. Deleting an item deletes its video. **Deleting the plugin always deletes every recording**, even when you keep the other data; pushed tasks keep their copy in Teamwork. **Remove all data** deletes them too.
-- **Settings → Screen recordings:** turn the button off, or change the time limit (1–10 minutes).
+- **Settings → Screen recordings:** turn **Video** off, or change the time limit (1–10 minutes). **Settings → Screenshots** does the same for **Screenshot**.
 
 ## Due dates
 

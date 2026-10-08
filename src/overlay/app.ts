@@ -121,7 +121,6 @@ export class App {
   private corner: Corner = 'br';
   private dragging = false;
   private ghost: HTMLDivElement | null = null;
-  private pendingShot: Promise<Blob | null> | null = null;
   /** True inside our own device-preview iframe. */
   private readonly inPreview = window.self !== window.top && window.name === PREVIEW_FRAME_NAME;
   private previewEl: HTMLElement | null = null;
@@ -135,6 +134,8 @@ export class App {
   private recorder: Recorder | null = null;
   private recClock: HTMLElement | null = null;
   private stopTrail: (() => void) | null = null;
+  /** Gets the finished recording (or null when it was discarded or never started). */
+  private recDone: ((recording: Recording | null) => void) | null = null;
 
   constructor(private cfg: Config) {
     this.api = new Api(cfg);
@@ -492,7 +493,7 @@ export class App {
 
   private onOutsideMouseDown(e: MouseEvent): void {
     // A composer holding a recording only closes on purpose (× / Cancel / Esc), never by a stray click.
-    if (this.card && !this.inOverlay(e) && !this.cardGuard) this.closeCard();
+    if (this.card && !this.inOverlay(e) && !this.cardGuard && !this.recorder) this.closeCard();
   }
 
   private onMouseMove(e: MouseEvent): void {
@@ -680,6 +681,16 @@ export class App {
     }
   }
 
+  /**
+   * Closes the open card so another can take its place. False when it refused (a composer holding a
+   * video, or one hidden behind a recording in progress): the caller must not open anything.
+   */
+  private releaseCard(): boolean {
+    if (!this.card) return true;
+    this.closeCard(true);
+    return !this.card;
+  }
+
   private showCard(card: HTMLElement, x: number, y: number): void {
     this.closeCard(true);
     this.hideOutline();
@@ -744,8 +755,7 @@ export class App {
   }
 
   private openTypeMenu(el: Element, x: number, y: number): void {
-    // Capture now, while the page still looks the way the reviewer is reporting it.
-    this.pendingShot = this.startCapture({ x, y });
+    if (!this.releaseCard()) return;
     // Keep the right-clicked element outlined while the menu and composer are open.
     this.selectedEl = el;
     const labels = this.cfg.labels.type;
@@ -776,7 +786,8 @@ export class App {
     buttons[0].focus();
   }
 
-  private openComposer(type: ItemType, el: Element | null, x: number, y: number, recording?: Recording): void {
+  private openComposer(type: ItemType, el: Element | null, x: number, y: number): void {
+    if (!this.releaseCard()) return;
     this.selectedEl = el; // a whole-page note has nothing to keep outlined
     let anchor: Anchor | null = null;
     if (el) {
@@ -802,86 +813,154 @@ export class App {
     const error = h('div', { class: 'error', role: 'alert' });
     const submit = h('button', { class: 'btn primary', type: 'submit', text: 'Add' });
 
-    // Screenshot: started at right-click (openTypeMenu) so the composer isn't covering the
-    // element yet; a page note starts its own capture here, without a marker.
-    // A recording shows the problem itself: no screenshot alongside it.
-    let shotPromise: Promise<Blob | null> = recording ? Promise.resolve(null) : (this.pendingShot ?? this.startCapture(el ? { x, y } : null));
-    this.pendingShot = null;
-    const withShot = !!this.cfg.shots && !recording;
-    let shotBlob: Blob | null = null;
-    let shotUrl = '';
-    const shotBox = h('div', { class: 'shot', 'aria-live': 'polite' });
-    const renderShot = () => {
-      if (shotUrl) URL.revokeObjectURL(shotUrl);
-      shotUrl = shotBlob ? URL.createObjectURL(shotBlob) : '';
-      shotBox.replaceChildren(
-        ...(shotBlob
-          ? [
-              h('img', { src: shotUrl, alt: 'Screenshot that will be attached' }),
-              h(
-                'div',
-                { class: 'shot-actions' },
-                h('button', {
-                  type: 'button',
-                  class: 'btn link',
-                  text: '✎ Annotate',
-                  onclick: async () => {
-                    if (!shotBlob) return;
-                    const edited = await this.annotate(shotBlob);
-                    if (edited) {
-                      shotBlob = edited;
-                      shotPromise = Promise.resolve(edited);
-                      renderShot();
-                    }
-                  },
-                }),
-                this.cfg.shots
-                  ? h('button', { type: 'button', class: 'btn link', text: 'Remove screenshot', onclick: () => { shotBlob = null; shotPromise = Promise.resolve(null); renderShot(); } })
-                  : null
-              ),
-            ]
-          : [])
-      );
-      shotBox.hidden = !shotBlob;
-    };
-    if (withShot) {
-      shotBox.textContent = 'Capturing screenshot…';
-      void shotPromise.then((blob) => {
-        shotBlob = blob;
-        renderShot();
-        if (!blob) shotBox.hidden = true;
-      });
-    } else {
-      shotBox.hidden = true;
-    }
+    // Show it: nothing is attached until the reviewer asks for a screenshot or a video (one or
+    // the other). Both leave the overlay out, so the open composer never appears in them.
+    type Attachment = { kind: 'shot'; blob: Blob; url: string } | { kind: 'video'; rec: Recording; url: string; timer: number };
+    let attach: Attachment | null = null;
+    let recording = false;
+    const canShot = !!this.cfg.shots && !!this.cfg.assetsUrl;
+    const canVideo = this.canRecordHere();
+    const marker = el ? { x, y } : null;
+    const attachBox = h('div', { class: 'attach', 'aria-live': 'polite' });
 
-    // The recording: playable at once from memory while its upload finishes in the background.
-    let recUrl = '';
-    let recStatus: HTMLElement | null = null;
-    let recPreview: HTMLElement | null = null;
-    let recTimer = 0;
-    if (recording) {
-      recUrl = URL.createObjectURL(recording.blob);
-      recStatus = h('div', { class: 'meta rec-status', 'aria-live': 'polite' });
-      const showStatus = () => {
-        const p = recording.progress();
-        if (recStatus) recStatus.textContent = p >= 1 ? `Uploaded${recording.mic ? '' : ' · no microphone'}` : `Uploading… ${Math.round(p * 100)}%`;
-        if (p >= 1) window.clearInterval(recTimer);
-      };
-      showStatus();
-      recTimer = window.setInterval(showStatus, 400);
-      recPreview = h(
-        'div',
-        { class: 'rec-preview' },
-        playableVideo(recUrl, recording.durationMs / 1000),
-        recording.events.length ? h('div', { class: 'meta', text: `${recording.events.length} click${recording.events.length === 1 ? '' : 's'} and errors logged with timestamps` }) : null,
-        recStatus
-      );
-    }
-    const dropRecording = () => {
-      window.clearInterval(recTimer);
-      if (recUrl) URL.revokeObjectURL(recUrl);
+    const dropAttachment = (discardVideo: boolean) => {
+      if (!attach) return;
+      URL.revokeObjectURL(attach.url);
+      if (attach.kind === 'video') {
+        window.clearInterval(attach.timer);
+        if (discardVideo) void attach.rec.discard();
+      }
+      attach = null;
     };
+    // Closing the composer would throw a video away (or end a recording in progress): confirm first.
+    const syncGuard = () => {
+      this.cardGuard =
+        recording || attach?.kind === 'video'
+          ? () => {
+              if (recording) return false; // stop or discard from the recording bar first
+              if (!window.confirm('Discard this screen recording?')) return false;
+              dropAttachment(true);
+              return true;
+            }
+          : null;
+    };
+    const takeShot = async () => {
+      attachBox.replaceChildren(h('div', { class: 'meta', text: 'Capturing screenshot…' }));
+      const blob = await this.startCapture(marker);
+      if (!form.isConnected) return;
+      if (blob) {
+        dropAttachment(true);
+        attach = { kind: 'shot', blob, url: URL.createObjectURL(blob) };
+      } else {
+        this.toast('Couldn’t capture a screenshot', true);
+      }
+      renderAttach();
+    };
+    const recordVideo = () => {
+      recording = true;
+      syncGuard();
+      form.hidden = true;
+      void this.startRecording((rec) => {
+        recording = false;
+        if (!form.isConnected) {
+          if (rec) void rec.discard();
+          return;
+        }
+        form.hidden = false;
+        if (rec) {
+          dropAttachment(true);
+          const status = () => {
+            const p = rec.progress();
+            const line = attachBox.querySelector('.rec-status');
+            if (line) line.textContent = p >= 1 ? `Uploaded${rec.mic ? '' : ' · no microphone'}` : `Uploading… ${Math.round(p * 100)}%`;
+            if (p >= 1 && attach?.kind === 'video') window.clearInterval(attach.timer);
+          };
+          attach = { kind: 'video', rec, url: URL.createObjectURL(rec.blob), timer: window.setInterval(status, 400) };
+          renderAttach();
+          status();
+        } else {
+          renderAttach();
+        }
+        syncGuard();
+        this.moveCard(form, form.offsetLeft, form.offsetTop);
+        title.focus();
+      });
+    };
+    const remove = (label: string) =>
+      h('button', {
+        type: 'button',
+        class: 'btn link',
+        text: label,
+        onclick: () => {
+          dropAttachment(true);
+          renderAttach();
+          syncGuard();
+        },
+      });
+    const renderAttach = () => {
+      if (!attach) {
+        attachBox.replaceChildren(
+          ...(canShot || canVideo
+            ? [
+                h(
+                  'div',
+                  { class: 'attach-pick' },
+                  h('span', { class: 'attach-label', text: 'Show it' }),
+                  canShot ? h('button', { type: 'button', class: 'btn attach-btn', onclick: () => void takeShot() }, deviceIcon('camera'), 'Screenshot') : null,
+                  canVideo ? h('button', { type: 'button', class: 'btn attach-btn', onclick: recordVideo }, deviceIcon('record'), 'Video') : null
+                ),
+              ]
+            : [])
+        );
+        return;
+      }
+      if (attach.kind === 'shot') {
+        const shot = attach;
+        attachBox.replaceChildren(
+          h(
+            'div',
+            { class: 'shot' },
+            h('img', { src: shot.url, alt: 'Screenshot that will be attached' }),
+            h(
+              'div',
+              { class: 'shot-actions' },
+              h('button', {
+                type: 'button',
+                class: 'btn link',
+                text: '✎ Annotate',
+                onclick: async () => {
+                  const edited = await this.annotate(shot.blob);
+                  if (!edited || attach !== shot) return;
+                  URL.revokeObjectURL(shot.url);
+                  attach = { kind: 'shot', blob: edited, url: URL.createObjectURL(edited) };
+                  renderAttach();
+                },
+              }),
+              h('button', { type: 'button', class: 'btn link', text: 'Retake', onclick: () => void takeShot() }),
+              remove('Remove')
+            )
+          )
+        );
+        return;
+      }
+      const video = attach;
+      attachBox.replaceChildren(
+        h(
+          'div',
+          { class: 'rec-preview' },
+          playableVideo(video.url, video.rec.durationMs / 1000),
+          h(
+            'div',
+            { class: 'meta' },
+            `Screen recording · ${clock(video.rec.durationMs)}`,
+            video.rec.events.length ? ` · ${video.rec.events.length} click${video.rec.events.length === 1 ? '' : 's'} and errors logged` : ''
+          ),
+          h('div', { class: 'meta rec-status' }),
+          h('div', { class: 'shot-actions' }, canVideo ? h('button', { type: 'button', class: 'btn link', text: 'Re-record', onclick: recordVideo }) : null, remove('Remove'))
+        )
+      );
+    };
+    renderAttach();
 
     const form = h(
       'form',
@@ -893,8 +972,7 @@ export class App {
           void save();
         },
       },
-      h('div', { class: 'head' }, h('span', { class: 'chip' }, h('span', { class: `dot ${type}` }), recording ? `Screen recording · ${clock(recording.durationMs)}` : el ? `<${el.tagName.toLowerCase()}>` : 'Whole page'), h('button', { class: 'x', type: 'button', 'aria-label': 'Close', text: '×', onclick: () => this.closeCard() })),
-      recPreview,
+      h('div', { class: 'head' }, h('span', { class: 'chip' }, h('span', { class: `dot ${type}` }), el ? `<${el.tagName.toLowerCase()}>` : 'Whole page'), h('button', { class: 'x', type: 'button', 'aria-label': 'Close', text: '×', onclick: () => this.closeCard() })),
       h('label', { class: 'field' }, h('span', { text: 'Title' }), title),
       error,
       h('label', { class: 'field' }, h('span', { text: 'Description' }), desc),
@@ -904,7 +982,7 @@ export class App {
         ? h('div', { class: 'meta hint', text: 'Showing WordPress users until Teamwork is connected (Feedback → Settings). Then this lists your Teamwork project members.' })
         : null,
       h('div', { class: 'field due-field' }, h('label', { class: 'check' }, dueOn, ' Set date?'), dueInput),
-      shotBox,
+      attachBox,
       h('div', { class: 'actions' }, h('button', { class: 'btn link', type: 'button', text: 'Cancel', onclick: () => this.closeCard() }), submit)
     );
 
@@ -917,12 +995,11 @@ export class App {
       }
       submit.disabled = true;
       try {
-        // Wait briefly for a capture still in flight; never hold the feedback hostage to it.
-        const blob = withShot ? await Promise.race([shotPromise, new Promise<null>((r) => window.setTimeout(() => r(null), 10000))]) : null;
+        const current = attach as Attachment | null;
         let rec: { token: string; duration: number; events: Recording['events'] } | undefined;
-        if (recording) {
+        if (current?.kind === 'video') {
           submit.textContent = 'Uploading…';
-          rec = { token: await recording.uploaded(), duration: Math.round(recording.durationMs / 1000), events: recording.events };
+          rec = { token: await current.rec.uploaded(), duration: Math.round(current.rec.durationMs / 1000), events: current.rec.events };
         }
         const item = await this.api.createItem(
           {
@@ -940,10 +1017,9 @@ export class App {
             context: captureContext(this.cfg),
             recording: rec,
           },
-          shotBlob ?? blob
+          current?.kind === 'shot' ? current.blob : null
         );
-        if (shotUrl) URL.revokeObjectURL(shotUrl);
-        dropRecording();
+        dropAttachment(false);
         this.cardGuard = null;
         if (item.due_next) this.cfg.due = item.due_next; // keeps the batch date for the next item
         this.closeCard();
@@ -962,19 +1038,15 @@ export class App {
     };
 
     this.showCard(form, x, y);
-    if (recording) {
-      // Closing the composer would lose the recording: confirm, then delete the upload.
-      this.cardGuard = () => {
-        if (!window.confirm('Discard this screen recording?')) return false;
-        dropRecording();
-        void recording.discard();
-        return true;
-      };
-    }
+    // Closing without saving frees the screenshot (a video is handled by the guard).
+    this.cardCleanup = () => {
+      if (attach?.kind === 'shot') dropAttachment(false);
+    };
     title.focus();
   }
 
   async openPopover(id: number, at?: { x: number; y: number }): Promise<void> {
+    if (!this.releaseCard()) return;
     let item: Item;
     try {
       item = await this.api.getItem(id);
@@ -1385,13 +1457,11 @@ export class App {
     return !!this.cfg.video?.enabled && !this.inPreview && canRecord();
   }
 
-  private async startRecording(): Promise<void> {
+  /** Records the tab; `done` gets the recording, or null when it was cancelled, discarded or too short. */
+  private async startRecording(done: (recording: Recording | null) => void): Promise<void> {
     if (this.recorder) return;
     this.exitPinMode();
-    this.closeCard();
-    if (this.card) return; // a recording composer is still open and was kept
-    this.closeSidebar();
-    this.hideOutline();
+    this.recDone = done;
     const recorder = new Recorder(this.api, {
       maxSeconds: this.cfg.video?.maxSeconds ?? 180,
       isOverlay: (e) => this.inOverlay(e),
@@ -1406,28 +1476,35 @@ export class App {
       await recorder.start();
     } catch (err) {
       if (this.recorder !== recorder) return; // already discarded from the toolbar
-      this.recorder = null;
-      this.renderToolbar();
       const name = (err as Error).name;
       if (name === 'NotAllowedError' || name === 'AbortError') this.toast('Recording cancelled');
       else this.toast(`Couldn’t start recording: ${(err as Error).message}`, true);
+      this.finishRecording(null);
       return;
     }
     this.stopTrail = mountPointerTrail(this.root.querySelector('.layer') as HTMLElement);
   }
 
   private onRecordingStopped(recording: Recording): void {
+    if (recording.durationMs < 1000 || !recording.blob.size) {
+      void recording.discard();
+      this.toast('Recording was too short, so it was discarded', true);
+      this.finishRecording(null);
+      return;
+    }
+    this.finishRecording(recording);
+  }
+
+  /** Back to the normal toolbar, and the recording to the composer that asked for it. */
+  private finishRecording(recording: Recording | null): void {
     this.stopTrail?.();
     this.stopTrail = null;
     this.recorder = null;
     this.recClock = null;
+    const done = this.recDone;
+    this.recDone = null;
     this.renderToolbar();
-    if (recording.durationMs < 1000 || !recording.blob.size) {
-      void recording.discard();
-      this.toast('Recording was too short, so it was discarded', true);
-      return;
-    }
-    this.openComposer('bug', null, window.innerWidth / 2 - 170, 120, recording);
+    done?.(recording);
   }
 
   /** The toolbar while recording: a timer, Stop and Discard, nothing else to click by accident. */
@@ -1439,18 +1516,14 @@ export class App {
       { class: 'toolbar recording', role: 'toolbar', 'aria-label': 'Screen recording' },
       h('span', { class: 'rec-dot', 'aria-hidden': 'true' }),
       this.recClock,
-      h('button', { type: 'button', class: 'rec-stop', text: '■ Stop', title: 'Stop and describe the problem', onclick: () => recorder.stop() }),
+      h('button', { type: 'button', class: 'rec-stop', text: '■ Stop', title: 'Stop and go back to your feedback', onclick: () => recorder.stop() }),
       h('button', {
         type: 'button',
         text: 'Discard',
         onclick: () => {
           if (!window.confirm('Throw this recording away?')) return;
-          this.stopTrail?.();
-          this.stopTrail = null;
-          this.recorder = null;
-          this.recClock = null;
           void recorder.discard();
-          this.renderToolbar();
+          this.finishRecording(null);
           this.toast('Recording discarded');
         },
       })
@@ -1486,9 +1559,6 @@ export class App {
             : this.enterPinMode({ hint: 'Click any element to add feedback', done: (el, x, y) => this.openTypeMenu(el, x, y) }),
       }, deviceIcon('add')),
       h('button', { type: 'button', class: 'icon-btn', 'data-tip': 'Add a page note', 'aria-label': 'Add a note for the whole page', onclick: () => this.openComposer('comment', null, window.innerWidth / 2 - 170, 120) }, deviceIcon('note')),
-      this.canRecordHere()
-        ? h('button', { type: 'button', class: 'icon-btn rec-start', 'data-tip': `Record your screen and voice (up to ${clock((this.cfg.video?.maxSeconds ?? 180) * 1000)})`, 'aria-label': 'Record this tab with your voice', onclick: () => void this.startRecording() }, deviceIcon('record'))
-        : null,
       this.inPreview
         ? null
         : h(
