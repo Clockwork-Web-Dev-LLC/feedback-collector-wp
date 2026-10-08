@@ -311,7 +311,7 @@ final class Client {
 	public function upload_pending_file( string $path, string $filename ): string|WP_Error {
 		$size = (int) filesize( $path );
 		if ( $size < 1 ) {
-			return new WP_Error( 'fbc_tw_file', __( 'Screenshot file is missing.', 'feedback-collector' ) );
+			return new WP_Error( 'fbc_tw_file', __( 'The file to attach is missing.', 'feedback-collector' ) );
 		}
 		$data = $this->request(
 			'GET',
@@ -329,11 +329,15 @@ final class Client {
 		if ( '' === $ref || '' === $url ) {
 			return new WP_Error( 'fbc_tw_file', __( 'Teamwork did not return an upload URL.', 'feedback-collector' ) );
 		}
+		// Recordings run to tens of megabytes: allow the memory and time to send one in a single PUT.
+		if ( $size > 8 * MB_IN_BYTES ) {
+			wp_raise_memory_limit( 'fbc_upload' );
+		}
 		$response = wp_remote_request(
 			$url,
 			array(
 				'method'  => 'PUT',
-				'timeout' => 30,
+				'timeout' => max( 30, (int) ceil( $size / MB_IN_BYTES ) * 3 ),
 				'headers' => array(
 					'X-Amz-Acl'      => 'public-read',
 					'Content-Length' => (string) $size,
@@ -347,7 +351,7 @@ final class Client {
 		$code = (int) wp_remote_retrieve_response_code( $response );
 		if ( $code < 200 || $code >= 300 ) {
 			/* translators: %d: HTTP status */
-			return new WP_Error( 'fbc_tw_file', sprintf( __( 'Screenshot upload to Teamwork failed (%d).', 'feedback-collector' ), $code ) );
+			return new WP_Error( 'fbc_tw_file', sprintf( __( 'File upload to Teamwork failed (%d).', 'feedback-collector' ), $code ) );
 		}
 		return $ref;
 	}

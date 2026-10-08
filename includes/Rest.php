@@ -102,6 +102,33 @@ final class Rest {
 
 		register_rest_route(
 			self::NS,
+			'/recordings',
+			array(
+				'methods'             => WP_REST_Server::CREATABLE,
+				'callback'            => array( self::class, 'start_recording' ),
+				'permission_callback' => $can,
+			)
+		);
+
+		register_rest_route(
+			self::NS,
+			'/recordings/(?P<token>[A-Za-z0-9]{32})',
+			array(
+				array(
+					'methods'             => WP_REST_Server::CREATABLE,
+					'callback'            => array( self::class, 'append_recording' ),
+					'permission_callback' => $can,
+				),
+				array(
+					'methods'             => WP_REST_Server::DELETABLE,
+					'callback'            => array( self::class, 'discard_recording' ),
+					'permission_callback' => $can,
+				),
+			)
+		);
+
+		register_rest_route(
+			self::NS,
 			'/reviewers',
 			array(
 				'methods'             => WP_REST_Server::READABLE,
@@ -270,6 +297,22 @@ final class Rest {
 			}
 		}
 
+		// A screen recording uploaded while it was made: moved onto the item, also before the hook.
+		$video_error = '';
+		$recording   = is_array( $p['recording'] ?? null ) ? $p['recording'] : null;
+		if ( $recording ) {
+			$saved = Videos::attach(
+				$id,
+				get_current_user_id(),
+				(string) ( $recording['token'] ?? '' ),
+				absint( $recording['duration'] ?? 0 ),
+				is_array( $recording['events'] ?? null ) ? $recording['events'] : array()
+			);
+			if ( is_wp_error( $saved ) ) {
+				$video_error = $saved->get_error_message();
+			}
+		}
+
 		// Starts the reviewer's batch, or moves it to this date if they changed it mid-batch.
 		if ( $due ) {
 			DueDates::remember( get_current_user_id(), $due );
@@ -280,6 +323,9 @@ final class Rest {
 		$out = self::present( Items::get( $id ) );
 		if ( '' !== $shot_error ) {
 			$out['screenshot_error'] = $shot_error;
+		}
+		if ( '' !== $video_error ) {
+			$out['video_error'] = $video_error;
 		}
 		// The next suggestion, so an open page keeps the batch without reloading.
 		$out['due_next'] = DueDates::client_config( get_current_user_id() );
@@ -325,6 +371,47 @@ final class Rest {
 		Screenshots::delete_file( $item );
 		Items::update( $item['id'], array( 'screenshot' => '' ) );
 		return new WP_REST_Response( self::present( Items::get( $item['id'] ) ) );
+	}
+
+	/**
+	 * POST /recordings — opens an upload session for a screen recording about to start.
+	 */
+	public static function start_recording(): WP_REST_Response|WP_Error {
+		if ( ! Videos::enabled() ) {
+			return new WP_Error( 'fbc_disabled', __( 'Screen recording is turned off in Feedback → Settings.', 'feedback-collector' ), array( 'status' => 403 ) );
+		}
+		$token = Videos::start_session( get_current_user_id() );
+		if ( is_wp_error( $token ) ) {
+			return $token;
+		}
+		$response = new WP_REST_Response(
+			array(
+				'token'       => $token,
+				'max_seconds' => Videos::max_seconds(),
+			)
+		);
+		$response->set_status( 201 );
+		return $response;
+	}
+
+	/**
+	 * POST /recordings/{token}?offset=N — appends one piece (the raw request body).
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function append_recording( WP_REST_Request $request ): WP_REST_Response|WP_Error {
+		$size = Videos::append( get_current_user_id(), (string) $request['token'], absint( $request->get_param( 'offset' ) ), (string) $request->get_body() );
+		return is_wp_error( $size ) ? $size : new WP_REST_Response( array( 'size' => $size ) );
+	}
+
+	/**
+	 * DELETE /recordings/{token} — the reviewer discarded the recording.
+	 *
+	 * @param WP_REST_Request $request Request.
+	 */
+	public static function discard_recording( WP_REST_Request $request ): WP_REST_Response {
+		Videos::discard( get_current_user_id(), (string) $request['token'] );
+		return new WP_REST_Response( array( 'deleted' => true ) );
 	}
 
 	/**
@@ -561,6 +648,9 @@ final class Rest {
 			'due_date'        => DueDates::sanitize( (string) $item['due_date'] ),
 			'overdue'         => DueDates::overdue( $item ),
 			'screenshot_url'  => Screenshots::url( $item ),
+			'video_url'       => Videos::url( $item ),
+			'video_duration'  => (int) ( $item['video_duration'] ?? 0 ),
+			'video_events'    => $item['video_events'] ?? array(),
 			'reporter_id'     => $item['reporter_id'],
 			'reporter_name'   => $reporter ? $reporter->display_name : '',
 			'assignee_id'     => Assignees::selected( $item ),

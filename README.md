@@ -23,6 +23,22 @@ Internal QA for **staging** WordPress sites. A teammate turns on Feedback mode, 
   - Items whose element can't be found anymore are listed as **Orphaned**, with a “Pin again” link to place them on a new element.
 - **Feedback** in wp-admin holds the full list: filters, search, sorting, bulk status changes, a detail screen with all captured context, and **View on page**, which opens the page with the pin open.
 
+## Screen recordings
+
+**● Record** on the toolbar records the page with your voice, like Loom, and files it as feedback.
+
+1. Click **● Record**. Chrome asks for the microphone, then to share **this tab**; allow both. (Without a mic it still records, silently.)
+2. Show the problem and talk it through. Your pointer and every click show up in the video as a yellow dot and an orange ripple.
+3. Click **■ Stop** (or Chrome's own "Stop sharing"). It stops by itself at the time limit (3 minutes by default).
+4. Watch the preview, add a title and type, and click **Add**.
+
+- **It uploads while you record**, in small pieces every 2 seconds, so saving is almost instant and no host upload limit gets in the way. If the connection drops, the whole video is sent again on save.
+- **Clicks and JavaScript errors are logged with timestamps.** The pin card and the Feedback detail screen list them under the player; click a time to jump there. Field values are never logged.
+- **Teamwork** gets the video attached to the task, plus a link and the timeline (e.g. "0:42 · clicked `"Pay now" (button.pay)`") in the description.
+- **Chrome and Edge only**, on a desktop. Other browsers don't show the button. A recording stays on one page: leaving the page asks first, and ends the recording.
+- **Storage:** `uploads/fbc-videos/`, with unguessable file names, at roughly 10–15 MB a minute. Deleting an item deletes its video. **Deleting the plugin always deletes every recording**, even when you keep the other data; pushed tasks keep their copy in Teamwork. **Remove all data** deletes them too.
+- **Settings → Screen recordings:** turn the button off, or change the time limit (1–10 minutes).
+
 ## Due dates
 
 - **Set date?** in the composer gives the item a due date. It starts ticked, with the date 3 days out filled in; untick it for no date, or pick another day.

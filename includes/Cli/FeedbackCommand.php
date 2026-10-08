@@ -428,6 +428,7 @@ class FeedbackCommand {
 			array( 'Metric' => 'Type: Comments / Notes', 'Count' => $type_counts['comment'] ?? 0 ),
 			array( 'Metric' => 'Active QA Round', 'Count' => Rounds::current() ),
 			array( 'Metric' => 'Screenshots on Disk', 'Count' => $inv['screenshots'] ),
+			array( 'Metric' => 'Screen Recordings on Disk', 'Count' => $inv['videos'] ),
 			array( 'Metric' => 'Unpushed Teamwork Tasks', 'Count' => $inv['unpushed'] ),
 		);
 
@@ -745,6 +746,7 @@ class FeedbackCommand {
 			array( 'Resource' => 'Feedback Items (Database)', 'Count' => $inv['items'] ),
 			array( 'Resource' => 'Comment & Activity Rows', 'Count' => $inv['comments'] ),
 			array( 'Resource' => 'Screenshots on Disk', 'Count' => $inv['screenshots'] ),
+			array( 'Resource' => 'Screen Recordings on Disk', 'Count' => $inv['videos'] ),
 			array( 'Resource' => 'Unpushed Active Items', 'Count' => $inv['unpushed'] ),
 		);
 
@@ -772,7 +774,7 @@ class FeedbackCommand {
 
 		WP_CLI::line( sprintf( 'Dropped %d database table(s).', $res['tables'] ) );
 		WP_CLI::line( sprintf( 'Removed %d plugin option(s).', $res['options'] ) );
-		WP_CLI::line( sprintf( 'Deleted %d screenshot file(s).', $res['files'] ) );
+		WP_CLI::line( sprintf( 'Deleted %d screenshot and recording file(s).', $res['files'] ) );
 
 		WP_CLI::success( 'Feedback Collector data successfully purged from site.' );
 	}
