@@ -631,7 +631,8 @@ class FeedbackCommand {
 		}
 
 		$where_sql = implode( ' AND ', $where );
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// $where_sql is fixed column names and placeholders only; values go through prepare().
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.InterpolatedNotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		$unpushed_ids = $wpdb->get_col( $wpdb->prepare( "SELECT id FROM %i WHERE {$where_sql} ORDER BY id ASC", $vals ) );
 
 		if ( empty( $unpushed_ids ) ) {

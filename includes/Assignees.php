@@ -17,7 +17,7 @@ defined( 'ABSPATH' ) || exit;
  */
 final class Assignees {
 
-	public const OPTION = 'fbc_assignee_source';
+	public const OPTION = 'fbcol_assignee_source';
 
 	/**
 	 * The configured preference: 'teamwork' (default) or 'wordpress'.
@@ -48,9 +48,9 @@ final class Assignees {
 		$client = Teamwork::client();
 		$s      = Teamwork::settings();
 		if ( ! $client || ! $s['project_id'] ) {
-			return new WP_Error( 'fbc_tw_not_ready', __( 'Teamwork is not connected.', 'feedback-collector' ) );
+			return new WP_Error( 'fbcol_tw_not_ready', __( 'Teamwork is not connected.', 'feedback-collector' ) );
 		}
-		$key = 'fbc_tw_people_list_' . (int) $s['project_id'];
+		$key = 'fbcol_tw_people_list_' . (int) $s['project_id'];
 		if ( ! $refresh ) {
 			$cached = get_transient( $key );
 			if ( is_array( $cached ) ) {
@@ -147,10 +147,10 @@ final class Assignees {
 					);
 				}
 			}
-			return new WP_Error( 'fbc_invalid', __( 'That person is not on the Teamwork project.', 'feedback-collector' ), array( 'status' => 400 ) );
+			return new WP_Error( 'fbcol_invalid', __( 'That person is not on the Teamwork project.', 'feedback-collector' ), array( 'status' => 400 ) );
 		}
 		if ( $id && ! user_can( $id, CAP ) ) {
-			return new WP_Error( 'fbc_invalid', __( 'That user cannot be assigned feedback.', 'feedback-collector' ), array( 'status' => 400 ) );
+			return new WP_Error( 'fbcol_invalid', __( 'That user cannot be assigned feedback.', 'feedback-collector' ), array( 'status' => 400 ) );
 		}
 		return array( 'assignee_id' => $id );
 	}

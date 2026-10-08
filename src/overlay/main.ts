@@ -20,7 +20,7 @@ function allowedHere(): boolean {
 }
 
 function start(): void {
-  const cfg = window.fbcConfig;
+  const cfg = window.fbcolConfig;
   if (!cfg || !allowedHere()) return;
   new App(cfg).init();
 }

@@ -105,9 +105,9 @@ final class Layout {
 				<div class="fbc-admin__credit">
 					<?php
 					printf(
-						/* translators: %s: link to Clockwork */
+						/* translators: %s: link to the plugin's page */
 						esc_html__( 'Powered by %s', 'feedback-collector' ),
-						'<a href="https://clockworkwd.com" target="_blank" rel="noopener">Clockwork Feedback Collector</a>'
+						'<a href="https://wordpress.org/plugins/feedback-collector/" target="_blank" rel="noopener">Feedback Collector</a>'
 					);
 					?>
 				</div>
@@ -162,10 +162,10 @@ final class Layout {
 			return;
 		}
 		wp_dequeue_style( 'clockwork-companion-admin' );
-		wp_enqueue_style( 'fbc-admin', plugins_url( 'assets/admin.css', \FeedbackCollector\PLUGIN_FILE ), array(), VERSION . '-' . filemtime( FBC_DIR . 'assets/admin.css' ) );
+		wp_enqueue_style( 'fbcol-admin', plugins_url( 'assets/admin.css', \FeedbackCollector\PLUGIN_FILE ), array(), VERSION . '-' . filemtime( FBCOL_DIR . 'assets/admin.css' ) );
 		if ( str_contains( $hook, Admin::SLUG . '-branding' ) ) {
 			wp_enqueue_media();
-			wp_enqueue_script( 'fbc-admin-branding', plugins_url( 'assets/admin-branding.js', \FeedbackCollector\PLUGIN_FILE ), array(), VERSION . '-' . filemtime( FBC_DIR . 'assets/admin-branding.js' ), true );
+			wp_enqueue_script( 'fbcol-admin-branding', plugins_url( 'assets/admin-branding.js', \FeedbackCollector\PLUGIN_FILE ), array(), VERSION . '-' . filemtime( FBCOL_DIR . 'assets/admin-branding.js' ), true );
 		}
 	}
 

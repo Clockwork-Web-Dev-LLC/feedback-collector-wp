@@ -27,7 +27,7 @@ export interface Anchor {
 export type Strategy = 'id' | 'selector' | 'xpath' | 'text';
 export type Resolution = { el: Element; strategy: Strategy } | { el: null; strategy: 'none' };
 
-export const OVERLAY_HOST_ID = 'fbc-root';
+export const OVERLAY_HOST_ID = 'fbcol-root';
 
 const MAX_TEXT_LENGTH = 120;
 

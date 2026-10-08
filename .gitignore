@@ -5,3 +5,4 @@ interceptor-screenshot-*.png
 
 .claude/settings.local.json
 wp-cli.local.yml
+build/

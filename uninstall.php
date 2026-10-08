@@ -15,7 +15,7 @@ require_once __DIR__ . '/includes/Cleanup.php';
 // Screen recordings are always deleted: they are large, and pushed tasks keep a copy in Teamwork.
 FeedbackCollector\Cleanup::purge_videos();
 
-if ( ! get_option( 'fbc_delete_on_uninstall' ) ) {
+if ( ! get_option( 'fbcol_delete_on_uninstall' ) ) {
 	return;
 }
 

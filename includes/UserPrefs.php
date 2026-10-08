@@ -15,7 +15,7 @@ defined( 'ABSPATH' ) || exit;
  */
 final class UserPrefs {
 
-	public const META    = 'fbc_prefs';
+	public const META    = 'fbcol_prefs';
 	public const CORNERS = array( 'tl', 'tr', 'bl', 'br' );
 
 	/**

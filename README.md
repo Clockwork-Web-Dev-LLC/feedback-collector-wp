@@ -1,4 +1,4 @@
-# Clockwork Feedback Collector
+# Feedback Collector
 
 Internal QA for **staging** WordPress sites. A teammate turns on Feedback mode, right-clicks the thing that's wrong, and picks **Bug**, **Tweak**, **Change Request** or **Comment**. The feedback is pinned to that element with the page, breakpoint, browser and JS errors captured automatically. Items can be pushed to a Teamwork QA task list, and completing a task in Teamwork marks the item Resolved here.
 
@@ -50,26 +50,26 @@ Any feedback can carry a recording of the page with your voice, like Loom: pinne
 
 ## Branding (white-label)
 
-**Feedback → Branding** has a **Use custom branding** switch. Off (the default), the plugin shows "Feedback Collector" in small text with the default colors and no logo. On, the values below control every name, logo and color the plugin shows:
+**Feedback → Branding** has a **Use custom branding** switch. Off (the default), the plugin shows plain "Feedback Collector" in WordPress admin colors, with no logo, author or credit link. On, the values below control every name, logo and color the plugin shows:
 - the Plugins-screen name, author and URL
 - the menu label, page titles and header band
 - the on-page toolbar
 - the "Reported by … (Name #id)" line in Teamwork tasks
 
-Default colors are Clockwork's: purple `#6953C4`, header `#2D2062`, lime accent `#7EFF83`. The look matches Clockwork Companion. Switching custom branding off keeps your saved values for next time.
+Switching it on starts from Clockwork's look: the bundled logo, purple `#6953C4`, header `#2D2062`, lime accent `#7EFF83` (matching Clockwork Companion). Change any of it, or leave it for one-click Clockwork branding. Switching custom branding off keeps your saved values for next time.
 
 - **Colors:** text on any brand color is picked by contrast, so a light brand color never gets white text. Links and tabs use a darkened version of the primary color that reaches WCAG AA on white.
 - **Logo:** optional; pick one from the Media Library. It sits on the header color, so use a light logo on a dark header. Without one, the header shows the label as small text.
 - **Credit:** an optional "Powered by Clockwork Feedback Collector" line shows when white-labeled.
-- **In code:** the `fbc_branding` filter can set any value, and overrides what's saved.
+- **In code:** the `fbcol_branding` filter can set any value, and overrides what's saved.
 
-Internal identifiers stay neutral and never change with branding: the `feedback-collector` folder, text domain and REST namespace, and the `fbc_` tables, options and capability. Clockwork Companion's admin stylesheet is kept off these screens even when the menu label contains "Clockwork".
+Internal identifiers stay neutral and never change with branding: the `feedback-collector` folder, text domain and REST namespace, and the `fbcol_` tables, options and capability. Clockwork Companion's admin stylesheet is kept off these screens even when the menu label contains "Clockwork".
 
 ## Teamwork
 
 Create a dedicated Teamwork user (e.g. "QA Bot") and add it only to the projects it needs. Log in to Teamwork as that user, click the profile icon, then **Edit My Details** → **API & Mobile** → **Show your Token**, and copy the key.
 
-In **Feedback → Settings**, paste the Teamwork site URL and the key. The key is stored **encrypted in the database** and is never shown again or sent to the browser. If the site's security salts change (e.g. after a migration), Settings asks you to paste it again. Advanced, optional: `FBC_TEAMWORK_API_KEY` / `FBC_TEAMWORK_SITE` constants in `wp-config.php` override the stored values.
+In **Feedback → Settings**, paste the Teamwork site URL and the key. The key is stored **encrypted in the database** and is never shown again or sent to the browser. If the site's security salts change (e.g. after a migration), Settings asks you to paste it again. Advanced, optional: `FBCOL_TEAMWORK_API_KEY` / `FBCOL_TEAMWORK_SITE` constants in `wp-config.php` override the stored values.
 
 Then, in **Feedback → Settings**:
 
@@ -192,11 +192,16 @@ bun run build      # dist/overlay.js
 bun run watch
 bun test           # anchor engine
 bun run typecheck
+bun run package    # WordPress.org release: build/feedback-collector-<version>.zip
 ```
+
+**Releasing to WordPress.org:** bump the version in three places (the plugin header, `VERSION` in `feedback-collector.php`, and `Stable tag` in `readme.txt`; `bun run package` refuses to build if they differ), add a changelog entry to `readme.txt`, regenerate the POT (`wp i18n make-pot . languages/feedback-collector.pot --domain=feedback-collector --exclude=node_modules,tests,src,dist,vendor,build,scripts --skip-js`), then `bun run package` and check the build with the Plugin Check plugin (`wp plugin check /path/to/build/feedback-collector`). The zip holds only what ships; `readme.txt` points reviewers to this repository for the TypeScript sources, so keep the repository public.
+
+**Prefix:** everything the plugin stores or registers uses `fbcol_` / `FBCOL_` / `fbcol-` (WordPress.org requires at least four characters). 0.3 and earlier used `fbc_`; `includes/Migrate.php` renames a site's tables, options, user meta, capability and scheduled jobs once on update, and old `?fbc_item=` links and `FBC_TEAMWORK_*` constants still work. The uploads folders (`fbc-screenshots`, `fbc-videos`) and the API-key encryption context deliberately kept their names.
 
 **Tests:**
 - `bun test` runs the overlay suites: the pin-anchoring engine and overlay boot.
-- `bun run test:wp` runs the WordPress integration suites in `tests/wp/` (REST and permissions, Teamwork push/sync against a mocked API, assignees, rounds, screenshots, API-key storage, branding, due dates) through wp-cli; set `WP="php wp-cli.phar --path=/path/to/wp"` if `wp` isn't on your PATH.
+- `bun run test:wp` runs the WordPress integration suites in `tests/wp/` (the 0.3 → 0.4 migration, REST and permissions, Teamwork push/sync against a mocked API, assignees, rounds, screenshots, screen recordings, API-key storage, branding, due dates, WP-CLI) through wp-cli; set `WP="php wp-cli.phar --path=/path/to/wp"` if `wp` isn't on your PATH.
 - They run against a **throwaway copy** of the site's database (`*_scratch`), created fresh for each run and dropped after, so nothing a test does can touch the real site. Every suite refuses to run against any other database. One-time setup (a `DB_NAME` switch in the local `wp-config.php` and a MySQL grant) is described at the top of `tests/wp/run.sh`.
 - To point wp-cli at your test site without `WP=…`, add a gitignored `wp-cli.local.yml` in the repo root containing `path: ../your-test-wp`, with the plugin symlinked into that site's `wp-content/plugins/feedback-collector`.
 - Never point the WordPress suites at a real staging or production site.

@@ -1,13 +1,15 @@
 <?php
 /**
- * Plugin Name:       Clockwork Feedback Collector
- * Description:       Internal QA feedback for staging sites. Right-click any element to log a bug, tweak, change request or comment, pinned to the page, with optional push to Teamwork.
- * Version:           0.3.0
+ * Plugin Name:       Feedback Collector
+ * Plugin URI:        https://github.com/Clockwork-Web-Dev-LLC/feedback-collector-wp
+ * Description:       Visual QA feedback for staging sites. Pin bugs and change requests to any element, with a screenshot or a screen recording, and push them to Teamwork.
+ * Version:           0.4.0
  * Requires at least: 6.5
  * Requires PHP:      8.1
- * Author:            Clockwork Web Dev
- * Author URI:        https://clockworkwd.com
+ * Author:            Aaron Reimann
+ * Author URI:        https://profiles.wordpress.org/areimann/
  * License:           GPL-2.0-or-later
+ * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       feedback-collector
  * Domain Path:       /languages
  *
@@ -18,13 +20,13 @@ namespace FeedbackCollector;
 
 defined( 'ABSPATH' ) || exit;
 
-const VERSION     = '0.3.0';
-const DB_VERSION  = '8';
-const CAP         = 'fbc_review';
+const VERSION     = '0.4.0';
+const DB_VERSION  = '9';
+const CAP         = 'fbcol_review';
 const PLUGIN_FILE = __FILE__;
 
-define( 'FBC_DIR', plugin_dir_path( __FILE__ ) );
-define( 'FBC_URL', plugin_dir_url( __FILE__ ) );
+define( 'FBCOL_DIR', plugin_dir_path( __FILE__ ) );
+define( 'FBCOL_URL', plugin_dir_url( __FILE__ ) );
 
 spl_autoload_register(
 	static function ( string $class_name ): void {
@@ -32,7 +34,7 @@ spl_autoload_register(
 			return;
 		}
 		$relative = substr( $class_name, strlen( __NAMESPACE__ ) + 1 );
-		$path     = FBC_DIR . 'includes/' . str_replace( '\\', '/', $relative ) . '.php';
+		$path     = FBCOL_DIR . 'includes/' . str_replace( '\\', '/', $relative ) . '.php';
 		if ( is_readable( $path ) ) {
 			require $path;
 		}

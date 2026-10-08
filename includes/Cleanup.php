@@ -19,27 +19,27 @@ final class Cleanup {
 
 	/** Every option the plugin writes. */
 	public const OPTIONS = array(
-		'fbc_db_version',
-		'fbc_delete_on_uninstall',
-		'fbc_review_roles',
-		'fbc_teamwork',
-		'fbc_tw_state',
-		'fbc_branding',
-		'fbc_assignee_source',
-		'fbc_round',
-		'fbc_screenshots',
-		'fbc_videos',
-		'fbc_video_max_seconds',
-		'fbc_due_default',
-		'fbc_due_days',
-		'fbc_due_batch_hours',
+		'fbcol_db_version',
+		'fbcol_delete_on_uninstall',
+		'fbcol_review_roles',
+		'fbcol_teamwork',
+		'fbcol_tw_state',
+		'fbcol_branding',
+		'fbcol_assignee_source',
+		'fbcol_round',
+		'fbcol_screenshots',
+		'fbcol_videos',
+		'fbcol_video_max_seconds',
+		'fbcol_due_default',
+		'fbcol_due_days',
+		'fbcol_due_batch_hours',
 	);
 
 	/** Every user-meta key the plugin writes. */
-	public const USER_META = array( 'fbc_due_batch', 'fbc_prefs' );
+	public const USER_META = array( 'fbcol_due_batch', 'fbcol_prefs' );
 
 	/** Every WP-Cron hook the plugin schedules. */
-	public const CRON_HOOKS = array( 'fbc_tw_sync', 'fbc_tw_queue' );
+	public const CRON_HOOKS = array( 'fbcol_tw_sync', 'fbcol_tw_queue' );
 
 	/**
 	 * What a purge would remove, for the confirmation screen.
@@ -48,11 +48,12 @@ final class Cleanup {
 	 */
 	public static function inventory(): array {
 		global $wpdb;
-		$items    = $wpdb->prefix . 'fbc_items';
-		$comments = $wpdb->prefix . 'fbc_comments';
+		$items    = $wpdb->prefix . 'fbcol_items';
+		$comments = $wpdb->prefix . 'fbcol_comments';
 		// phpcs:disable WordPress.DB.DirectDatabaseQuery
 		$has   = (bool) $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $items ) );
-		$count = static fn( string $sql ) => $has ? (int) $wpdb->get_var( $sql ) : 0; // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+		// Each query passed in is already prepared below.
+		$count = static fn( string $sql ) => $has ? (int) $wpdb->get_var( $sql ) : 0; // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, PluginCheck.Security.DirectDB.UnescapedDBParameter
 		$out   = array(
 			'items'       => $count( $wpdb->prepare( 'SELECT COUNT(*) FROM %i', $items ) ),
 			'comments'    => $count( $wpdb->prepare( 'SELECT COUNT(*) FROM %i', $comments ) ),
@@ -80,7 +81,7 @@ final class Cleanup {
 		);
 
 		// phpcs:disable WordPress.DB.DirectDatabaseQuery, WordPress.DB.DirectDatabaseQuerySchemaChange
-		foreach ( array( 'fbc_comments', 'fbc_items' ) as $table ) {
+		foreach ( array( 'fbcol_comments', 'fbcol_items' ) as $table ) {
 			$name = $wpdb->prefix . $table;
 			if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $name ) ) ) {
 				$wpdb->query( $wpdb->prepare( 'DROP TABLE %i', $name ) );
@@ -95,12 +96,12 @@ final class Cleanup {
 			}
 		}
 
-		// Cached Teamwork projects and people lists (fbc_tw_*), including their timeouts.
+		// Cached Teamwork projects and people lists (fbcol_tw_*), including their timeouts.
 		$removed['transients'] = (int) $wpdb->query(
 			$wpdb->prepare(
 				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$wpdb->esc_like( '_transient_fbc_tw_' ) . '%',
-				$wpdb->esc_like( '_transient_timeout_fbc_tw_' ) . '%'
+				$wpdb->esc_like( '_transient_fbcol_tw_' ) . '%',
+				$wpdb->esc_like( '_transient_timeout_fbcol_tw_' ) . '%'
 			)
 		);
 		// phpcs:enable
@@ -115,7 +116,7 @@ final class Cleanup {
 		}
 
 		foreach ( wp_roles()->role_objects as $role ) {
-			$role->remove_cap( 'fbc_review' );
+			$role->remove_cap( 'fbcol_review' );
 		}
 
 		foreach ( self::screenshot_files() as $file ) {

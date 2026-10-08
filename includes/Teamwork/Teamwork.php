@@ -28,10 +28,10 @@ defined( 'ABSPATH' ) || exit;
  */
 final class Teamwork {
 
-	private const OPTION       = 'fbc_teamwork';
-	private const STATE_OPTION = 'fbc_tw_state';
-	public const SYNC_HOOK     = 'fbc_tw_sync';
-	public const QUEUE_HOOK    = 'fbc_tw_queue';
+	private const OPTION       = 'fbcol_teamwork';
+	private const STATE_OPTION = 'fbcol_tw_state';
+	public const SYNC_HOOK     = 'fbcol_tw_sync';
+	public const QUEUE_HOOK    = 'fbcol_tw_queue';
 	private const BATCH        = 25;
 
 	/**
@@ -41,29 +41,29 @@ final class Teamwork {
 		add_filter( 'cron_schedules', array( self::class, 'cron_schedules' ) ); // phpcs:ignore WordPress.WP.CronInterval
 		add_action( self::SYNC_HOOK, array( self::class, 'cron_sync' ) );
 		add_action( self::QUEUE_HOOK, array( self::class, 'process_queue' ) );
-		add_action( 'fbc_item_created', array( self::class, 'maybe_auto_push' ) );
-		add_action( 'fbc_item_due_changed', array( self::class, 'push_due_date' ) );
-		add_filter( 'fbc_present_item', array( self::class, 'present' ), 10, 2 );
-		add_filter( 'fbc_teamwork_task_url', array( self::class, 'task_url' ), 10, 2 );
-		add_action( 'fbc_comment_created', array( self::class, 'handle_comment_created' ), 10, 6 );
+		add_action( 'fbcol_item_created', array( self::class, 'maybe_auto_push' ) );
+		add_action( 'fbcol_item_due_changed', array( self::class, 'push_due_date' ) );
+		add_filter( 'fbcol_present_item', array( self::class, 'present' ), 10, 2 );
+		add_filter( 'fbcol_teamwork_task_url', array( self::class, 'task_url' ), 10, 2 );
+		add_action( 'fbcol_comment_created', array( self::class, 'handle_comment_created' ), 10, 6 );
 		add_action( 'init', array( self::class, 'ensure_schedule' ) );
 
 		if ( is_admin() ) {
-			add_action( 'fbc_settings_rows', array( self::class, 'settings_rows' ) );
-			add_action( 'fbc_save_settings', array( self::class, 'save_settings' ) );
-			add_action( 'fbc_settings_after', array( self::class, 'settings_tools' ) );
-			add_filter( 'fbc_bulk_actions', array( self::class, 'bulk_actions' ) );
-			add_filter( 'fbc_handle_bulk_action', array( self::class, 'handle_bulk' ), 10, 3 );
-			add_filter( 'fbc_teamwork_column', array( self::class, 'column' ), 10, 2 );
-			add_action( 'fbc_detail_sidebar', array( self::class, 'detail_box' ) );
-			add_action( 'fbc_list_header_actions', array( self::class, 'header_actions' ) );
-			add_action( 'fbc_list_notices', array( self::class, 'notices' ) );
-			add_action( 'admin_post_fbc_tw_test', array( self::class, 'handle_test' ) );
-			add_action( 'admin_post_fbc_tw_create_list', array( self::class, 'handle_create_list' ) );
-			add_action( 'admin_post_fbc_tw_push', array( self::class, 'handle_push' ) );
-			add_action( 'admin_post_fbc_tw_create_and_push', array( self::class, 'handle_create_and_push' ) );
-			add_action( 'admin_post_fbc_tw_create_and_push_all', array( self::class, 'handle_create_and_push_all' ) );
-			add_action( 'admin_post_fbc_tw_sync', array( self::class, 'handle_sync' ) );
+			add_action( 'fbcol_settings_rows', array( self::class, 'settings_rows' ) );
+			add_action( 'fbcol_save_settings', array( self::class, 'save_settings' ) );
+			add_action( 'fbcol_settings_after', array( self::class, 'settings_tools' ) );
+			add_filter( 'fbcol_bulk_actions', array( self::class, 'bulk_actions' ) );
+			add_filter( 'fbcol_handle_bulk_action', array( self::class, 'handle_bulk' ), 10, 3 );
+			add_filter( 'fbcol_teamwork_column', array( self::class, 'column' ), 10, 2 );
+			add_action( 'fbcol_detail_sidebar', array( self::class, 'detail_box' ) );
+			add_action( 'fbcol_list_header_actions', array( self::class, 'header_actions' ) );
+			add_action( 'fbcol_list_notices', array( self::class, 'notices' ) );
+			add_action( 'admin_post_fbcol_tw_test', array( self::class, 'handle_test' ) );
+			add_action( 'admin_post_fbcol_tw_create_list', array( self::class, 'handle_create_list' ) );
+			add_action( 'admin_post_fbcol_tw_push', array( self::class, 'handle_push' ) );
+			add_action( 'admin_post_fbcol_tw_create_and_push', array( self::class, 'handle_create_and_push' ) );
+			add_action( 'admin_post_fbcol_tw_create_and_push_all', array( self::class, 'handle_create_and_push_all' ) );
+			add_action( 'admin_post_fbcol_tw_sync', array( self::class, 'handle_sync' ) );
 		}
 	}
 
@@ -105,10 +105,24 @@ final class Teamwork {
 	}
 
 	/**
+	 * A wp-config override: FBCOL_TEAMWORK_{SITE,API_KEY}, or the 0.3 name FBC_TEAMWORK_*.
+	 *
+	 * @param string $which 'SITE' or 'API_KEY'.
+	 */
+	public static function config_constant( string $which ): ?string {
+		foreach ( array( 'FBCOL_TEAMWORK_', 'FBC_TEAMWORK_' ) as $prefix ) {
+			if ( defined( $prefix . $which ) ) {
+				return (string) constant( $prefix . $which );
+			}
+		}
+		return null;
+	}
+
+	/**
 	 * Teamwork base URL; a wp-config constant wins.
 	 */
 	public static function site(): string {
-		$site = defined( 'FBC_TEAMWORK_SITE' ) ? (string) constant( 'FBC_TEAMWORK_SITE' ) : (string) self::settings()['site'];
+		$site = self::config_constant( 'SITE' ) ?? (string) self::settings()['site'];
 		return untrailingslashit( esc_url_raw( $site ) );
 	}
 
@@ -116,15 +130,15 @@ final class Teamwork {
 	 * Whether the key comes from wp-config.
 	 */
 	public static function key_from_constant(): bool {
-		return defined( 'FBC_TEAMWORK_API_KEY' ) && '' !== (string) constant( 'FBC_TEAMWORK_API_KEY' );
+		return '' !== (string) self::config_constant( 'API_KEY' );
 	}
 
 	/**
-	 * The API key: FBC_TEAMWORK_API_KEY in wp-config, else the encrypted option.
+	 * The API key: FBCOL_TEAMWORK_API_KEY in wp-config, else the encrypted option.
 	 */
 	private static function api_key(): string {
 		if ( self::key_from_constant() ) {
-			return (string) constant( 'FBC_TEAMWORK_API_KEY' );
+			return (string) self::config_constant( 'API_KEY' );
 		}
 		return self::decrypt( (string) self::settings()['key_enc'] );
 	}
@@ -190,11 +204,11 @@ final class Teamwork {
 		$client = self::client();
 		$s      = self::settings();
 		if ( ! $client || ! $s['project_id'] ) {
-			return new WP_Error( 'fbc_tw_not_ready', __( 'Choose a Teamwork project first.', 'feedback-collector' ) );
+			return new WP_Error( 'fbcol_tw_not_ready', __( 'Choose a Teamwork project first.', 'feedback-collector' ) );
 		}
 		$name = trim( $name );
 		if ( '' === $name ) {
-			return new WP_Error( 'fbc_tw_empty_name', __( 'Task list name cannot be empty.', 'feedback-collector' ) );
+			return new WP_Error( 'fbcol_tw_empty_name', __( 'Task list name cannot be empty.', 'feedback-collector' ) );
 		}
 		$round      = $round ?? Rounds::current();
 		$is_private = null === $is_private ? ! empty( $s['tasklist_private'] ) : (bool) $is_private;
@@ -272,9 +286,9 @@ final class Teamwork {
 	 */
 	public static function sync_intervals(): array {
 		return array(
-			'fbc_five_minutes'    => 5,
-			'fbc_fifteen_minutes' => 15,
-			'fbc_thirty_minutes'  => 30,
+			'fbcol_five_minutes'    => 5,
+			'fbcol_fifteen_minutes' => 15,
+			'fbcol_thirty_minutes'  => 30,
 			'hourly'              => 60,
 		);
 	}
@@ -350,7 +364,7 @@ final class Teamwork {
 	public static function push( int $id ): int|WP_Error {
 		$item = Items::get( $id );
 		if ( ! $item ) {
-			return new WP_Error( 'fbc_not_found', __( 'Feedback item not found.', 'feedback-collector' ) );
+			return new WP_Error( 'fbcol_not_found', __( 'Feedback item not found.', 'feedback-collector' ) );
 		}
 		if ( $item['tw_task_id'] ) {
 			return $item['tw_task_id'];
@@ -358,19 +372,19 @@ final class Teamwork {
 		$client = self::client();
 		$s      = self::settings();
 		if ( ! $client || ! $s['project_id'] ) {
-			return new WP_Error( 'fbc_tw_not_ready', __( 'Connect Teamwork and choose a project and QA list in Feedback → Settings first.', 'feedback-collector' ) );
+			return new WP_Error( 'fbcol_tw_not_ready', __( 'Connect Teamwork and choose a project and QA list in Feedback → Settings first.', 'feedback-collector' ) );
 		}
 		// Each item goes to its own round's list, so a Round 1 item pushed during Round 2 lands in Round 1.
 		$list = self::list_for_round( (int) $item['round'] );
 		if ( ! $list ) {
 			return new WP_Error(
-				'fbc_tw_no_round_list',
+				'fbcol_tw_no_round_list',
 				/* translators: %d: round number */
 				sprintf( __( 'There is no Teamwork list for Round %d. Pick or create one in Feedback → Settings.', 'feedback-collector' ), (int) $item['round'] )
 			);
 		}
 		if ( ! self::claim( $id ) ) {
-			return new WP_Error( 'fbc_tw_busy', __( 'This item is already being pushed.', 'feedback-collector' ) );
+			return new WP_Error( 'fbcol_tw_busy', __( 'This item is already being pushed.', 'feedback-collector' ) );
 		}
 
 		$task = self::build_task( $item, $client, $s );
@@ -402,7 +416,7 @@ final class Teamwork {
 		$task_id = $client->create_task( $list, $task, (bool) $s['send_email'], $pending );
 
 		if ( is_wp_error( $task_id ) ) {
-			$limited = 'fbc_tw_rate_limited' === $task_id->get_error_code();
+			$limited = 'fbcol_tw_rate_limited' === $task_id->get_error_code();
 			Items::update(
 				$id,
 				array(
@@ -441,7 +455,8 @@ final class Teamwork {
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		$rows = $wpdb->query(
 			$wpdb->prepare(
-				'UPDATE ' . Items::table() . " SET tw_sync_state = 'pushing', updated_at = %s WHERE id = %d AND tw_task_id = 0 AND ( tw_sync_state <> 'pushing' OR updated_at < %s )", // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				"UPDATE %i SET tw_sync_state = 'pushing', updated_at = %s WHERE id = %d AND tw_task_id = 0 AND ( tw_sync_state <> 'pushing' OR updated_at < %s )",
+				Items::table(),
 				$now,
 				$id,
 				$stale
@@ -608,7 +623,7 @@ final class Teamwork {
 		if ( ! $user ) {
 			return 0;
 		}
-		$cache_key = 'fbc_tw_people_' . $project_id;
+		$cache_key = 'fbcol_tw_people_' . $project_id;
 		$people    = get_transient( $cache_key );
 		if ( ! is_array( $people ) ) {
 			$people = $client->people_by_email( $project_id );
@@ -671,13 +686,13 @@ final class Teamwork {
 				++$pushed;
 				continue;
 			}
-			if ( 'fbc_tw_rate_limited' === $result->get_error_code() ) {
+			if ( 'fbcol_tw_rate_limited' === $result->get_error_code() ) {
 				$data = $result->get_error_data();
 				wp_clear_scheduled_hook( self::QUEUE_HOOK );
 				wp_schedule_single_event( time() + (int) ( $data['retry_after'] ?? 60 ), self::QUEUE_HOOK );
 				break;
 			}
-			if ( 'fbc_tw_not_ready' === $result->get_error_code() ) {
+			if ( 'fbcol_tw_not_ready' === $result->get_error_code() ) {
 				break;
 			}
 			++$failed;
@@ -737,11 +752,11 @@ final class Teamwork {
 		global $wpdb;
 		$client = self::client();
 		if ( ! $client ) {
-			return new WP_Error( 'fbc_tw_not_ready', __( 'Teamwork is not connected.', 'feedback-collector' ) );
+			return new WP_Error( 'fbcol_tw_not_ready', __( 'Teamwork is not connected.', 'feedback-collector' ) );
 		}
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery, WordPress.DB.PreparedSQL.NotPrepared
-		$rows    = $wpdb->get_results( 'SELECT id, status, due_date, tw_task_id, tw_project_id FROM ' . Items::table() . ' WHERE tw_task_id > 0', ARRAY_A );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		$rows    = $wpdb->get_results( $wpdb->prepare( 'SELECT id, status, due_date, tw_task_id, tw_project_id FROM %i WHERE tw_task_id > 0', Items::table() ), ARRAY_A );
 		$state   = (array) get_option( self::STATE_OPTION, array() );
 		$started = time();
 
@@ -893,8 +908,8 @@ final class Teamwork {
 		$client = self::client();
 
 		echo '<tr><th scope="row"><label for="fbc-tw-site">' . esc_html__( 'Teamwork site URL', 'feedback-collector' ) . '</label></th><td>';
-		if ( defined( 'FBC_TEAMWORK_SITE' ) ) {
-			echo '<code>' . esc_html( self::site() ) . '</code> <span class="description">' . esc_html__( 'Set by FBC_TEAMWORK_SITE in wp-config.php', 'feedback-collector' ) . '</span>';
+		if ( null !== self::config_constant( 'SITE' ) ) {
+			echo '<code>' . esc_html( self::site() ) . '</code> <span class="description">' . esc_html__( 'Set by FBCOL_TEAMWORK_SITE in wp-config.php', 'feedback-collector' ) . '</span>';
 		} else {
 			printf( '<input type="url" id="fbc-tw-site" name="tw_site" class="regular-text" value="%s" placeholder="https://yourcompany.teamwork.com" />', esc_attr( (string) $s['site'] ) );
 		}
@@ -902,7 +917,7 @@ final class Teamwork {
 
 		echo '<tr><th scope="row"><label for="fbc-tw-key">' . esc_html__( 'API key', 'feedback-collector' ) . '</label></th><td>';
 		if ( self::key_from_constant() ) {
-			echo '<span class="dashicons dashicons-yes-alt" style="color:#00a32a"></span> ' . esc_html__( 'Using FBC_TEAMWORK_API_KEY from wp-config.php', 'feedback-collector' );
+			echo '<span class="dashicons dashicons-yes-alt" style="color:#00a32a"></span> ' . esc_html__( 'Using FBCOL_TEAMWORK_API_KEY from wp-config.php', 'feedback-collector' );
 		} else {
 			$stored = (string) $s['key_enc'];
 			$has    = '' !== self::decrypt( $stored );
@@ -921,11 +936,11 @@ final class Teamwork {
 			return;
 		}
 
-		$projects = get_transient( 'fbc_tw_projects' );
+		$projects = get_transient( 'fbcol_tw_projects' );
 		if ( ! is_array( $projects ) ) {
 			$projects = $client->projects();
 			if ( ! is_wp_error( $projects ) ) {
-				set_transient( 'fbc_tw_projects', $projects, 10 * MINUTE_IN_SECONDS );
+				set_transient( 'fbcol_tw_projects', $projects, 10 * MINUTE_IN_SECONDS );
 			}
 		}
 		echo '<tr><th scope="row"><label for="fbc-tw-project">' . esc_html__( 'Project', 'feedback-collector' ) . '</label></th><td>';
@@ -980,7 +995,7 @@ final class Teamwork {
 					esc_attr( $suggested_name ),
 					esc_attr( $suggested_name )
 				);
-				echo '<button type="submit" name="fbc_tw_create_list_btn" value="1" class="button button-secondary" style="white-space:nowrap;">' . esc_html__( 'Create list now', 'feedback-collector' ) . '</button>';
+				echo '<button type="submit" name="fbcol_tw_create_list_btn" value="1" class="button button-secondary" style="white-space:nowrap;">' . esc_html__( 'Create list now', 'feedback-collector' ) . '</button>';
 				echo '</div>';
 
 				$is_priv = ! empty( $s['tasklist_private'] );
@@ -999,7 +1014,7 @@ final class Teamwork {
 				printf(
 					'<p class="description">%s</p>',
 					/* translators: %d: round number */
-					sprintf( esc_html__( 'Creates a new list in this project and sets it as the active QA list for Round %d. Private lists are only visible to project administrators and assigned users in Teamwork.', 'feedback-collector' ), $current_round )
+					sprintf( esc_html__( 'Creates a new list in this project and sets it as the active QA list for Round %d. Private lists are only visible to project administrators and assigned users in Teamwork.', 'feedback-collector' ), absint( $current_round ) )
 				);
 				echo '</div>';
 				echo '</fieldset>';
@@ -1057,9 +1072,9 @@ final class Teamwork {
 		);
 
 		$labels = array(
-			'fbc_five_minutes'    => __( 'Every 5 minutes', 'feedback-collector' ),
-			'fbc_fifteen_minutes' => __( 'Every 15 minutes', 'feedback-collector' ),
-			'fbc_thirty_minutes'  => __( 'Every 30 minutes', 'feedback-collector' ),
+			'fbcol_five_minutes'    => __( 'Every 5 minutes', 'feedback-collector' ),
+			'fbcol_fifteen_minutes' => __( 'Every 15 minutes', 'feedback-collector' ),
+			'fbcol_thirty_minutes'  => __( 'Every 30 minutes', 'feedback-collector' ),
 			'hourly'              => __( 'Every hour (default)', 'feedback-collector' ),
 		);
 		echo '<tr><th scope="row"><label for="fbc-tw-interval">' . esc_html__( 'Sync with Teamwork', 'feedback-collector' ) . '</label></th><td><select id="fbc-tw-interval" name="tw_sync_interval">';
@@ -1083,20 +1098,20 @@ final class Teamwork {
 	public static function save_settings(): void {
 		// phpcs:disable WordPress.Security.NonceVerification.Missing
 		$s = self::settings();
-		if ( ! defined( 'FBC_TEAMWORK_SITE' ) && isset( $_POST['tw_site'] ) ) {
+		if ( null === self::config_constant( 'SITE' ) && isset( $_POST['tw_site'] ) ) {
 			$site = esc_url_raw( trim( sanitize_text_field( wp_unslash( $_POST['tw_site'] ) ) ) );
 			if ( $site !== $s['site'] ) {
 				$s['site']        = $site;
 				$s['tags']        = array();
 				$s['project_id']  = 0;
 				$s['tasklist_id'] = 0;
-				delete_transient( 'fbc_tw_projects' );
+				delete_transient( 'fbcol_tw_projects' );
 			}
 		}
 		if ( ! self::key_from_constant() && ! empty( $_POST['tw_key'] ) ) {
 			$s['key_enc'] = self::encrypt( trim( sanitize_text_field( wp_unslash( $_POST['tw_key'] ) ) ) );
 			$s['tags']    = array();
-			delete_transient( 'fbc_tw_projects' );
+			delete_transient( 'fbcol_tw_projects' );
 		}
 		if ( isset( $_POST['tw_project'] ) ) {
 			$project = absint( $_POST['tw_project'] );
@@ -1104,11 +1119,11 @@ final class Teamwork {
 				$s['project_id']    = $project;
 				$s['tasklist_id']   = 0;
 				$s['tasklist_name'] = '';
-				$projects           = get_transient( 'fbc_tw_projects' );
+				$projects           = get_transient( 'fbcol_tw_projects' );
 				$s['project_name']  = is_array( $projects ) ? (string) ( $projects[ $project ] ?? '' ) : '';
 			} else {
 				$mode       = isset( $_POST['tw_list_mode'] ) ? sanitize_key( wp_unslash( $_POST['tw_list_mode'] ) ) : 'existing';
-				$create_btn = ! empty( $_POST['fbc_tw_create_list_btn'] );
+				$create_btn = ! empty( $_POST['fbcol_tw_create_list_btn'] );
 
 				if ( 'new' === $mode || $create_btn ) {
 					$new_name = isset( $_POST['tw_new_list_name'] ) ? trim( sanitize_text_field( wp_unslash( $_POST['tw_new_list_name'] ) ) ) : '';
@@ -1128,9 +1143,9 @@ final class Teamwork {
 						$s             = self::settings(); // Reload updated settings from create_custom_list.
 						$privacy_label = $is_private ? __( 'Private', 'feedback-collector' ) : __( 'Public', 'feedback-collector' );
 						/* translators: 1: list name, 2: privacy label */
-						set_transient( 'fbc_tw_created_list_msg', sprintf( __( 'Created “%1$s” (%2$s) and set it as the active QA task list.', 'feedback-collector' ), $new_name, $privacy_label ), 30 );
+						set_transient( 'fbcol_tw_created_list_msg', sprintf( __( 'Created “%1$s” (%2$s) and set it as the active QA task list.', 'feedback-collector' ), $new_name, $privacy_label ), 30 );
 					} else {
-						set_transient( 'fbc_tw_error_msg', $created_id->get_error_message(), 30 );
+						set_transient( 'fbcol_tw_error_msg', $created_id->get_error_message(), 30 );
 					}
 				} else {
 					if ( isset( $_POST['tw_new_list_privacy'] ) ) {
@@ -1186,14 +1201,14 @@ final class Teamwork {
 		$s = self::settings();
 		Layout::card_open( __( 'Teamwork tools', 'feedback-collector' ) );
 		echo '<p>';
-		self::button_form( 'fbc_tw_sync', __( 'Sync now', 'feedback-collector' ), array(), 'primary' );
+		self::button_form( 'fbcol_tw_sync', __( 'Sync now', 'feedback-collector' ), array(), 'primary' );
 		echo ' ';
-		self::button_form( 'fbc_tw_test', __( 'Test connection', 'feedback-collector' ) );
+		self::button_form( 'fbcol_tw_test', __( 'Test connection', 'feedback-collector' ) );
 		$current = Rounds::current();
 		if ( $s['project_id'] ) {
 			echo ' ';
 			self::button_form(
-				'fbc_tw_create_list',
+				'fbcol_tw_create_list',
 				/* translators: %d: round number */
 				sprintf( __( 'Create “QA – Round %d” list', 'feedback-collector' ), $current )
 			);
@@ -1201,9 +1216,9 @@ final class Teamwork {
 		echo '</p><p class="description">' . esc_html( self::sync_status_text() ) . '</p>';
 		self::sync_result_notice();
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended
-		if ( isset( $_GET['fbc_tw_msg'] ) ) {
-			$type = isset( $_GET['fbc_tw_ok'] ) && '1' === $_GET['fbc_tw_ok'] ? 'success' : 'error';
-			printf( '<div class="notice notice-%s inline"><p>%s</p></div>', esc_attr( $type ), esc_html( sanitize_text_field( wp_unslash( $_GET['fbc_tw_msg'] ) ) ) );
+		if ( isset( $_GET['fbcol_tw_msg'] ) ) {
+			$type = isset( $_GET['fbcol_tw_ok'] ) && '1' === $_GET['fbcol_tw_ok'] ? 'success' : 'error';
+			printf( '<div class="notice notice-%s inline"><p>%s</p></div>', esc_attr( $type ), esc_html( sanitize_text_field( wp_unslash( $_GET['fbcol_tw_msg'] ) ) ) );
 		}
 		// phpcs:enable
 		Layout::card_close();
@@ -1239,8 +1254,8 @@ final class Teamwork {
 			add_query_arg(
 				array(
 					'page'       => Admin::SLUG . '-settings',
-					'fbc_tw_msg' => rawurlencode( $message ),
-					'fbc_tw_ok'  => $ok ? '1' : '0',
+					'fbcol_tw_msg' => rawurlencode( $message ),
+					'fbcol_tw_ok'  => $ok ? '1' : '0',
 				),
 				admin_url( 'admin.php' )
 			)
@@ -1252,12 +1267,12 @@ final class Teamwork {
 	 * Test connection.
 	 */
 	public static function handle_test(): void {
-		check_admin_referer( 'fbc_tw_test' );
+		check_admin_referer( 'fbcol_tw_test' );
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'Not allowed.', 'feedback-collector' ), 403 );
 		}
 		$client = self::client();
-		$me     = $client ? $client->me() : new WP_Error( 'fbc_tw_not_ready', __( 'Add a site URL and API key first.', 'feedback-collector' ) );
+		$me     = $client ? $client->me() : new WP_Error( 'fbcol_tw_not_ready', __( 'Add a site URL and API key first.', 'feedback-collector' ) );
 		if ( is_wp_error( $me ) ) {
 			self::back_to_settings( $me->get_error_message(), false );
 		}
@@ -1269,7 +1284,7 @@ final class Teamwork {
 	 * Creates the next QA round list and makes it active.
 	 */
 	public static function handle_create_list(): void {
-		check_admin_referer( 'fbc_tw_create_list' );
+		check_admin_referer( 'fbcol_tw_create_list' );
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'Not allowed.', 'feedback-collector' ), 403 );
 		}
@@ -1286,14 +1301,14 @@ final class Teamwork {
 	 */
 	public static function handle_push(): void {
 		$id = isset( $_POST['id'] ) ? absint( $_POST['id'] ) : 0;
-		check_admin_referer( 'fbc_tw_push' );
+		check_admin_referer( 'fbcol_tw_push' );
 		if ( ! current_user_can( CAP ) ) {
 			wp_die( esc_html__( 'Not allowed.', 'feedback-collector' ), 403 );
 		}
 		$result = self::push( $id );
 		$url    = Admin::item_url( $id );
 		if ( is_wp_error( $result ) ) {
-			$url = add_query_arg( 'fbc_tw_err', rawurlencode( $result->get_error_message() ), $url );
+			$url = add_query_arg( 'fbcol_tw_err', rawurlencode( $result->get_error_message() ), $url );
 		}
 		wp_safe_redirect( $url );
 		exit;
@@ -1304,7 +1319,7 @@ final class Teamwork {
 	 */
 	public static function handle_create_and_push(): void {
 		$id = isset( $_POST['id'] ) ? absint( $_POST['id'] ) : 0;
-		check_admin_referer( 'fbc_tw_create_and_push' );
+		check_admin_referer( 'fbcol_tw_create_and_push' );
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'Not allowed.', 'feedback-collector' ), 403 );
 		}
@@ -1316,7 +1331,7 @@ final class Teamwork {
 		}
 		$url = Admin::item_url( $id );
 		if ( is_wp_error( $result ) ) {
-			$url = add_query_arg( 'fbc_tw_err', rawurlencode( $result->get_error_message() ), $url );
+			$url = add_query_arg( 'fbcol_tw_err', rawurlencode( $result->get_error_message() ), $url );
 		}
 		wp_safe_redirect( $url );
 		exit;
@@ -1326,7 +1341,7 @@ final class Teamwork {
 	 * List screen: creates the current round's QA list, then pushes every unpushed item in that round.
 	 */
 	public static function handle_create_and_push_all(): void {
-		check_admin_referer( 'fbc_tw_create_and_push_all' );
+		check_admin_referer( 'fbcol_tw_create_and_push_all' );
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'Not allowed.', 'feedback-collector' ), 403 );
 		}
@@ -1334,7 +1349,7 @@ final class Teamwork {
 		$result = self::list_for_round( $round ) ? true : self::create_round_list( $round );
 		$back   = admin_url( 'admin.php?page=' . Admin::SLUG );
 		if ( is_wp_error( $result ) ) {
-			wp_safe_redirect( add_query_arg( 'fbc_sync_err', rawurlencode( $result->get_error_message() ), $back ) );
+			wp_safe_redirect( add_query_arg( 'fbcol_sync_err', rawurlencode( $result->get_error_message() ), $back ) );
 			exit;
 		}
 		self::queue( self::unpushed_ids( $round ) );
@@ -1343,9 +1358,9 @@ final class Teamwork {
 		wp_safe_redirect(
 			add_query_arg(
 				array(
-					'fbc_tw_pushed' => (int) $done['pushed'],
-					'fbc_tw_failed' => (int) $done['failed'],
-					'fbc_tw_queued' => (int) $done['remaining'],
+					'fbcol_tw_pushed' => (int) $done['pushed'],
+					'fbcol_tw_failed' => (int) $done['failed'],
+					'fbcol_tw_queued' => (int) $done['remaining'],
 				),
 				$back
 			)
@@ -1369,7 +1384,7 @@ final class Teamwork {
 	 * "Sync with Teamwork now".
 	 */
 	public static function handle_sync(): void {
-		check_admin_referer( 'fbc_tw_sync' );
+		check_admin_referer( 'fbcol_tw_sync' );
 		if ( ! current_user_can( CAP ) ) {
 			wp_die( esc_html__( 'Not allowed.', 'feedback-collector' ), 403 );
 		}
@@ -1378,10 +1393,10 @@ final class Teamwork {
 		self::process_queue();
 		$result = self::sync();
 		$args   = is_wp_error( $result )
-			? array( 'fbc_sync_err' => rawurlencode( $result->get_error_message() ) )
+			? array( 'fbcol_sync_err' => rawurlencode( $result->get_error_message() ) )
 			: array(
-				'fbc_synced'  => $result['changed'],
-				'fbc_checked' => $result['checked'],
+				'fbcol_synced'  => $result['changed'],
+				'fbcol_checked' => $result['checked'],
 			);
 		wp_safe_redirect( add_query_arg( $args, wp_get_referer() ?: admin_url( 'admin.php?page=' . Admin::SLUG ) ) );
 		exit;
@@ -1569,10 +1584,14 @@ final class Teamwork {
 				continue;
 			}
 
-			// If this comment was pushed by us previously, ignore if marked with prefix.
-			$brand = Branding::text( 'name' );
-			if ( str_starts_with( $text, 'From ' ) && str_contains( $text, 'via ' . $brand . ":\n\n" ) ) {
-				continue;
+			// If this comment was pushed by us previously, ignore if marked with prefix: under the
+			// current name, or the plain / Clockwork names it may have carried before.
+			if ( str_starts_with( $text, 'From ' ) ) {
+				foreach ( array_unique( array( Branding::text( 'name' ), (string) Branding::neutral()['name'], (string) Branding::defaults()['name'] ) ) as $brand ) {
+					if ( str_contains( $text, 'via ' . $brand . ":\n\n" ) ) {
+						continue 2;
+					}
+				}
 			}
 
 			$author_name = trim( (string) ( $c['author']['firstName'] ?? $c['user']['firstName'] ?? $c['postedBy']['firstName'] ?? '' ) . ' ' . (string) ( $c['author']['lastName'] ?? $c['user']['lastName'] ?? $c['postedBy']['lastName'] ?? '' ) );
@@ -1594,8 +1613,8 @@ final class Teamwork {
 	public static function detail_box( array $item ): void {
 		Layout::card_open( __( 'Teamwork', 'feedback-collector' ) );
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		if ( isset( $_GET['fbc_tw_err'] ) ) {
-			echo '<div class="notice notice-error inline"><p>' . esc_html( sanitize_text_field( wp_unslash( $_GET['fbc_tw_err'] ) ) ) . '</p></div>'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		if ( isset( $_GET['fbcol_tw_err'] ) ) {
+			echo '<div class="notice notice-error inline"><p>' . esc_html( sanitize_text_field( wp_unslash( $_GET['fbcol_tw_err'] ) ) ) . '</p></div>'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		}
 		$s        = self::settings();
 		$round    = (int) $item['round'];
@@ -1630,7 +1649,7 @@ final class Teamwork {
 			if ( $list ) {
 				/* translators: 1: round number, 2: task list name */
 				echo '<p class="description">' . esc_html( sprintf( __( 'Not in Teamwork yet. Round %1$d → “%2$s”.', 'feedback-collector' ), $round, self::list_name_for_round( $round ) ) ) . '</p><p>';
-				self::button_form( 'fbc_tw_push', 'error' === $item['tw_sync_state'] ? __( 'Retry push', 'feedback-collector' ) : __( 'Push to Teamwork', 'feedback-collector' ), array( 'id' => (int) $item['id'] ), 'primary' );
+				self::button_form( 'fbcol_tw_push', 'error' === $item['tw_sync_state'] ? __( 'Retry push', 'feedback-collector' ) : __( 'Push to Teamwork', 'feedback-collector' ), array( 'id' => (int) $item['id'] ), 'primary' );
 				echo '</p>';
 			} else {
 				// Connected with a project, but this item's round has no QA list: fix both in one click.
@@ -1648,7 +1667,7 @@ final class Teamwork {
 					return;
 				}
 				self::button_form(
-					'fbc_tw_create_and_push',
+					'fbcol_tw_create_and_push',
 					/* translators: %d: round number */
 					sprintf( __( 'Create Round %d QA list & push', 'feedback-collector' ), $round ),
 					array( 'id' => (int) $item['id'] ),
@@ -1690,17 +1709,17 @@ final class Teamwork {
 	 */
 	private static function sync_result_notice(): void {
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended
-		if ( isset( $_GET['fbc_sync_err'] ) ) {
-			printf( '<div class="notice notice-error inline is-dismissible"><p>%s</p></div>', esc_html( sanitize_text_field( wp_unslash( $_GET['fbc_sync_err'] ) ) ) );
-		} elseif ( isset( $_GET['fbc_synced'] ) ) {
+		if ( isset( $_GET['fbcol_sync_err'] ) ) {
+			printf( '<div class="notice notice-error inline is-dismissible"><p>%s</p></div>', esc_html( sanitize_text_field( wp_unslash( $_GET['fbcol_sync_err'] ) ) ) );
+		} elseif ( isset( $_GET['fbcol_synced'] ) ) {
 			printf(
 				'<div class="notice notice-success inline is-dismissible"><p>%s</p></div>',
 				esc_html(
 					sprintf(
 						/* translators: 1: changed count, 2: checked count */
 						__( 'Synced with Teamwork: %1$d item(s) updated, %2$d changed task(s) checked.', 'feedback-collector' ),
-						absint( $_GET['fbc_synced'] ),
-						absint( $_GET['fbc_checked'] ?? 0 )
+						absint( $_GET['fbcol_synced'] ),
+						absint( $_GET['fbcol_checked'] ?? 0 )
 					)
 				)
 			);
@@ -1716,8 +1735,8 @@ final class Teamwork {
 			return;
 		}
 		printf( '<form method="post" action="%s">', esc_url( admin_url( 'admin-post.php' ) ) );
-		wp_nonce_field( 'fbc_tw_sync' );
-		echo '<input type="hidden" name="action" value="fbc_tw_sync" />';
+		wp_nonce_field( 'fbcol_tw_sync' );
+		echo '<input type="hidden" name="action" value="fbcol_tw_sync" />';
 		submit_button( __( 'Sync with Teamwork', 'feedback-collector' ), 'secondary', 'submit', false );
 		printf( ' <span class="description">%s</span>', esc_html( self::sync_status_text() ) );
 		echo '</form>';
@@ -1740,18 +1759,18 @@ final class Teamwork {
 			) . '</strong></p><p>';
 			if ( current_user_can( 'manage_options' ) ) {
 				/* translators: %d: round number */
-				self::button_form( 'fbc_tw_create_and_push_all', sprintf( __( 'Create Round %d QA list & push all', 'feedback-collector' ), $round ), array(), 'primary' );
+				self::button_form( 'fbcol_tw_create_and_push_all', sprintf( __( 'Create Round %d QA list & push all', 'feedback-collector' ), $round ), array(), 'primary' );
 			} else {
 				esc_html_e( 'Ask an administrator to create it in Settings.', 'feedback-collector' );
 			}
 			echo '</p></div>';
 		}
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended
-		if ( isset( $_GET['fbc_tw_pushed'] ) ) {
-			$queued = absint( $_GET['fbc_tw_queued'] ?? 0 );
-			$failed = absint( $_GET['fbc_tw_failed'] ?? 0 );
+		if ( isset( $_GET['fbcol_tw_pushed'] ) ) {
+			$queued = absint( $_GET['fbcol_tw_queued'] ?? 0 );
+			$failed = absint( $_GET['fbcol_tw_failed'] ?? 0 );
 			/* translators: %d: pushed count */
-			$msg = sprintf( __( 'Sent %d item(s) to Teamwork.', 'feedback-collector' ), absint( $_GET['fbc_tw_pushed'] ) );
+			$msg = sprintf( __( 'Sent %d item(s) to Teamwork.', 'feedback-collector' ), absint( $_GET['fbcol_tw_pushed'] ) );
 			if ( $queued ) {
 				/* translators: %d: still-queued count */
 				$msg .= ' ' . sprintf( __( '%d more will follow in the background.', 'feedback-collector' ), $queued );

@@ -418,8 +418,8 @@ describe('createAnchor geometry and text', () => {
 
   it('throws when asked to anchor the overlay, a detached node, or bad coordinates', () => {
     mount(`<div id="${OVERLAY_HOST_ID}"><button>Pin</button></div><p id="hero">x</p>`);
-    expect(() => createAnchor(q(`#${OVERLAY_HOST_ID} button`), 0, 0)).toThrow(/fbc-root/);
-    expect(() => createAnchor(q(`#${OVERLAY_HOST_ID}`), 0, 0)).toThrow(/fbc-root/);
+    expect(() => createAnchor(q(`#${OVERLAY_HOST_ID} button`), 0, 0)).toThrow(/fbcol-root/);
+    expect(() => createAnchor(q(`#${OVERLAY_HOST_ID}`), 0, 0)).toThrow(/fbcol-root/);
     expect(() => createAnchor(document.createElement('div'), 0, 0)).toThrow(/not connected/);
     expect(() => createAnchor(q('#hero'), Number.NaN, 0)).toThrow(RangeError);
   });
@@ -433,7 +433,7 @@ describe('createAnchor geometry and text', () => {
     const pinButton = overlayShadow.querySelector('button');
     const inner = widgetShadow.querySelector('span');
     if (!pinButton || !inner) throw new Error('fixture missing');
-    expect(() => createAnchor(pinButton, 0, 0)).toThrow(/fbc-root/);
+    expect(() => createAnchor(pinButton, 0, 0)).toThrow(/fbcol-root/);
     expect(() => createAnchor(inner, 0, 0)).toThrow(/shadow root/);
   });
 });

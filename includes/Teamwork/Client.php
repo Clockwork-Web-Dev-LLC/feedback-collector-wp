@@ -54,17 +54,17 @@ final class Client {
 
 		$response = wp_remote_request( $url, $args );
 		if ( is_wp_error( $response ) ) {
-			return new WP_Error( 'fbc_tw_http', $response->get_error_message() );
+			return new WP_Error( 'fbcol_tw_http', $response->get_error_message() );
 		}
 
 		$code = (int) wp_remote_retrieve_response_code( $response );
 		$data = json_decode( (string) wp_remote_retrieve_body( $response ), true );
 
 		if ( 429 === $code ) {
-			return new WP_Error( 'fbc_tw_rate_limited', __( 'Teamwork rate limit reached.', 'feedback-collector' ), array( 'retry_after' => self::retry_after( $response ) ) );
+			return new WP_Error( 'fbcol_tw_rate_limited', __( 'Teamwork rate limit reached.', 'feedback-collector' ), array( 'retry_after' => self::retry_after( $response ) ) );
 		}
 		if ( $code < 200 || $code >= 300 ) {
-			return new WP_Error( 'fbc_tw_api', self::error_message( $code, $data ), array( 'status' => $code ) );
+			return new WP_Error( 'fbcol_tw_api', self::error_message( $code, $data ), array( 'status' => $code ) );
 		}
 		return is_array( $data ) ? $data : array();
 	}
@@ -220,7 +220,7 @@ final class Client {
 			return $data;
 		}
 		$id = (int) ( $data['TASKLISTID'] ?? $data['tasklistId'] ?? 0 );
-		return $id ?: new WP_Error( 'fbc_tw_api', __( 'Teamwork did not return a task list ID.', 'feedback-collector' ) );
+		return $id ?: new WP_Error( 'fbcol_tw_api', __( 'Teamwork did not return a task list ID.', 'feedback-collector' ) );
 	}
 
 	/**
@@ -296,7 +296,7 @@ final class Client {
 			return $created;
 		}
 		$id = (int) ( $created['tag']['id'] ?? 0 );
-		return $id ?: new WP_Error( 'fbc_tw_api', __( 'Teamwork did not return a tag ID.', 'feedback-collector' ) );
+		return $id ?: new WP_Error( 'fbcol_tw_api', __( 'Teamwork did not return a tag ID.', 'feedback-collector' ) );
 	}
 
 	/**
@@ -311,7 +311,7 @@ final class Client {
 	public function upload_pending_file( string $path, string $filename ): string|WP_Error {
 		$size = (int) filesize( $path );
 		if ( $size < 1 ) {
-			return new WP_Error( 'fbc_tw_file', __( 'The file to attach is missing.', 'feedback-collector' ) );
+			return new WP_Error( 'fbcol_tw_file', __( 'The file to attach is missing.', 'feedback-collector' ) );
 		}
 		$data = $this->request(
 			'GET',
@@ -327,11 +327,11 @@ final class Client {
 		$ref = (string) ( $data['ref'] ?? '' );
 		$url = (string) ( $data['url'] ?? '' );
 		if ( '' === $ref || '' === $url ) {
-			return new WP_Error( 'fbc_tw_file', __( 'Teamwork did not return an upload URL.', 'feedback-collector' ) );
+			return new WP_Error( 'fbcol_tw_file', __( 'Teamwork did not return an upload URL.', 'feedback-collector' ) );
 		}
 		// Recordings run to tens of megabytes: allow the memory and time to send one in a single PUT.
 		if ( $size > 8 * MB_IN_BYTES ) {
-			wp_raise_memory_limit( 'fbc_upload' );
+			wp_raise_memory_limit( 'fbcol_upload' );
 		}
 		$response = wp_remote_request(
 			$url,
@@ -346,12 +346,12 @@ final class Client {
 			)
 		);
 		if ( is_wp_error( $response ) ) {
-			return new WP_Error( 'fbc_tw_file', $response->get_error_message() );
+			return new WP_Error( 'fbcol_tw_file', $response->get_error_message() );
 		}
 		$code = (int) wp_remote_retrieve_response_code( $response );
 		if ( $code < 200 || $code >= 300 ) {
 			/* translators: %d: HTTP status */
-			return new WP_Error( 'fbc_tw_file', sprintf( __( 'File upload to Teamwork failed (%d).', 'feedback-collector' ), $code ) );
+			return new WP_Error( 'fbcol_tw_file', sprintf( __( 'File upload to Teamwork failed (%d).', 'feedback-collector' ), $code ) );
 		}
 		return $ref;
 	}
@@ -384,7 +384,7 @@ final class Client {
 			return $data;
 		}
 		$id = (int) ( $data['task']['id'] ?? 0 );
-		return $id ?: new WP_Error( 'fbc_tw_api', __( 'Teamwork did not return a task ID.', 'feedback-collector' ) );
+		return $id ?: new WP_Error( 'fbcol_tw_api', __( 'Teamwork did not return a task ID.', 'feedback-collector' ) );
 	}
 
 	/**
@@ -442,7 +442,7 @@ final class Client {
 			return $data;
 		}
 		$id = (int) ( $data['comment']['id'] ?? $data['commentId'] ?? $data['COMMENTID'] ?? 0 );
-		return $id ?: new WP_Error( 'fbc_tw_api', __( 'Teamwork did not return a comment ID.', 'feedback-collector' ) );
+		return $id ?: new WP_Error( 'fbcol_tw_api', __( 'Teamwork did not return a comment ID.', 'feedback-collector' ) );
 	}
 
 	/**

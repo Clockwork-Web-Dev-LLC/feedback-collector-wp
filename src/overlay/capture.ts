@@ -82,7 +82,7 @@ export function captureContext(cfg: Config): Context {
     post_id: cfg.page.postId,
     post_type: cfg.page.postType,
     theme: cfg.page.theme,
-    js_errors: (window.__fbcErrors ?? []).slice(-20),
+    js_errors: (window.__fbcolErrors ?? []).slice(-20),
     preview: previewLabel(),
   };
 }
@@ -108,14 +108,15 @@ export function currentPagePath(homePath: string): string {
 /** Query string minus our own deep-link parameter. */
 export function currentQuery(): string {
   const params = new URLSearchParams(window.location.search);
+  params.delete('fbcol_item');
   params.delete('fbc_item');
   return params.toString();
 }
 
 /** Also called from the inline head script, so errors before the bundle loads are kept. */
 export function installErrorCollector(): void {
-  if (window.__fbcErrors) return;
-  const errors: string[] = (window.__fbcErrors = []);
+  if (window.__fbcolErrors) return;
+  const errors: string[] = (window.__fbcolErrors = []);
   const push = (msg: string) => {
     errors.push(msg.slice(0, 500));
     if (errors.length > 20) errors.shift();

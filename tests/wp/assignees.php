@@ -11,7 +11,7 @@ global $wpdb, $mock;
 wp_set_current_user( 1 );
 $max     = (int) $wpdb->get_var( 'SELECT COALESCE(MAX(id),0) FROM ' . Items::table() );
 $backups = array();
-foreach ( array( 'fbc_teamwork', 'fbc_tw_state', Assignees::OPTION ) as $o ) {
+foreach ( array( 'fbcol_teamwork', 'fbcol_tw_state', Assignees::OPTION ) as $o ) {
 	$backups[ $o ] = get_option( $o, null );
 }
 register_shutdown_function( static function () use ( $max, $backups ) {
@@ -22,12 +22,12 @@ register_shutdown_function( static function () use ( $max, $backups ) {
 	foreach ( $backups as $o => $v ) {
 		null === $v ? delete_option( $o ) : update_option( $o, $v );
 	}
-	delete_transient( 'fbc_tw_people_list_100' );
-	delete_transient( 'fbc_tw_people_100' );
+	delete_transient( 'fbcol_tw_people_list_100' );
+	delete_transient( 'fbcol_tw_people_100' );
 	echo "cleanup done\n";
 } );
 
-delete_transient( 'fbc_tw_people_list_100' ); // never trust a cache another suite may have left
+delete_transient( 'fbcol_tw_people_list_100' ); // never trust a cache another suite may have left
 $mock = array( 'calls' => array(), 'payload' => null );
 add_filter( 'pre_http_request', function ( $pre, $args, $url ) {
 	global $mock;
@@ -58,7 +58,7 @@ $rest = function ( string $m, string $r, ?array $body = null ) {
 };
 
 // 1. Not connected: falls back to WordPress users even though Teamwork is preferred.
-delete_option( 'fbc_teamwork' );
+delete_option( 'fbcol_teamwork' );
 delete_option( Assignees::OPTION );
 $check( 'default preference is teamwork', 'teamwork' === Assignees::preference() );
 $check( 'not connected → source wordpress', 'wordpress' === Assignees::source() );
@@ -66,11 +66,11 @@ $opts = Assignees::options();
 $check( 'not connected → WP reviewers listed', 'wordpress' === $opts['source'] && in_array( 1, array_column( $opts['people'], 'id' ), true ) );
 
 // 2. Connected with a project: Teamwork people.
-update_option( 'fbc_teamwork', array( 'site' => 'https://x.teamwork.com', 'key_enc' => '', 'project_id' => 100, 'tasklist_id' => 200, 'tasklist_name' => 'QA', 'send_email' => true, 'tags' => array( 'bug' => 77 ) ) );
-add_filter( 'fbc_test_key', '__return_true' );
+update_option( 'fbcol_teamwork', array( 'site' => 'https://x.teamwork.com', 'key_enc' => '', 'project_id' => 100, 'tasklist_id' => 200, 'tasklist_name' => 'QA', 'send_email' => true, 'tags' => array( 'bug' => 77 ) ) );
+add_filter( 'fbcol_test_key', '__return_true' );
 // Supply a key without touching wp-config: encrypt one into the option via the settings handler.
 $_POST = array( 'tw_key' => 'fake-key' ); Teamwork::save_settings(); $_POST = array();
-$s = get_option( 'fbc_teamwork' ); $s['project_id'] = 100; $s['tasklist_id'] = 200; update_option( 'fbc_teamwork', $s );
+$s = get_option( 'fbcol_teamwork' ); $s['project_id'] = 100; $s['tasklist_id'] = 200; update_option( 'fbcol_teamwork', $s );
 $check( 'connected → source teamwork', 'teamwork' === Assignees::source() );
 $opts = Assignees::options();
 $check( 'Teamwork people listed, sorted by name', array( 'Pat Lee', 'Sam Roe' ) === array_column( $opts['people'], 'name' ) );

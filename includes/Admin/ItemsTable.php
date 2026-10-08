@@ -80,7 +80,7 @@ final class ItemsTable extends \WP_List_Table {
 			$actions[ 'status_' . $slug ] = sprintf( __( 'Mark %s', 'feedback-collector' ), $label );
 		}
 		$actions['delete'] = __( 'Delete', 'feedback-collector' );
-		return apply_filters( 'fbc_bulk_actions', $actions );
+		return apply_filters( 'fbcol_bulk_actions', $actions );
 	}
 
 	/**
@@ -92,21 +92,21 @@ final class ItemsTable extends \WP_List_Table {
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended
 		$get = static function ( string $key1, string $key2 = '' ): string {
 			if ( isset( $_GET[ $key1 ] ) ) {
-				return (string) wp_unslash( $_GET[ $key1 ] );
+				return sanitize_text_field( wp_unslash( (string) $_GET[ $key1 ] ) );
 			}
 			if ( '' !== $key2 && isset( $_GET[ $key2 ] ) ) {
-				return (string) wp_unslash( $_GET[ $key2 ] );
+				return sanitize_text_field( wp_unslash( (string) $_GET[ $key2 ] ) );
 			}
 			return '';
 		};
 		return array(
-			'type'        => sanitize_key( $get( 'fbc_type', 'type' ) ),
-			'status'      => sanitize_key( $get( 'fbc_status', 'status' ) ),
-			'assignee_id' => '' !== $get( 'fbc_assignee', 'assignee_id' ) ? (string) absint( $get( 'fbc_assignee', 'assignee_id' ) ) : '',
-			'page_path'   => sanitize_text_field( $get( 'fbc_page', 'page_path' ) ),
+			'type'        => sanitize_key( $get( 'fbcol_type', 'type' ) ),
+			'status'      => sanitize_key( $get( 'fbcol_status', 'status' ) ),
+			'assignee_id' => '' !== $get( 'fbcol_assignee', 'assignee_id' ) ? (string) absint( $get( 'fbcol_assignee', 'assignee_id' ) ) : '',
+			'page_path'   => sanitize_text_field( $get( 'fbcol_page', 'page_path' ) ),
 			'search'      => sanitize_text_field( $get( 's', 'search' ) ),
-			'round'       => absint( $get( 'fbc_round', 'round' ) ) ? (string) absint( $get( 'fbc_round', 'round' ) ) : '',
-			'breakpoint'  => sanitize_key( $get( 'fbc_bp', 'breakpoint' ) ),
+			'round'       => absint( $get( 'fbcol_round', 'round' ) ) ? (string) absint( $get( 'fbcol_round', 'round' ) ) : '',
+			'breakpoint'  => sanitize_key( $get( 'fbcol_bp', 'breakpoint' ) ),
 		);
 		// phpcs:enable
 	}
@@ -162,28 +162,28 @@ final class ItemsTable extends \WP_List_Table {
 		$f      = self::filters();
 		$labels = Items::labels();
 		echo '<div class="alignleft actions">';
-		$this->dropdown( 'fbc_type', __( 'All types', 'feedback-collector' ), $labels['type'], $f['type'] );
-		$this->dropdown( 'fbc_status', __( 'All statuses', 'feedback-collector' ), $labels['status'], $f['status'] );
+		$this->dropdown( 'fbcol_type', __( 'All types', 'feedback-collector' ), $labels['type'], $f['type'] );
+		$this->dropdown( 'fbcol_status', __( 'All statuses', 'feedback-collector' ), $labels['status'], $f['status'] );
 
 		$people = array( '0' => __( 'Unassigned', 'feedback-collector' ) );
 		foreach ( Assignees::options()['people'] as $r ) {
 			$people[ (string) $r['id'] ] = $r['name'];
 		}
-		$this->dropdown( 'fbc_assignee', __( 'Any assignee', 'feedback-collector' ), $people, $f['assignee_id'] );
+		$this->dropdown( 'fbcol_assignee', __( 'Any assignee', 'feedback-collector' ), $people, $f['assignee_id'] );
 
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		$paths = $wpdb->get_col( $wpdb->prepare( 'SELECT DISTINCT page_path FROM %i ORDER BY page_path ASC LIMIT 300', Items::table() ) );
-		$this->dropdown( 'fbc_page', __( 'All pages', 'feedback-collector' ), array_combine( $paths, $paths ) ?: array(), $f['page_path'] );
+		$this->dropdown( 'fbcol_page', __( 'All pages', 'feedback-collector' ), array_combine( $paths, $paths ) ?: array(), $f['page_path'] );
 
 		$rounds = array();
 		foreach ( \FeedbackCollector\Rounds::all() as $round ) {
 			/* translators: %d: round number */
 			$rounds[ (string) $round ] = sprintf( __( 'Round %d', 'feedback-collector' ), $round );
 		}
-		$this->dropdown( 'fbc_round', __( 'All rounds', 'feedback-collector' ), $rounds, $f['round'] );
+		$this->dropdown( 'fbcol_round', __( 'All rounds', 'feedback-collector' ), $rounds, $f['round'] );
 		$this->dropdown(
-			'fbc_bp',
+			'fbcol_bp',
 			__( 'All breakpoints', 'feedback-collector' ),
 			array(
 				'mobile'  => __( 'Mobile', 'feedback-collector' ),
@@ -197,9 +197,9 @@ final class ItemsTable extends \WP_List_Table {
 
 		$export_url = add_query_arg(
 			array_merge(
-				array( 'action' => 'fbc_export_csv' ),
+				array( 'action' => 'fbcol_export_csv' ),
 				array_filter( self::filters(), static fn( $v ) => '' !== $v ),
-				array( '_wpnonce' => wp_create_nonce( 'fbc_export_csv' ) )
+				array( '_wpnonce' => wp_create_nonce( 'fbcol_export_csv' ) )
 			),
 			admin_url( 'admin-post.php' )
 		);
@@ -313,7 +313,7 @@ final class ItemsTable extends \WP_List_Table {
 			case 'created':
 				return esc_html( get_date_from_gmt( $item['created_at'], get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) ) );
 			case 'teamwork':
-				return (string) apply_filters( 'fbc_teamwork_column', '<span aria-hidden="true">—</span>', $item );
+				return (string) apply_filters( 'fbcol_teamwork_column', '<span aria-hidden="true">—</span>', $item );
 		}
 		return '';
 	}

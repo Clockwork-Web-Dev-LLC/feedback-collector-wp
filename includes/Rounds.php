@@ -17,7 +17,7 @@ defined( 'ABSPATH' ) || exit;
  */
 final class Rounds {
 
-	public const OPTION = 'fbc_round';
+	public const OPTION = 'fbcol_round';
 
 	/**
 	 * The current round (≥ 1). On first use it adopts the round number of any
@@ -26,7 +26,7 @@ final class Rounds {
 	public static function current(): int {
 		$round = (int) get_option( self::OPTION, 0 );
 		if ( $round < 1 ) {
-			$legacy = (int) ( get_option( 'fbc_teamwork', array() )['round'] ?? 0 );
+			$legacy = (int) ( get_option( 'fbcol_teamwork', array() )['round'] ?? 0 );
 			$round  = max( 1, $legacy );
 			update_option( self::OPTION, $round, false );
 		}

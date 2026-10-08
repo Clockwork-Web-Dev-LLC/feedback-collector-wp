@@ -11,44 +11,44 @@ use FeedbackCollector\Items;
 use FeedbackCollector\Rounds;
 use FeedbackCollector\Teamwork\Teamwork;
 
-global $wpdb, $fbc_mock;
+global $wpdb, $fbcol_mock;
 wp_set_current_user( 1 );
-$fbc_max     = (int) $wpdb->get_var( 'SELECT COALESCE(MAX(id),0) FROM ' . Items::table() );
-$fbc_backups = array();
-foreach ( array( 'fbc_teamwork', 'fbc_tw_state', 'fbc_round', 'fbc_assignee_source' ) as $o ) {
-	$fbc_backups[ $o ] = get_option( $o, null );
+$fbcol_max     = (int) $wpdb->get_var( 'SELECT COALESCE(MAX(id),0) FROM ' . Items::table() );
+$fbcol_backups = array();
+foreach ( array( 'fbcol_teamwork', 'fbcol_tw_state', 'fbcol_round', 'fbcol_assignee_source' ) as $o ) {
+	$fbcol_backups[ $o ] = get_option( $o, null );
 }
 register_shutdown_function(
-	static function () use ( $fbc_max, $fbc_backups ) {
+	static function () use ( $fbcol_max, $fbcol_backups ) {
 		global $wpdb;
-		foreach ( $wpdb->get_col( $wpdb->prepare( 'SELECT id FROM ' . Items::table() . ' WHERE id > %d', $fbc_max ) ) as $id ) {
+		foreach ( $wpdb->get_col( $wpdb->prepare( 'SELECT id FROM ' . Items::table() . ' WHERE id > %d', $fbcol_max ) ) as $id ) {
 			Items::delete( (int) $id );
 		}
-		foreach ( $fbc_backups as $o => $v ) {
+		foreach ( $fbcol_backups as $o => $v ) {
 			null === $v ? delete_option( $o ) : update_option( $o, $v );
 		}
-		delete_transient( 'fbc_tw_people_list_100' );
+		delete_transient( 'fbcol_tw_people_list_100' );
 		echo "cleanup done\n";
 	}
 );
 
-$fbc_mock = array(
+$fbcol_mock = array(
 	'lists'   => 300,
 	'creates' => array(),
 );
 add_filter(
 	'pre_http_request',
 	static function ( $pre, $args, $url ) {
-		global $fbc_mock;
+		global $fbcol_mock;
 		$path = (string) wp_parse_url( $url, PHP_URL_PATH );
 		$json = static fn( $c, $b ) => array( 'response' => array( 'code' => $c, 'message' => '' ), 'body' => wp_json_encode( $b ), 'headers' => array(), 'cookies' => array() );
 		if ( 'POST' === $args['method'] && '/projects/100/tasklists.json' === $path ) {
-			$fbc_mock['last_list_payload'] = json_decode( $args['body'], true );
-			return $json( 201, array( 'TASKLISTID' => (string) ++$fbc_mock['lists'] ) );
+			$fbcol_mock['last_list_payload'] = json_decode( $args['body'], true );
+			return $json( 201, array( 'TASKLISTID' => (string) ++$fbcol_mock['lists'] ) );
 		}
 		if ( 'POST' === $args['method'] && preg_match( '#/tasklists/(\d+)/tasks\.json$#', $path, $m ) ) {
-			$fbc_mock['creates'][] = (int) $m[1];
-			return $json( 201, array( 'task' => array( 'id' => 8000 + count( $fbc_mock['creates'] ) ) ) );
+			$fbcol_mock['creates'][] = (int) $m[1];
+			return $json( 201, array( 'task' => array( 'id' => 8000 + count( $fbcol_mock['creates'] ) ) ) );
 		}
 		if ( '/projects/api/v3/tags.json' === $path ) {
 			return $json( 200, array( 'tags' => array( array( 'id' => 1, 'name' => 'Bug' ) ) ) );
@@ -75,15 +75,15 @@ $mk    = static fn( string $title ) => Items::create(
 );
 
 // 1. Counter.
-delete_option( 'fbc_round' );
-delete_option( 'fbc_teamwork' );
-delete_option( 'fbc_assignee_source' );
+delete_option( 'fbcol_round' );
+delete_option( 'fbcol_teamwork' );
+delete_option( 'fbcol_assignee_source' );
 $check( 'fresh site starts at Round 1', 1 === Rounds::current() );
-delete_option( 'fbc_round' );
-update_option( 'fbc_teamwork', array( 'round' => 3 ) );
-$check( 'adopts a pre-existing Teamwork round number once', 3 === Rounds::current() && 3 === (int) get_option( 'fbc_round' ) );
-delete_option( 'fbc_teamwork' );
-update_option( 'fbc_round', 1 );
+delete_option( 'fbcol_round' );
+update_option( 'fbcol_teamwork', array( 'round' => 3 ) );
+$check( 'adopts a pre-existing Teamwork round number once', 3 === Rounds::current() && 3 === (int) get_option( 'fbcol_round' ) );
+delete_option( 'fbcol_teamwork' );
+update_option( 'fbcol_round', 1 );
 
 // 2. Without Teamwork.
 $a = $mk( 'round one item' );
@@ -109,48 +109,48 @@ $check( 'REST item shape includes round', 2 === rest_do_request( $q )->get_data(
 $_POST = array( 'tw_site' => 'https://x.teamwork.com', 'tw_key' => 'fake-key' );
 Teamwork::save_settings();
 $_POST            = array();
-$s                = get_option( 'fbc_teamwork' );
+$s                = get_option( 'fbcol_teamwork' );
 $s['project_id']  = 100;
 $s['tasklist_id'] = 200;
 $s['round_lists'] = array( 1 => array( 'id' => 200, 'name' => 'QA – Round 1' ) );
 $s['send_email']  = false;
 $s['tags']        = array( 'bug' => 1 );
-update_option( 'fbc_teamwork', $s );
+update_option( 'fbcol_teamwork', $s );
 
 $check( 'Round 2 has no list yet → not ready', ! Teamwork::ready() );
 $err = Teamwork::push( $b );
-$check( 'Anti: pushing a Round 2 item with no Round 2 list fails clearly', is_wp_error( $err ) && 'fbc_tw_no_round_list' === $err->get_error_code() );
+$check( 'Anti: pushing a Round 2 item with no Round 2 list fails clearly', is_wp_error( $err ) && 'fbcol_tw_no_round_list' === $err->get_error_code() );
 $new = Teamwork::create_round_list( 2 );
-$s   = get_option( 'fbc_teamwork' );
+$s   = get_option( 'fbcol_teamwork' );
 $check( 'create_round_list maps Round 2 and makes it active', 301 === $new && 301 === (int) $s['round_lists'][2]['id'] && 301 === (int) $s['tasklist_id'] && str_starts_with( $s['tasklist_name'], 'QA – Round 2' ) );
 $check( 'ready once the current round has a list', Teamwork::ready() );
 
 update_option(
-	'fbc_teamwork',
+	'fbcol_teamwork',
 	array_merge(
-		get_option( 'fbc_teamwork' ),
+		get_option( 'fbcol_teamwork' ),
 		array( 'tw_sync_state' => '' )
 	)
 );
 $wpdb->update( Items::table(), array( 'tw_sync_state' => '' ), array( 'id' => $a ) );
 Teamwork::push( $a );
 Teamwork::push( $b );
-$check( 'Round 1 item pushes to the Round 1 list (200), not the active one', 200 === ( $fbc_mock['creates'][0] ?? 0 ) );
-$check( 'Round 2 item pushes to the Round 2 list (301)', 301 === ( $fbc_mock['creates'][1] ?? 0 ) );
+$check( 'Round 1 item pushes to the Round 1 list (200), not the active one', 200 === ( $fbcol_mock['creates'][0] ?? 0 ) );
+$check( 'Round 2 item pushes to the Round 2 list (301)', 301 === ( $fbcol_mock['creates'][1] ?? 0 ) );
 
 $r = Rounds::start_next();
-$s = get_option( 'fbc_teamwork' );
+$s = get_option( 'fbcol_teamwork' );
 $check( 'start_next with Teamwork creates and activates the Round 3 list', 3 === $r['round'] && 302 === $r['teamwork'] && 302 === (int) $s['round_lists'][3]['id'] && 302 === (int) $s['tasklist_id'] );
 $check( 'earlier round lists are kept', 200 === (int) $s['round_lists'][1]['id'] && 301 === (int) $s['round_lists'][2]['id'] );
 
 // create_custom_list tests
 $empty_err = Teamwork::create_custom_list( '   ', 3 );
-$check( 'create_custom_list rejects empty name', is_wp_error( $empty_err ) && 'fbc_tw_empty_name' === $empty_err->get_error_code() );
+$check( 'create_custom_list rejects empty name', is_wp_error( $empty_err ) && 'fbcol_tw_empty_name' === $empty_err->get_error_code() );
 $custom_id = Teamwork::create_custom_list( 'Sprint 42 QA List', 3 );
-$s         = get_option( 'fbc_teamwork' );
-$check( 'create_custom_list creates and maps custom named list', 303 === $custom_id && 'Sprint 42 QA List' === $s['tasklist_name'] && 'Sprint 42 QA List' === $s['round_lists'][3]['name'] && false === ( $fbc_mock['last_list_payload']['todo-list']['private'] ?? null ) );
+$s         = get_option( 'fbcol_teamwork' );
+$check( 'create_custom_list creates and maps custom named list', 303 === $custom_id && 'Sprint 42 QA List' === $s['tasklist_name'] && 'Sprint 42 QA List' === $s['round_lists'][3]['name'] && false === ( $fbcol_mock['last_list_payload']['todo-list']['private'] ?? null ) );
 $private_id = Teamwork::create_custom_list( 'Sprint 42 Private QA List', 3, true );
-$s          = get_option( 'fbc_teamwork' );
-$check( 'create_custom_list with private=true records private status', 304 === $private_id && true === $s['tasklist_private'] && true === ( $s['round_lists'][3]['private'] ?? false ) && true === ( $fbc_mock['last_list_payload']['todo-list']['private'] ?? null ) );
+$s          = get_option( 'fbcol_teamwork' );
+$check( 'create_custom_list with private=true records private status', 304 === $private_id && true === $s['tasklist_private'] && true === ( $s['round_lists'][3]['private'] ?? false ) && true === ( $fbcol_mock['last_list_payload']['todo-list']['private'] ?? null ) );
 
 printf( "\n%d passed, %d failed\n", $n[0], $n[1] );
