@@ -1133,3 +1133,121 @@ select {
 .preview-bar .icon-label {
   font-size: 12px;
 }
+
+/* Screen recording */
+.toolbar .rec-start {
+  color: inherit;
+}
+.toolbar .rec-start::first-letter {
+  color: #ff5a5f;
+}
+.toolbar.recording {
+  gap: 8px;
+  padding: 6px 8px 6px 12px;
+}
+.toolbar .rec-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ff3b30;
+  animation: rec-blink 1.2s ease-in-out infinite;
+}
+.toolbar .rec-clock {
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  min-width: 82px;
+}
+.toolbar .rec-stop {
+  background: #ff3b30;
+  color: #fff;
+  font-weight: 600;
+}
+.toolbar .rec-stop:hover {
+  background: #e0302a;
+}
+@keyframes rec-blink {
+  50% { opacity: 0.25; }
+}
+/* Pointer and click ripples, drawn into the page so they show in the recording */
+.rec-pointer {
+  position: fixed;
+  left: -14px;
+  top: -14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 214, 10, 0.35);
+  border: 2px solid rgba(255, 179, 0, 0.9);
+  pointer-events: none;
+  will-change: transform;
+}
+.rec-ripple {
+  position: fixed;
+  width: 44px;
+  height: 44px;
+  margin: -22px 0 0 -22px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 140, 0, 0.95);
+  pointer-events: none;
+  animation: rec-ripple 0.7s ease-out forwards;
+}
+@keyframes rec-ripple {
+  from { transform: scale(0.3); opacity: 1; }
+  to { transform: scale(1.6); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toolbar .rec-dot { animation: none; }
+}
+.rec-preview {
+  margin: 2px 0 10px;
+}
+.rec-preview video,
+.rec-block video {
+  display: block;
+  width: 100%;
+  max-height: 220px;
+  border-radius: 6px;
+  background: #111;
+}
+.rec-status {
+  margin-top: 4px;
+}
+.rec-block {
+  margin: 6px 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px;
+}
+.rec-block summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 2px 2px 6px;
+}
+.rec-timeline {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  max-height: 140px;
+  overflow: auto;
+  font-size: 12px;
+}
+.rec-timeline li {
+  display: flex;
+  gap: 4px;
+  align-items: baseline;
+  padding: 2px 0;
+  border-top: 1px solid var(--line);
+}
+.rec-timeline .btn.link {
+  padding: 0 4px;
+  font-variant-numeric: tabular-nums;
+}
+.rec-timeline code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rec-timeline li.error code {
+  color: var(--bug);
+}

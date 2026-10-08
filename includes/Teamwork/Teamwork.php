@@ -17,6 +17,7 @@ use FeedbackCollector\DueDates;
 use FeedbackCollector\Items;
 use FeedbackCollector\Rounds;
 use FeedbackCollector\Screenshots;
+use FeedbackCollector\Videos;
 use WP_Error;
 use const FeedbackCollector\CAP;
 
@@ -387,6 +388,16 @@ final class Teamwork {
 				$pending[] = $ref;
 			}
 		}
+		$video = Videos::path( $item );
+		if ( '' !== $video ) {
+			$ref = $client->upload_pending_file( $video, sprintf( 'feedback-%d-recording.webm', (int) $item['id'] ) );
+			if ( is_wp_error( $ref ) ) {
+				/* translators: %s: error */
+				Items::add_comment( $id, sprintf( __( 'recording was not attached in Teamwork (%s); the task links to it instead', 'feedback-collector' ), $ref->get_error_message() ), 'activity', 0 );
+			} else {
+				$pending[] = $ref;
+			}
+		}
 
 		$task_id = $client->create_task( $list, $task, (bool) $s['send_email'], $pending );
 
@@ -473,7 +484,21 @@ final class Teamwork {
 		if ( '' !== $shot_url ) {
 			$lines[] = __( 'Screenshot', 'feedback-collector' ) . ': ' . self::md_link( __( 'view image', 'feedback-collector' ), $shot_url );
 		}
+		$video_url = Videos::url( $item );
+		if ( '' !== $video_url ) {
+			/* translators: %s: length, e.g. 1:42 */
+			$lines[] = __( 'Screen recording', 'feedback-collector' ) . ': ' . self::md_link( sprintf( __( 'watch video (%s)', 'feedback-collector' ), Videos::clock( (int) $item['video_duration'] ) ), $video_url );
+		}
 		$md .= '- ' . implode( "\n- ", $lines ) . "\n";
+		if ( '' !== $video_url && ! empty( $item['video_events'] ) ) {
+			$md .= "\n" . __( 'During the recording:', 'feedback-collector' ) . "\n";
+			foreach ( $item['video_events'] as $event ) {
+				$what = 'error' === $event['kind']
+					? __( 'JS error', 'feedback-collector' ) . ' ' . self::md_code( (string) $event['label'] )
+					: __( 'clicked', 'feedback-collector' ) . ' ' . self::md_code( (string) $event['label'] );
+				$md  .= '- ' . Videos::clock( intdiv( (int) $event['t'], 1000 ) ) . ' · ' . $what . "\n";
+			}
+		}
 		if ( ! empty( $ctx['js_errors'] ) ) {
 			$md .= "\n" . __( 'JavaScript errors on the page:', 'feedback-collector' ) . "\n";
 			foreach ( $ctx['js_errors'] as $err ) {

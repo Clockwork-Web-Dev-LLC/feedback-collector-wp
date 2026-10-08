@@ -279,6 +279,35 @@ final class Admin {
 					Layout::card_close();
 				}
 
+				$video = \FeedbackCollector\Videos::url( $item );
+				if ( '' !== $video ) {
+					/* translators: %s: length, e.g. 1:42 */
+					Layout::card_open( sprintf( __( 'Screen recording (%s)', 'feedback-collector' ), \FeedbackCollector\Videos::clock( (int) $item['video_duration'] ) ) );
+					printf( '<video class="fbc-video" src="%s" controls preload="metadata"></video>', esc_url( $video ) );
+					if ( $item['video_events'] ) {
+						echo '<ol class="fbc-timeline">';
+						foreach ( $item['video_events'] as $event ) {
+							printf(
+								'<li class="%1$s"><button type="button" class="button-link" data-t="%2$d">%3$s</button> %4$s <code>%5$s</code></li>',
+								esc_attr( $event['kind'] ),
+								(int) $event['t'],
+								esc_html( \FeedbackCollector\Videos::clock( intdiv( (int) $event['t'], 1000 ) ) ),
+								'error' === $event['kind'] ? esc_html__( 'JS error', 'feedback-collector' ) : esc_html__( 'clicked', 'feedback-collector' ),
+								esc_html( $event['label'] )
+							);
+						}
+						echo '</ol>';
+					}
+					// Browser-made WebM has no length in its header: seek to the end once so the
+					// scrubber works, then let the timeline jump to each moment.
+					wp_print_inline_script_tag(
+						'(function(){var v=document.querySelector(".fbc-video");if(!v)return;' .
+						'v.addEventListener("loadedmetadata",function f(){if(v.duration===Infinity){v.currentTime=1e9;v.addEventListener("durationchange",function g(){v.currentTime=0;v.removeEventListener("durationchange",g);});}v.removeEventListener("loadedmetadata",f);});' .
+						'document.querySelectorAll(".fbc-timeline [data-t]").forEach(function(b){b.addEventListener("click",function(){v.currentTime=Math.max(0,b.dataset.t/1000-1);v.play();});});})();'
+					);
+					Layout::card_close();
+				}
+
 				Layout::card_open( __( 'Thread', 'feedback-collector' ) );
 				$thread = Items::comments( $item['id'] );
 				if ( $thread ) {
@@ -525,6 +554,16 @@ final class Admin {
 					esc_html__( 'Captured in the browser, with typed form values masked. Stored in uploads/fbc-screenshots and attached to the Teamwork task.', 'feedback-collector' )
 				);
 				printf(
+					'<tr><th scope="row">%1$s</th><td><label><input type="checkbox" name="videos" value="1"%2$s /> %3$s</label><p><label>%4$s <input type="number" name="video_max_minutes" min="1" max="10" step="1" class="small-text" value="%5$d" /> %6$s</label></p><p class="description">%7$s</p></td></tr>',
+					esc_html__( 'Screen recordings', 'feedback-collector' ),
+					checked( \FeedbackCollector\Videos::enabled(), true, false ),
+					esc_html__( 'Let reviewers record the page with their voice (Record on the toolbar)', 'feedback-collector' ),
+					esc_html__( 'Up to', 'feedback-collector' ),
+					(int) ceil( \FeedbackCollector\Videos::max_seconds() / 60 ),
+					esc_html__( 'minutes per recording (default 3)', 'feedback-collector' ),
+					esc_html__( 'Chrome and Edge. Clicks and JavaScript errors during the recording are listed with timestamps. Stored in uploads/fbc-videos and attached to the Teamwork task; all recordings are deleted when the plugin is deleted.', 'feedback-collector' )
+				);
+				printf(
 					'<tr><th scope="row">%1$s</th><td><label><input type="checkbox" name="due_default" value="1"%2$s /> %3$s</label><p><label>%4$s <input type="number" name="due_days" min="0" max="365" step="1" class="small-text" value="%5$d" /> %6$s</label></p><p><label>%7$s <input type="number" name="due_batch_hours" min="0" max="72" step="1" class="small-text" value="%8$d" /> %9$s</label></p><p class="description">%10$s</p></td></tr>',
 					esc_html__( 'Due dates', 'feedback-collector' ),
 					checked( DueDates::on_by_default(), true, false ),
@@ -582,6 +621,10 @@ final class Admin {
 		update_option( 'fbc_review_roles', $roles, false );
 		update_option( 'fbc_delete_on_uninstall', ! empty( $_POST['delete_on_uninstall'] ), false );
 		update_option( \FeedbackCollector\Screenshots::OPTION, empty( $_POST['screenshots'] ) ? '0' : '1', false );
+		update_option( \FeedbackCollector\Videos::OPTION, empty( $_POST['videos'] ) ? '0' : '1', false );
+		if ( isset( $_POST['video_max_minutes'] ) ) {
+			update_option( \FeedbackCollector\Videos::OPT_MAX, 60 * max( 1, min( 10, absint( $_POST['video_max_minutes'] ) ) ), false );
+		}
 		update_option( Assignees::OPTION, isset( $_POST['assignee_source'] ) && 'wordpress' === $_POST['assignee_source'] ? 'wordpress' : 'teamwork', false );
 		update_option( DueDates::OPT_DEFAULT, empty( $_POST['due_default'] ) ? '0' : '1', false );
 		if ( isset( $_POST['due_days'] ) ) {
@@ -718,6 +761,8 @@ final class Admin {
 		echo '<li>' . esc_html( sprintf( __( '%1$d feedback items and %2$d replies (the database tables)', 'feedback-collector' ), $inv['items'], $inv['comments'] ) ) . '</li>';
 		/* translators: %d: screenshot count */
 		echo '<li>' . esc_html( sprintf( _n( '%d screenshot in uploads/fbc-screenshots', '%d screenshots in uploads/fbc-screenshots', $inv['screenshots'], 'feedback-collector' ), $inv['screenshots'] ) ) . '</li>';
+		/* translators: 1: recording count, 2: total size, e.g. "34 MB" */
+		echo '<li>' . esc_html( sprintf( _n( '%1$d screen recording (%2$s) in uploads/fbc-videos', '%1$d screen recordings (%2$s) in uploads/fbc-videos', $inv['videos'], 'feedback-collector' ), $inv['videos'], size_format( $inv['video_bytes'] ) ?: '0 B' ) ) . '</li>';
 		echo '<li>' . esc_html__( 'All settings (including the Teamwork key and branding), cached Teamwork data, scheduled sync jobs, and the reviewer capability on every role', 'feedback-collector' ) . '</li></ul>';
 		echo '<p class="description">' . esc_html__( 'Tasks already in Teamwork are not touched.', 'feedback-collector' ) . '</p>';
 		if ( $inv['unpushed'] ) {

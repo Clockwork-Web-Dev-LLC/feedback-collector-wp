@@ -281,13 +281,16 @@ final class Items {
 			return false;
 		}
 
-		$allowed = array( 'title', 'description', 'status', 'priority', 'assignee_id', 'tw_assignee_id', 'tw_assignee_name', 'type', 'anchor', 'tw_task_id', 'tw_project_id', 'tw_sync_state', 'tw_sync_error', 'screenshot', 'due_date' );
+		$allowed = array( 'title', 'description', 'status', 'priority', 'assignee_id', 'tw_assignee_id', 'tw_assignee_name', 'type', 'anchor', 'tw_task_id', 'tw_project_id', 'tw_sync_state', 'tw_sync_error', 'screenshot', 'video', 'video_duration', 'video_events', 'due_date' );
 		$row     = array_intersect_key( $changes, array_flip( $allowed ) );
 		if ( array_key_exists( 'due_date', $row ) ) {
 			$row['due_date'] = DueDates::sanitize( $row['due_date'] );
 		}
 		if ( array_key_exists( 'anchor', $row ) ) {
 			$row['anchor'] = null === $row['anchor'] ? null : wp_json_encode( $row['anchor'] );
+		}
+		if ( array_key_exists( 'video_events', $row ) ) {
+			$row['video_events'] = $row['video_events'] ? wp_json_encode( $row['video_events'] ) : null;
 		}
 		if ( ! $row ) {
 			return true;
@@ -358,6 +361,7 @@ final class Items {
 		$item = self::get( $id );
 		if ( $item ) {
 			Screenshots::delete_file( $item );
+			Videos::delete_file( $item );
 		}
 		// phpcs:disable WordPress.DB.DirectDatabaseQuery
 		$wpdb->delete( self::comments_table(), array( 'item_id' => $id ) );
@@ -431,9 +435,10 @@ final class Items {
 	 * @return array<string, mixed>
 	 */
 	public static function hydrate( array $row ): array {
-		foreach ( array( 'id', 'reporter_id', 'assignee_id', 'tw_assignee_id', 'tw_task_id', 'tw_project_id', 'round' ) as $int_field ) {
-			$row[ $int_field ] = (int) $row[ $int_field ];
+		foreach ( array( 'id', 'reporter_id', 'assignee_id', 'tw_assignee_id', 'tw_task_id', 'tw_project_id', 'round', 'video_duration' ) as $int_field ) {
+			$row[ $int_field ] = (int) ( $row[ $int_field ] ?? 0 );
 		}
+		$row['video_events'] = ! empty( $row['video_events'] ) ? (array) json_decode( (string) $row['video_events'], true ) : array();
 		$row['anchor']  = $row['anchor'] ? json_decode( (string) $row['anchor'], true ) : null;
 		$row['context'] = $row['context'] ? json_decode( (string) $row['context'], true ) : null;
 		unset( $row['page_hash'] );

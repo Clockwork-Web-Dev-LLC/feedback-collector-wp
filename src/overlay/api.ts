@@ -1,7 +1,7 @@
 import type { Comment, Config, Item, NewItem } from './types';
 
 export class ApiError extends Error {
-  constructor(message: string, public status: number) {
+  constructor(message: string, public status: number, public data?: Record<string, unknown>) {
     super(message);
   }
 }
@@ -21,20 +21,22 @@ export class Api {
 
   private async request<T>(method: string, path: string, body?: unknown, params?: Record<string, string>): Promise<T> {
     const isForm = typeof FormData !== 'undefined' && body instanceof FormData;
+    const isBlob = typeof Blob !== 'undefined' && body instanceof Blob;
     const res = await fetch(this.url(path, params), {
       method,
       credentials: 'same-origin',
       headers: {
         'X-WP-Nonce': this.cfg.nonce,
         // FormData sets its own multipart boundary header.
-        ...(body !== undefined && !isForm ? { 'Content-Type': 'application/json' } : {}),
+        ...(body !== undefined && !isForm ? { 'Content-Type': isBlob ? 'application/octet-stream' : 'application/json' } : {}),
       },
-      body: body === undefined ? undefined : isForm ? (body as FormData) : JSON.stringify(body),
+      body: body === undefined ? undefined : isForm || isBlob ? (body as BodyInit) : JSON.stringify(body),
     });
     const data: unknown = await res.json().catch(() => null);
     if (!res.ok) {
       const message = data && typeof data === 'object' && 'message' in data ? String((data as { message: unknown }).message) : res.statusText;
-      throw new ApiError(message, res.status);
+      const extra = data && typeof data === 'object' && 'data' in data ? ((data as { data: unknown }).data as Record<string, unknown>) : undefined;
+      throw new ApiError(message, res.status, extra);
     }
     return data as T;
   }
@@ -68,6 +70,20 @@ export class Api {
     const form = new FormData();
     form.append('screenshot', screenshot, 'screenshot.jpg');
     return this.request('POST', `/items/${id}/screenshot`, form);
+  }
+
+  /** Opens an upload session for a screen recording. */
+  startRecording(): Promise<{ token: string; max_seconds: number }> {
+    return this.request('POST', '/recordings');
+  }
+
+  /** Appends one piece of a recording at a byte offset; returns the bytes stored so far. */
+  appendRecording(token: string, offset: number, piece: Blob): Promise<{ size: number }> {
+    return this.request('POST', `/recordings/${token}`, piece, { offset: String(offset) });
+  }
+
+  discardRecording(token: string): Promise<{ deleted: boolean }> {
+    return this.request('DELETE', `/recordings/${token}`);
   }
 
   updateItem(

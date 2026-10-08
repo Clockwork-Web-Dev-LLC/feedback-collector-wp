@@ -13,7 +13,7 @@ namespace FeedbackCollector;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Tables, options, cached Teamwork data, scheduled jobs, the capability and screenshot files.
+ * Tables, options, cached Teamwork data, scheduled jobs, the capability, screenshots and screen recordings.
  */
 final class Cleanup {
 
@@ -28,6 +28,8 @@ final class Cleanup {
 		'fbc_assignee_source',
 		'fbc_round',
 		'fbc_screenshots',
+		'fbc_videos',
+		'fbc_video_max_seconds',
 		'fbc_due_default',
 		'fbc_due_days',
 		'fbc_due_batch_hours',
@@ -42,7 +44,7 @@ final class Cleanup {
 	/**
 	 * What a purge would remove, for the confirmation screen.
 	 *
-	 * @return array{items: int, comments: int, screenshots: int, unpushed: int}
+	 * @return array{items: int, comments: int, screenshots: int, videos: int, video_bytes: int, unpushed: int}
 	 */
 	public static function inventory(): array {
 		global $wpdb;
@@ -55,6 +57,8 @@ final class Cleanup {
 			'items'       => $count( $wpdb->prepare( 'SELECT COUNT(*) FROM %i', $items ) ),
 			'comments'    => $count( $wpdb->prepare( 'SELECT COUNT(*) FROM %i', $comments ) ),
 			'screenshots' => count( self::screenshot_files() ),
+			'videos'      => count( self::video_files() ),
+			'video_bytes' => (int) array_sum( array_map( 'filesize', self::video_files() ) ),
 			'unpushed'    => $count( $wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE tw_task_id = 0 AND status <> %s', $items, 'resolved' ) ),
 		);
 		// phpcs:enable
@@ -118,25 +122,50 @@ final class Cleanup {
 			wp_delete_file( $file );
 			++$removed['files'];
 		}
-		$dir = self::screenshot_dir();
-		if ( is_dir( $dir ) ) {
-			foreach ( (array) glob( $dir . '/{,.}*', GLOB_BRACE ) as $leftover ) {
-				if ( is_file( (string) $leftover ) ) {
-					wp_delete_file( (string) $leftover );
-				}
-			}
-			rmdir( $dir ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_rmdir
-		}
+		self::remove_dir( self::upload_dir( 'fbc-screenshots' ) );
+		$removed['files'] += self::purge_videos();
 
 		return $removed;
 	}
 
 	/**
-	 * Screenshot folder path.
+	 * Deletes every screen recording, including unfinished uploads. Uninstall runs this even
+	 * when the site keeps its feedback data: recordings are large, and the Teamwork tasks
+	 * already carry a copy.
+	 *
+	 * @return int Recordings removed.
 	 */
-	private static function screenshot_dir(): string {
+	public static function purge_videos(): int {
+		$count = count( self::video_files() );
+		self::remove_dir( self::upload_dir( 'fbc-videos' ) );
+		return $count;
+	}
+
+	/**
+	 * Deletes every file in a folder (including dotfiles and partial uploads), then the folder.
+	 *
+	 * @param string $dir Folder.
+	 */
+	private static function remove_dir( string $dir ): void {
+		if ( ! is_dir( $dir ) ) {
+			return;
+		}
+		foreach ( (array) glob( $dir . '/{,.}*', GLOB_BRACE ) as $leftover ) {
+			if ( is_file( (string) $leftover ) ) {
+				wp_delete_file( (string) $leftover );
+			}
+		}
+		rmdir( $dir ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_rmdir
+	}
+
+	/**
+	 * Path of one of the plugin's folders in uploads.
+	 *
+	 * @param string $name Folder name.
+	 */
+	private static function upload_dir( string $name ): string {
 		$uploads = wp_upload_dir( null, false );
-		return trailingslashit( $uploads['basedir'] ) . 'fbc-screenshots';
+		return trailingslashit( $uploads['basedir'] ) . $name;
 	}
 
 	/**
@@ -145,10 +174,23 @@ final class Cleanup {
 	 * @return string[]
 	 */
 	private static function screenshot_files(): array {
-		$dir = self::screenshot_dir();
+		$dir = self::upload_dir( 'fbc-screenshots' );
 		if ( ! is_dir( $dir ) ) {
 			return array();
 		}
 		return array_values( array_filter( (array) glob( $dir . '/*.{jpg,png,webp}', GLOB_BRACE ), 'is_file' ) );
+	}
+
+	/**
+	 * Finished recordings in the video folder (unfinished uploads are removed with the folder).
+	 *
+	 * @return string[]
+	 */
+	private static function video_files(): array {
+		$dir = self::upload_dir( 'fbc-videos' );
+		if ( ! is_dir( $dir ) ) {
+			return array();
+		}
+		return array_values( array_filter( (array) glob( $dir . '/*.webm' ), 'is_file' ) );
 	}
 }

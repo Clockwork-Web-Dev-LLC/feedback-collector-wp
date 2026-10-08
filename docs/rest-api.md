@@ -49,6 +49,8 @@ Returns `{ "items": Item[], "total": number }`, oldest first, capped at 500.
 
 `anchor: null` creates a page note that isn't tied to an element. `title` and `type` are required. `assignee_id` must be a user with `fbc_review`.
 
+Optional `recording: { "token": "…", "duration": 83, "events": [{ "t": 42000, "kind": "click", "label": "\"Pay now\" (button.pay)" }] }` attaches a screen recording uploaded under that token (see `/recordings`). `duration` is in seconds, `t` in milliseconds; `kind` is `click` or `error`. A bad or expired token never loses the feedback: the item is saved and the response carries `video_error`.
+
 ### `GET /items/{id}` → `Item` with `comments`
 
 ### `PATCH /items/{id}` → `Item` with `comments`
@@ -63,13 +65,25 @@ Only the reporter or an administrator.
 
 Body: `{ "body": "text" }`.
 
+### `POST /recordings` → 201 `{ "token": "…32 chars…", "max_seconds": 180 }`
+
+Opens an upload session for a screen recording about to start (403 when recordings are off in Settings). Abandoned sessions are deleted after 12 hours.
+
+### `POST /recordings/{token}?offset=N` → `{ "size": 123456 }`
+
+Appends one piece (raw WebM bytes as the request body, `Content-Type: application/octet-stream`, at most 8 MB) at byte `offset`. Re-sending a piece already stored is harmless. A gap gets 409 with `data.size` (the bytes stored so far). The first piece must start with the WebM (EBML) header. Sessions belong to the user who opened them; anyone else gets 404.
+
+### `DELETE /recordings/{token}` → `{ "deleted": true }`
+
+Throws a session away.
+
 ### `GET /reviewers` → `[{ "id": 1, "name": "Aaron" }]`
 
 Users who can be assigned feedback.
 
 ## Shapes
 
-`Item`: `id, type, status, priority, title, description, page_path, page_query, page_title, page_url, anchor, context, breakpoint, reporter_id, reporter_name, assignee_id, assignee_name, tw_task_id, tw_task_url, tw_sync_state, created_at, updated_at, can_delete` (dates in RFC 3339 UTC).
+`Item`: `id, type, status, priority, title, description, page_path, page_query, page_title, page_url, anchor, context, breakpoint, reporter_id, reporter_name, assignee_id, assignee_name, tw_task_id, tw_task_url, tw_sync_state, created_at, updated_at, can_delete, screenshot_url, video_url, video_duration (seconds), video_events` (dates in RFC 3339 UTC).
 
 `Comment`: `id, kind ("comment" | "activity"), body, user_id, user_name, created_at`. Activity with `user_id: 0` came from Teamwork sync.
 

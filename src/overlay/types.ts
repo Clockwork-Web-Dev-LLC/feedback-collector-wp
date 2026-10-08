@@ -21,6 +21,13 @@ export interface Context {
   preview?: string;
 }
 
+/** Something that happened during a screen recording, at t milliseconds in. */
+export interface RecEvent {
+  t: number;
+  kind: 'click' | 'error';
+  label: string;
+}
+
 export interface Comment {
   id: number;
   kind: 'comment' | 'activity';
@@ -52,6 +59,11 @@ export interface Item {
   due_next?: DueConfig;
   screenshot_url?: string;
   screenshot_error?: string;
+  video_url?: string;
+  /** Seconds. */
+  video_duration?: number;
+  video_events?: RecEvent[];
+  video_error?: string;
   reporter_id: number;
   reporter_name: string;
   assignee_id: number;
@@ -121,6 +133,8 @@ export interface Config {
   version?: string;
   /** Attach a screenshot to new items. */
   shots?: boolean;
+  /** Screen recording (Chrome/Edge). */
+  video?: { enabled: boolean; maxSeconds: number };
   due?: DueConfig;
   /** The reviewer's own saved preferences (on their WordPress user); absent keys = never chosen. */
   prefs?: { corner?: 'tl' | 'tr' | 'bl' | 'br'; highlight?: boolean };
@@ -140,6 +154,8 @@ export interface NewItem {
   page_title: string;
   anchor: Anchor | null;
   context: Context;
+  /** A screen recording already uploaded under this token (see Recorder). */
+  recording?: { token: string; duration: number; events: RecEvent[] };
 }
 
 declare global {
