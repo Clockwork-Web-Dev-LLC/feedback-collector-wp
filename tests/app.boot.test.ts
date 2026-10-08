@@ -423,7 +423,32 @@ describe('toolbar placement', () => {
 });
 
 describe('screenshots', () => {
-  it('captures at right-click and sends item + screenshot in one multipart request', async () => {
+  const pick = (form: HTMLFormElement, label: string) => [...form.querySelectorAll('.attach-pick button')].find((b) => b.textContent?.includes(label)) as HTMLButtonElement | undefined;
+
+  it('Anti: nothing is captured automatically; the composer offers Screenshot', async () => {
+    let captures = 0;
+    window.FBCCapture = { captureViewport: async () => (captures++, new Blob([new Uint8Array([1])], { type: 'image/jpeg' })) };
+    const app = createApp({ ...cfg(), shots: true, assetsUrl: 'x/' });
+    app.init();
+    await app.setMode(true);
+    document.getElementById('cta')?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 150, clientY: 210 }));
+    (shadow()?.querySelector('.menu button') as HTMLButtonElement).click();
+    await tick();
+    const form = shadow()?.querySelector('form.composer') as HTMLFormElement;
+    expect(captures).toBe(0);
+    expect(form.querySelector('.shot img')).toBeNull();
+    expect(pick(form, 'Screenshot')).toBeDefined();
+    (form.querySelector('input[name="title"]') as HTMLInputElement).value = 'Text only';
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await tick();
+    await tick();
+    const post = calls.find((c) => c.method === 'POST');
+    expect((post?.body as { title?: string })?.title).toBe('Text only'); // plain JSON body, no multipart
+    expect(captures).toBe(0);
+    delete window.FBCCapture;
+  });
+
+  it('Screenshot captures on request (marked at the pin) and sends item + screenshot in one multipart request', async () => {
     const marks: Array<{ x: number; y: number } | null> = [];
     window.FBCCapture = {
       captureViewport: async (opts) => {
@@ -435,10 +460,13 @@ describe('screenshots', () => {
     app.init();
     await app.setMode(true);
     document.getElementById('cta')?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 150, clientY: 210 }));
-    expect(marks).toEqual([{ x: 150, y: 210 }]); // started at right-click, before the composer opens
     (shadow()?.querySelector('.menu button') as HTMLButtonElement).click();
     await tick();
     const form = shadow()?.querySelector('form.composer') as HTMLFormElement;
+    pick(form, 'Screenshot')?.click();
+    await tick();
+    await tick();
+    expect(marks).toEqual([{ x: 150, y: 210 }]);
     expect(form.querySelector('.shot img')).not.toBeNull(); // thumbnail shown
     (form.querySelector('input[name="title"]') as HTMLInputElement).value = 'With a screenshot';
     form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
@@ -455,7 +483,7 @@ describe('screenshots', () => {
     delete window.FBCCapture;
   });
 
-  it('Remove screenshot sends the item without one', async () => {
+  it('Remove takes the screenshot off again and brings back the choice', async () => {
     window.FBCCapture = { captureViewport: async () => new Blob([new Uint8Array([1])], { type: 'image/jpeg' }) };
     const app = createApp({ ...cfg(), shots: true, assetsUrl: 'x/' });
     app.init();
@@ -464,9 +492,13 @@ describe('screenshots', () => {
     (shadow()?.querySelector('.menu button') as HTMLButtonElement).click();
     await tick();
     const form = shadow()?.querySelector('form.composer') as HTMLFormElement;
-    const remove = [...form.querySelectorAll('button')].find((b) => b.textContent === 'Remove screenshot') as HTMLButtonElement;
+    pick(form, 'Screenshot')?.click();
+    await tick();
+    await tick();
+    const remove = [...form.querySelectorAll('button')].find((b) => b.textContent === 'Remove') as HTMLButtonElement;
     remove.click();
     expect(form.querySelector('.shot img')).toBeNull();
+    expect(pick(form, 'Screenshot')).toBeDefined();
     (form.querySelector('input[name="title"]') as HTMLInputElement).value = 'No screenshot';
     form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
     await tick();
@@ -500,6 +532,9 @@ describe('annotation', () => {
     (shadow()?.querySelector('.menu button') as HTMLButtonElement).click();
     await tick();
     const form = shadow()?.querySelector('form.composer') as HTMLFormElement;
+    ([...form.querySelectorAll('.attach-pick button')].find((b) => b.textContent?.includes('Screenshot')) as HTMLButtonElement).click();
+    await tick();
+    await tick();
     const annotateBtn = [...form.querySelectorAll('button')].find((b) => b.textContent?.includes('Annotate')) as HTMLButtonElement;
     annotateBtn.click();
     await tick();

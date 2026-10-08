@@ -550,14 +550,14 @@ final class Admin {
 					'<tr><th scope="row">%1$s</th><td><label><input type="checkbox" name="screenshots" value="1"%2$s /> %3$s</label><p class="description">%4$s</p></td></tr>',
 					esc_html__( 'Screenshots', 'feedback-collector' ),
 					checked( \FeedbackCollector\Screenshots::enabled(), true, false ),
-					esc_html__( 'Attach a screenshot of what the reviewer sees to each new item', 'feedback-collector' ),
-					esc_html__( 'Captured in the browser, with typed form values masked. Stored in uploads/fbc-screenshots and attached to the Teamwork task.', 'feedback-collector' )
+					esc_html__( 'Offer Screenshot in the feedback form', 'feedback-collector' ),
+					esc_html__( 'Taken only when the reviewer clicks Screenshot, with typed form values masked. Stored in uploads/fbc-screenshots and attached to the Teamwork task.', 'feedback-collector' )
 				);
 				printf(
 					'<tr><th scope="row">%1$s</th><td><label><input type="checkbox" name="videos" value="1"%2$s /> %3$s</label><p><label>%4$s <input type="number" name="video_max_minutes" min="1" max="10" step="1" class="small-text" value="%5$d" /> %6$s</label></p><p class="description">%7$s</p></td></tr>',
 					esc_html__( 'Screen recordings', 'feedback-collector' ),
 					checked( \FeedbackCollector\Videos::enabled(), true, false ),
-					esc_html__( 'Let reviewers record the page with their voice (Record on the toolbar)', 'feedback-collector' ),
+					esc_html__( 'Offer Video in the feedback form: a recording of the page with the reviewer\'s voice', 'feedback-collector' ),
 					esc_html__( 'Up to', 'feedback-collector' ),
 					(int) ceil( \FeedbackCollector\Videos::max_seconds() / 60 ),
 					esc_html__( 'minutes per recording (default 3)', 'feedback-collector' ),

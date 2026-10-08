@@ -1131,6 +1131,45 @@ select {
 }
 
 /* Screen recording */
+/* "Show it": screenshot or video, chosen in the composer */
+.attach {
+  margin: 2px 0 10px;
+}
+.attach-pick {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.attach-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-right: 2px;
+}
+.attach-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  background: var(--soft);
+  color: var(--ink);
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 13px;
+}
+.attach-btn:hover {
+  border-color: var(--primary);
+}
+.attach-btn .icon svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+.attach .shot {
+  margin: 0;
+}
+
 /* Hover labels for the toolbar's icon buttons: instant (no native-tooltip delay), and they open
    away from the screen edge the toolbar is docked to. */
 .toolbar [data-tip] {

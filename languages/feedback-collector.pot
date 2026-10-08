@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-10-08T02:31:16+00:00\n"
+"POT-Creation-Date: 2026-10-08T03:51:01+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: feedback-collector\n"
@@ -385,11 +385,11 @@ msgid "Screenshots"
 msgstr ""
 
 #: includes/Admin/Admin.php:553
-msgid "Attach a screenshot of what the reviewer sees to each new item"
+msgid "Offer Screenshot in the feedback form"
 msgstr ""
 
 #: includes/Admin/Admin.php:554
-msgid "Captured in the browser, with typed form values masked. Stored in uploads/fbc-screenshots and attached to the Teamwork task."
+msgid "Taken only when the reviewer clicks Screenshot, with typed form values masked. Stored in uploads/fbc-screenshots and attached to the Teamwork task."
 msgstr ""
 
 #: includes/Admin/Admin.php:558
@@ -397,7 +397,7 @@ msgid "Screen recordings"
 msgstr ""
 
 #: includes/Admin/Admin.php:560
-msgid "Let reviewers record the page with their voice (Record on the toolbar)"
+msgid "Offer Video in the feedback form: a recording of the page with the reviewer's voice"
 msgstr ""
 
 #: includes/Admin/Admin.php:561

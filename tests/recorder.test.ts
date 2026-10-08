@@ -304,24 +304,37 @@ describe('overlay', () => {
     app = null;
   });
 
-  it('shows Record only when recordings are on', async () => {
+  /** Right-click the CTA, pick Bug, return the composer. */
+  const compose = async (): Promise<HTMLFormElement> => {
+    document.getElementById('cta')?.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 150, clientY: 210 }));
+    (shadow()?.querySelector('.menu button') as HTMLButtonElement).click();
+    await tick();
+    return shadow()?.querySelector('form.composer') as HTMLFormElement;
+  };
+  const videoBtn = (form: HTMLFormElement) => [...form.querySelectorAll('.attach-pick button')].find((b) => b.textContent?.includes('Video')) as HTMLButtonElement | undefined;
+
+  it('the composer offers Video only when recordings are on; the toolbar has no Record button', async () => {
     app = new App(cfg({ video: { enabled: false, maxSeconds: 180 } }));
     app.init();
     await app.setMode(true);
-    expect(button('Record')).toBeUndefined();
+    expect(videoBtn(await compose())).toBeUndefined();
     app.destroy();
     app = new App(cfg());
     app.init();
     await app.setMode(true);
-    expect(button('Record')).toBeDefined();
+    expect(button('Record')).toBeUndefined();
+    expect(videoBtn(await compose())).toBeDefined();
   });
 
-  it('Record → Stop → composer → POST /items carries the upload token, duration and timeline', async () => {
+  it('pin → Video → Stop → back in the same composer → POST /items carries anchor, token, duration and timeline', async () => {
     app = new App(cfg());
     app.init();
     await app.setMode(true);
-    button('Record')?.click();
+    const form = await compose();
+    (form.querySelector('input[name="title"]') as HTMLInputElement).value = 'Checkout breaks';
+    videoBtn(form)?.click();
     await tick(5);
+    expect(form.hidden).toBe(true); // out of the way of the recording
     expect(shadow()?.querySelector('.toolbar.recording')).not.toBeNull();
     expect(shadow()?.querySelector('.rec-pointer')).not.toBeNull();
     // Right-click does nothing special while recording.
@@ -335,8 +348,9 @@ describe('overlay', () => {
     button('Stop')?.click();
     await tick(5);
 
-    const form = shadow()?.querySelector('form.composer') as HTMLFormElement;
-    expect(form).not.toBeNull();
+    expect(shadow()?.querySelector('form.composer')).toBe(form); // the same composer, back
+    expect(form.hidden).toBe(false);
+    expect((form.querySelector('input[name="title"]') as HTMLInputElement).value).toBe('Checkout breaks'); // nothing lost
     expect(form.querySelector('video')).not.toBeNull();
     expect(form.textContent).toContain('Screen recording');
     expect(shadow()?.querySelector('.toolbar.recording')).toBeNull();
@@ -345,26 +359,48 @@ describe('overlay', () => {
     document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
     expect(shadow()?.querySelector('form.composer')).not.toBeNull();
 
-    (form.querySelector('input[name="title"]') as HTMLInputElement).value = 'Checkout breaks';
     form.dispatchEvent(new Event('submit', { cancelable: true }));
     await tick(20);
     const post = calls.find((c) => c.method === 'POST' && c.url.endsWith('/items'));
-    const body = post?.body as { recording: { token: string; duration: number; events: Array<{ kind: string }> }; title: string };
+    const body = post?.body as { recording: { token: string; duration: number; events: Array<{ kind: string }> }; title: string; anchor: { selector: string } | null };
     expect(body.title).toBe('Checkout breaks');
+    expect(body.anchor?.selector).toBeTruthy(); // pinned to the element, not a page note
     expect(body.recording.token).toBe(TOKEN);
     expect(body.recording.duration).toBeGreaterThanOrEqual(1);
     expect(body.recording.events[0].kind).toBe('click');
     expect(shadow()?.querySelector('form.composer')).toBeNull();
   });
 
-  it('Anti: Feedback mode can’t be switched off mid-recording', async () => {
+  it('Anti: Feedback mode can’t be switched off, and the hidden composer can’t be closed, mid-recording', async () => {
     app = new App(cfg());
     app.init();
     await app.setMode(true);
-    button('Record')?.click();
+    const form = await compose();
+    videoBtn(form)?.click();
     await tick(5);
     await app.setMode(false);
     expect(shadow()?.querySelector('.toolbar.recording')).not.toBeNull();
+    document.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, key: 'Escape' }));
+    document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    expect(form.isConnected).toBe(true);
+  });
+
+  it('Discard from the recording bar brings the composer back without a video', async () => {
+    app = new App(cfg());
+    app.init();
+    await app.setMode(true);
+    const form = await compose();
+    videoBtn(form)?.click();
+    await tick(5);
+    const confirm = window.confirm;
+    window.confirm = () => true;
+    button('Discard')?.click();
+    window.confirm = confirm;
+    await tick(5);
+    expect(form.hidden).toBe(false);
+    expect(form.querySelector('video')).toBeNull();
+    expect(videoBtn(form)).toBeDefined();
+    expect(calls.some((c) => c.method === 'DELETE' && c.url.includes(TOKEN))).toBe(true);
   });
 
   it('a pin card plays the recording and lists its timeline', async () => {
@@ -391,7 +427,7 @@ describe('overlay', () => {
 });
 
 describe('toolbar icons', () => {
-  it('+ / page note / record are icon-only, with hover labels and accessible names', async () => {
+  it('+ and page note are icon-only, with hover labels and accessible names', async () => {
     const app = new App(cfg());
     app.init();
     await app.setMode(true);
@@ -399,8 +435,8 @@ describe('toolbar icons', () => {
     const byLabel = (l: string) => s?.querySelector(`.toolbar button[aria-label="${l}"]`) as HTMLButtonElement | null;
     const add = byLabel('Add feedback to an element');
     const note = byLabel('Add a note for the whole page');
-    const rec = byLabel('Record this tab with your voice');
-    for (const b of [add, note, rec]) {
+    expect(byLabel('Record this tab with your voice')).toBeNull(); // recording lives in the composer now
+    for (const b of [add, note]) {
       expect(b).not.toBeNull();
       expect(b?.textContent?.trim()).toBe('');
       expect(b?.querySelector('svg')).not.toBeNull();
@@ -408,7 +444,6 @@ describe('toolbar icons', () => {
     }
     expect(note?.getAttribute('data-tip')).toBe('Add a page note');
     expect(add?.getAttribute('data-tip')).toBe('Add feedback to an element');
-    expect(rec?.getAttribute('data-tip')).toContain('Record your screen and voice');
     note?.click();
     expect(s?.querySelector('form.composer')?.textContent).toContain('Whole page');
     app.destroy();
