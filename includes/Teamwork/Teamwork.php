@@ -479,7 +479,6 @@ final class Teamwork {
 		$anchor = is_array( $item['anchor'] ) ? $item['anchor'] : array();
 		$link   = Admin::view_on_page_url( $item );
 		$page   = Items::page_url( $item );
-		$by     = get_userdata( (int) $item['reporter_id'] );
 
 		// Teamwork rejects HTML descriptions (and any explicit content type other than its default),
 		// so this is Markdown-flavoured text. The page URL leads, in
@@ -494,7 +493,7 @@ final class Teamwork {
 		}
 		$lines[]  = __( 'Element', 'feedback-collector' ) . ': ' . ( $anchor ? self::md_code( (string) ( $anchor['selector'] ?? '' ) ) : __( 'whole page', 'feedback-collector' ) );
 		$lines[]  = __( 'Priority', 'feedback-collector' ) . ': ' . self::md_text( $labels['priority'][ $item['priority'] ] ?? $item['priority'] );
-		$lines[]  = __( 'Reported by', 'feedback-collector' ) . ': ' . self::md_text( ( $by ? $by->display_name : '' ) . ' (' . Branding::text( 'name' ) . ' #' . (int) $item['id'] . ')' );
+		$lines[]  = __( 'Reported by', 'feedback-collector' ) . ': ' . self::md_text( Items::reporter_label( $item ) . ' (' . Branding::text( 'name' ) . ' #' . (int) $item['id'] . ')' );
 		$shot_url = Screenshots::url( $item );
 		if ( '' !== $shot_url ) {
 			$lines[] = __( 'Screenshot', 'feedback-collector' ) . ': ' . self::md_link( __( 'view image', 'feedback-collector' ), $shot_url );
@@ -1474,7 +1473,12 @@ final class Teamwork {
 	 * @param int    $tw_comment_id Existing Teamwork comment ID if synced.
 	 */
 	public static function handle_comment_created( int $comment_id, int $item_id, string $body, int $user_id, string $kind, int $tw_comment_id = 0 ): void {
-		if ( 'comment' !== $kind || $tw_comment_id > 0 || 0 === $user_id ) {
+		if ( 'comment' !== $kind || $tw_comment_id > 0 ) {
+			return;
+		}
+		// user_id 0 is a comment synced from Teamwork, unless a guest (guest mode) wrote it.
+		$guest_name = 0 === $user_id ? self::guest_author( $comment_id ) : '';
+		if ( 0 === $user_id && '' === $guest_name ) {
 			return;
 		}
 
@@ -1489,7 +1493,18 @@ final class Teamwork {
 			return;
 		}
 
-		self::send_comment( $client, $comment_id, (int) $item['tw_task_id'], $body, $user_id );
+		self::send_comment( $client, $comment_id, (int) $item['tw_task_id'], $body, $user_id, $guest_name );
+	}
+
+	/**
+	 * The guest name stored on a comment ('' for team and Teamwork comments).
+	 *
+	 * @param int $comment_id Comment ID.
+	 */
+	private static function guest_author( int $comment_id ): string {
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		return (string) $wpdb->get_var( $wpdb->prepare( 'SELECT author_name FROM %i WHERE id = %d AND user_id = 0', Items::comments_table(), $comment_id ) );
 	}
 
 	/**
@@ -1500,10 +1515,18 @@ final class Teamwork {
 	 * @param int    $task_id    Teamwork task ID.
 	 * @param string $body       Comment text.
 	 * @param int    $user_id    Author ID.
+	 * @param string $guest_name A guest's name when user_id is 0 (guest mode).
 	 */
-	private static function send_comment( Client $client, int $comment_id, int $task_id, string $body, int $user_id ): bool {
-		$user   = get_userdata( $user_id );
-		$author = $user ? $user->display_name : __( 'A reviewer', 'feedback-collector' );
+	private static function send_comment( Client $client, int $comment_id, int $task_id, string $body, int $user_id, string $guest_name = '' ): bool {
+		$user = $user_id ? get_userdata( $user_id ) : false;
+		if ( $user ) {
+			$author = $user->display_name;
+		} elseif ( '' !== $guest_name ) {
+			/* translators: %s: name a guest typed in */
+			$author = sprintf( __( '%s (guest)', 'feedback-collector' ), $guest_name );
+		} else {
+			$author = __( 'A reviewer', 'feedback-collector' );
+		}
 		$brand  = Branding::text( 'name' );
 		/* translators: 1: author name, 2: branding name, 3: comment body */
 		$tw_body = sprintf( "From %1\$s via %2\$s:\n\n%3\$s", $author, $brand, $body );
@@ -1530,13 +1553,13 @@ final class Teamwork {
 	public static function push_pending_comments( Client $client, int $item_id, int $task_id ): array {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
-		$rows   = $wpdb->get_results( $wpdb->prepare( "SELECT id, body, user_id FROM %i WHERE item_id = %d AND kind = 'comment' AND tw_comment_id = 0 AND user_id > 0 ORDER BY id ASC", Items::comments_table(), $item_id ), ARRAY_A );
+		$rows   = $wpdb->get_results( $wpdb->prepare( "SELECT id, body, user_id, author_name FROM %i WHERE item_id = %d AND kind = 'comment' AND tw_comment_id = 0 AND ( user_id > 0 OR author_name <> '' ) ORDER BY id ASC", Items::comments_table(), $item_id ), ARRAY_A );
 		$result = array(
 			'sent'   => 0,
 			'failed' => 0,
 		);
 		foreach ( $rows ?: array() as $row ) {
-			$ok = self::send_comment( $client, (int) $row['id'], $task_id, (string) $row['body'], (int) $row['user_id'] );
+			$ok = self::send_comment( $client, (int) $row['id'], $task_id, (string) $row['body'], (int) $row['user_id'], (string) ( $row['author_name'] ?? '' ) );
 			++$result[ $ok ? 'sent' : 'failed' ];
 		}
 		return $result;
@@ -1550,7 +1573,7 @@ final class Teamwork {
 	public static function items_with_pending_comments(): array {
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
-		$ids = $wpdb->get_col( $wpdb->prepare( "SELECT DISTINCT c.item_id FROM %i c JOIN %i i ON i.id = c.item_id WHERE i.tw_task_id > 0 AND c.kind = 'comment' AND c.tw_comment_id = 0 AND c.user_id > 0 ORDER BY c.item_id ASC", Items::comments_table(), Items::table() ) );
+		$ids = $wpdb->get_col( $wpdb->prepare( "SELECT DISTINCT c.item_id FROM %i c JOIN %i i ON i.id = c.item_id WHERE i.tw_task_id > 0 AND c.kind = 'comment' AND c.tw_comment_id = 0 AND ( c.user_id > 0 OR c.author_name <> '' ) ORDER BY c.item_id ASC", Items::comments_table(), Items::table() ) );
 		return array_map( 'intval', $ids ?: array() );
 	}
 

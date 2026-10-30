@@ -31,7 +31,12 @@ final class Frontend {
 	 * Whether the overlay should load on this request.
 	 */
 	public static function should_load(): bool {
-		if ( is_admin() || ! is_user_logged_in() || ! current_user_can( CAP ) ) {
+		if ( is_admin() ) {
+			return false;
+		}
+		// Reviewers as always; with guest mode on, also logged-out visitors who unlocked the site.
+		$reviewer = is_user_logged_in() && current_user_can( CAP );
+		if ( ! $reviewer && ! GuestMode::active() ) {
 			return false;
 		}
 		if ( is_customize_preview() || wp_is_json_request() || is_feed() || is_embed() ) {
@@ -71,7 +76,7 @@ final class Frontend {
 	 */
 	public static function deep_link_login(): void {
 		// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		if ( ( isset( $_GET['fbcol_item'] ) || isset( $_GET['fbc_item'] ) ) && ! is_user_logged_in() ) {
+		if ( ( isset( $_GET['fbcol_item'] ) || isset( $_GET['fbc_item'] ) ) && ! is_user_logged_in() && ! GuestMode::active() ) {
 			auth_redirect();
 		}
 	}
@@ -134,6 +139,10 @@ final class Frontend {
 		$open = absint( wp_unslash( $_GET['fbcol_item'] ?? $_GET['fbc_item'] ?? 0 ) ); // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$user = wp_get_current_user();
 
+		if ( GuestMode::active() ) {
+			return self::guest_config( $open );
+		}
+
 		return array(
 			'restUrl'   => esc_url_raw( rest_url( Rest::NS ) ),
 			'nonce'     => wp_create_nonce( 'wp_rest' ),
@@ -156,6 +165,60 @@ final class Frontend {
 			),
 			'due'       => DueDates::client_config( get_current_user_id() ),
 			'prefs'     => (object) UserPrefs::get( get_current_user_id() ),
+			'labels'    => Items::labels(),
+			'page'      => array(
+				'postId'   => $queried instanceof \WP_Post ? (int) $queried->ID : 0,
+				'postType' => $queried instanceof \WP_Post ? $queried->post_type : '',
+				'theme'    => get_stylesheet(),
+			),
+			'brand'     => Branding::overlay(),
+			'openItem'  => $open,
+			// Password mode: reviewers get the same floating Feedback button as guests, so
+			// everyone reviewing the site starts feedback the same way (the admin bar toggle stays).
+			'launcher'  => GuestMode::enabled(),
+		);
+	}
+
+	/**
+	 * Overlay config for an unlocked guest: no team data (assignees, admin links, due-date
+	 * batches), and a flag the overlay uses to ask for the guest's name and hide triage.
+	 *
+	 * @param int $open Deep-linked item to open.
+	 * @return array<string, mixed>
+	 */
+	private static function guest_config( int $open ): array {
+		$queried = get_queried_object();
+		return array(
+			'restUrl'   => esc_url_raw( rest_url( Rest::NS ) ),
+			'nonce'     => wp_create_nonce( 'wp_rest' ),
+			'homePath'  => (string) wp_parse_url( home_url( '/' ), PHP_URL_PATH ),
+			'pagePath'  => Items::normalize_path( isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '/' ),
+			'adminUrl'  => '',
+			'user'      => array(
+				'id'      => 0,
+				'name'    => '',
+				'isAdmin' => false,
+			),
+			'guest'     => array(
+				'nameCookie' => GuestMode::NAME_COOKIE,
+				'nameMax'    => GuestMode::NAME_MAX,
+				'cookiePath' => COOKIEPATH ? COOKIEPATH : '/',
+			),
+			'assignees' => array(
+				'source' => Assignees::source(),
+				'people' => array(),
+				'error'  => '',
+				'me'     => 0,
+			),
+			'round'     => Rounds::current(),
+			'assetsUrl' => FBCOL_URL . 'dist/',
+			'version'   => VERSION,
+			'shots'     => Screenshots::enabled(),
+			'video'     => array(
+				'enabled'    => Videos::enabled(),
+				'maxSeconds' => Videos::max_seconds(),
+			),
+			'prefs'     => (object) array(),
 			'labels'    => Items::labels(),
 			'page'      => array(
 				'postId'   => $queried instanceof \WP_Post ? (int) $queried->ID : 0,

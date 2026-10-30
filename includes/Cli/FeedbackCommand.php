@@ -703,7 +703,7 @@ class FeedbackCommand {
 			$item    = Items::get( $id );
 			$task_id = (int) $item['tw_task_id'];
 			if ( $dry ) {
-				$pending = count( array_filter( Items::comments( $id ), static fn( array $c ): bool => 'comment' === $c['kind'] && 0 === $c['tw_comment_id'] && $c['user_id'] > 0 ) );
+				$pending = count( array_filter( Items::comments( $id ), static fn( array $c ): bool => 'comment' === $c['kind'] && 0 === $c['tw_comment_id'] && ( $c['user_id'] > 0 || ! empty( $c['guest'] ) ) ) );
 				WP_CLI::line( sprintf( 'Item #%1$d → task #%2$d: %3$d comment(s) to send', $id, $task_id, $pending ) );
 				continue;
 			}

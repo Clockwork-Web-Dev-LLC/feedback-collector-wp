@@ -9,6 +9,7 @@ namespace FeedbackCollector\Admin;
 
 use FeedbackCollector\Assignees;
 use FeedbackCollector\DueDates;
+use FeedbackCollector\GuestMode;
 use FeedbackCollector\Items;
 use FeedbackCollector\Rest;
 
@@ -42,10 +43,22 @@ final class ItemsTable extends \WP_List_Table {
 	 * @return array<string, string>
 	 */
 	public function get_columns(): array {
+		return self::columns();
+	}
+
+	/**
+	 * Every column, also registered with the screen so Screen Options can show and hide them.
+	 *
+	 * @return array<string, string>
+	 */
+	public static function columns(): array {
 		return array(
-			'cb'       => '<input type="checkbox" />',
-			'title'    => __( 'Feedback', 'feedback-collector' ),
-			'type'     => __( 'Type', 'feedback-collector' ),
+			'cb'          => '<input type="checkbox" />',
+			'title'       => __( 'Feedback', 'feedback-collector' ),
+			'description' => __( 'Description', 'feedback-collector' ),
+			'page'        => __( 'Page', 'feedback-collector' ),
+			'reporter'    => __( 'Submitted by', 'feedback-collector' ),
+			'type'        => __( 'Type', 'feedback-collector' ),
 			'status'   => __( 'Status', 'feedback-collector' ),
 			'priority' => __( 'Priority', 'feedback-collector' ),
 			'due'      => __( 'Due', 'feedback-collector' ),
@@ -55,14 +68,37 @@ final class ItemsTable extends \WP_List_Table {
 	}
 
 	/**
+	 * Columns hidden until a user picks otherwise in Screen Options: Teamwork without a
+	 * Teamwork connection, and the team-workflow columns (assignee, due date) in password
+	 * mode, where the people reading the list are usually the client.
+	 *
+	 * @param string[] $hidden Core defaults.
+	 * @return string[]
+	 */
+	public static function default_hidden( array $hidden ): array {
+		if ( ! \FeedbackCollector\Teamwork\Teamwork::client() ) {
+			$hidden[] = 'teamwork';
+		}
+		if ( GuestMode::enabled() ) {
+			$hidden[] = 'assignee';
+			$hidden[] = 'due';
+		}
+		return array_values( array_unique( $hidden ) );
+	}
+
+	/**
 	 * Sortable columns.
 	 *
 	 * @return array<string, array{0: string, 1: bool}>
 	 */
 	protected function get_sortable_columns(): array {
 		return array(
-			'title'    => array( 'id', true ),
-			'status'   => array( 'status', false ),
+			'title'       => array( 'title', false ),
+			'description' => array( 'description', false ),
+			'page'        => array( 'page', false ),
+			'reporter'    => array( 'reporter', false ),
+			'type'        => array( 'type', false ),
+			'status'      => array( 'status', false ),
 			'priority' => array( 'priority', true ),
 			'due'      => array( 'due', false ),
 		);
@@ -115,7 +151,7 @@ final class ItemsTable extends \WP_List_Table {
 	 * Loads rows.
 	 */
 	public function prepare_items(): void {
-		$this->_column_headers = array( $this->get_columns(), array(), $this->get_sortable_columns(), 'title' );
+		$this->_column_headers = array( $this->get_columns(), get_hidden_columns( $this->screen ), $this->get_sortable_columns(), 'title' );
 
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended
 		$orderby = isset( $_GET['orderby'] ) ? sanitize_key( wp_unslash( $_GET['orderby'] ) ) : 'id';
@@ -244,15 +280,12 @@ final class ItemsTable extends \WP_List_Table {
 	protected function column_title( array $item ): string {
 		$detail   = Admin::item_url( (int) $item['id'] );
 		$view     = Admin::view_on_page_url( $item );
-		$reporter = get_userdata( (int) $item['reporter_id'] );
 		$created  = strtotime( $item['created_at'] . ' UTC' );
 		$meta     = array_filter(
 			array(
 				/* translators: %d: round number */
 				esc_html( sprintf( __( 'Round %d', 'feedback-collector' ), (int) $item['round'] ) ),
-				esc_html( $item['page_path'] ),
 				esc_html( (string) $item['breakpoint'] ),
-				$reporter ? esc_html( $reporter->display_name ) : '',
 				sprintf(
 					'<time datetime="%1$s" title="%2$s">%3$s</time>',
 					esc_attr( gmdate( 'c', $created ) ),
@@ -305,11 +338,24 @@ final class ItemsTable extends \WP_List_Table {
 			case 'assignee':
 				$name = Assignees::name( $item );
 				return '' !== $name ? esc_html( $name ) : '<span aria-hidden="true">—</span>';
+			case 'description':
+				$text = trim( (string) $item['description'] );
+				if ( '' === $text ) {
+					return '<span aria-hidden="true">—</span>';
+				}
+				$short = mb_strlen( $text ) > 180 ? rtrim( mb_substr( $text, 0, 180 ) ) . '…' : $text;
+				return '<div class="fbc-desc" title="' . esc_attr( mb_substr( $text, 0, 1000 ) ) . '">' . esc_html( $short ) . '</div>';
 			case 'page':
-				return sprintf( '<code>%s</code>%s', esc_html( $item['page_path'] ), $item['breakpoint'] ? ' <span class="fbc-bp">' . esc_html( $item['breakpoint'] ) . '</span>' : '' );
+				$name = '' !== (string) $item['page_title'] ? (string) $item['page_title'] : (string) $item['page_path'];
+				return sprintf(
+					'<a class="fbc-page-name" href="%1$s" target="_blank" rel="noopener">%2$s</a><div class="fbc-row-meta"><code>%3$s</code></div>',
+					esc_url( Admin::view_on_page_url( $item ) ),
+					esc_html( $name ),
+					esc_html( (string) $item['page_path'] )
+				);
 			case 'reporter':
-				$u = get_userdata( (int) $item['reporter_id'] );
-				return $u ? esc_html( $u->display_name ) : '—';
+				$who = Items::reporter_label( $item );
+				return '' !== $who ? esc_html( $who ) : '—';
 			case 'created':
 				return esc_html( get_date_from_gmt( $item['created_at'], get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) ) );
 			case 'teamwork':

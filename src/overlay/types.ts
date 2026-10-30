@@ -34,6 +34,8 @@ export interface Comment {
   body: string;
   user_id: number;
   user_name: string;
+  /** Written by a logged-out guest (guest mode). */
+  guest?: boolean;
   created_at: string;
 }
 
@@ -66,6 +68,8 @@ export interface Item {
   video_error?: string;
   reporter_id: number;
   reporter_name: string;
+  /** Filed by a logged-out guest (guest mode); reporter_name is the name they typed. */
+  reporter_guest?: boolean;
   assignee_id: number;
   assignee_name: string;
   assignee_locked?: boolean;
@@ -138,6 +142,19 @@ export interface Config {
   due?: DueConfig;
   /** The reviewer's own saved preferences (on their WordPress user); absent keys = never chosen. */
   prefs?: { corner?: 'tl' | 'tr' | 'bl' | 'br' };
+  /**
+   * Present only for a logged-out guest (guest mode): they add feedback and see their own,
+   * give their name once (remembered in this cookie) and can't triage.
+   */
+  guest?: GuestConfig;
+  /** Show the floating Feedback button (always for guests; for reviewers while password mode is on). */
+  launcher?: boolean;
+}
+
+export interface GuestConfig {
+  nameCookie: string;
+  nameMax: number;
+  cookiePath: string;
 }
 
 export interface NewItem {
@@ -156,6 +173,8 @@ export interface NewItem {
   context: Context;
   /** A screen recording already uploaded under this token (see Recorder). */
   recording?: { token: string; duration: number; events: RecEvent[] };
+  /** Guest mode: the name the guest gave (required for guests, ignored for reviewers). */
+  guest_name?: string;
 }
 
 declare global {

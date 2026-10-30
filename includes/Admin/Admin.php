@@ -9,6 +9,7 @@ namespace FeedbackCollector\Admin;
 
 use FeedbackCollector\Assignees;
 use FeedbackCollector\DueDates;
+use FeedbackCollector\GuestMode;
 use FeedbackCollector\Branding;
 use FeedbackCollector\Items;
 use FeedbackCollector\Rest;
@@ -58,6 +59,16 @@ final class Admin {
 		add_submenu_page( self::SLUG, $name . ' — ' . __( 'Branding', 'feedback-collector' ), __( 'Branding', 'feedback-collector' ), 'manage_options', self::SLUG . '-branding', array( self::class, 'render_branding' ) );
 
 		add_action( 'load-' . $hook, array( self::class, 'process_bulk' ) );
+		// Screen Options → Columns: pick which columns show (saved per user).
+		add_filter( 'manage_' . $hook . '_columns', array( ItemsTable::class, 'columns' ) );
+		add_filter(
+			'default_hidden_columns',
+			static function ( array $hidden, \WP_Screen $screen ) use ( $hook ): array {
+				return $screen->id === $hook ? ItemsTable::default_hidden( $hidden ) : $hidden;
+			},
+			10,
+			2
+		);
 	}
 
 	/**
@@ -253,7 +264,7 @@ final class Admin {
 			static function () use ( $item, $labels ): void {
 				$ctx      = is_array( $item['context'] ) ? $item['context'] : array();
 				$anchor   = is_array( $item['anchor'] ) ? $item['anchor'] : array();
-				$reporter = get_userdata( $item['reporter_id'] );
+				$reporter = Items::reporter_label( $item );
 
 				printf( '<a class="fbc-admin__back" href="%s">&larr; %s</a>', esc_url( admin_url( 'admin.php?page=' . self::SLUG ) ), esc_html__( 'All feedback', 'feedback-collector' ) );
 				// phpcs:ignore WordPress.Security.NonceVerification.Recommended
@@ -340,7 +351,7 @@ final class Admin {
 					__( 'Element text', 'feedback-collector' ) => esc_html( $anchor['text'] ?? '' ),
 					__( 'Post', 'feedback-collector' )     => ! empty( $ctx['post_id'] ) ? '<a href="' . esc_url( (string) get_edit_post_link( (int) $ctx['post_id'] ) ) . '">' . esc_html( ( $ctx['post_type'] ?? '' ) . ' #' . $ctx['post_id'] ) . '</a>' : '—',
 					__( 'Theme', 'feedback-collector' )    => esc_html( $ctx['theme'] ?? '' ),
-					__( 'Reporter', 'feedback-collector' ) => esc_html( $reporter ? $reporter->display_name : '' ),
+					__( 'Reporter', 'feedback-collector' ) => esc_html( $reporter ),
 					__( 'Created', 'feedback-collector' )  => esc_html( get_date_from_gmt( $item['created_at'], get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) ) ),
 				);
 				if ( ! empty( $ctx['js_errors'] ) ) {
@@ -585,6 +596,8 @@ final class Admin {
 				echo '</table>';
 				Layout::card_close();
 
+				self::render_guest_card();
+
 				Layout::card_open( __( 'Teamwork', 'feedback-collector' ) );
 				echo '<table class="form-table" role="presentation">';
 				do_action( 'fbcol_settings_rows' );
@@ -634,10 +647,73 @@ final class Admin {
 			update_option( DueDates::OPT_HOURS, max( 0, min( 72, absint( $_POST['due_batch_hours'] ) ) ), false );
 		}
 
+		self::save_guest_settings();
+
 		do_action( 'fbcol_save_settings' );
 
 		wp_safe_redirect( add_query_arg( 'fbcol_saved', 1, admin_url( 'admin.php?page=' . self::SLUG . '-settings' ) ) );
 		exit;
+	}
+
+	/**
+	 * Settings card: guest access (one shared password; logged-out visitors can leave feedback).
+	 */
+	private static function render_guest_card(): void {
+		$on      = '1' === (string) get_option( GuestMode::OPT_ENABLED, '0' );
+		$has_pw  = GuestMode::has_password();
+		$warning = get_transient( 'fbcol_guest_settings_error' );
+		Layout::card_open( __( 'Guest access (password mode)', 'feedback-collector' ) );
+		if ( $warning ) {
+			delete_transient( 'fbcol_guest_settings_error' );
+			echo '<div class="notice notice-error inline"><p>' . esc_html( $warning ) . '</p></div>';
+		}
+		echo '<table class="form-table" role="presentation">';
+		printf(
+			'<tr><th scope="row">%1$s</th><td><label><input type="checkbox" name="guest_mode" value="1"%2$s /> %3$s</label><p class="description">%4$s</p></td></tr>',
+			esc_html__( 'Password mode', 'feedback-collector' ),
+			checked( $on, true, false ),
+			esc_html__( 'Protect the whole site with one password, and let anyone who enters it leave feedback without logging in', 'feedback-collector' ),
+			esc_html__( 'Logged-out visitors see a password screen. After entering the password they can add feedback; the first time, they’re asked for their name, which their browser remembers. Guests see and reply to only their own feedback and can’t change status, priority, assignee or due dates. Logged-in users skip the password screen and work exactly as before.', 'feedback-collector' )
+		);
+		printf(
+			'<tr><th scope="row"><label for="fbcol-guest-password">%1$s</label></th><td><input type="text" id="fbcol-guest-password" name="guest_password" class="regular-text" autocomplete="off" spellcheck="false" data-1p-ignore data-lpignore="true" value="" /><p class="description">%2$s</p>%3$s</td></tr>',
+			esc_html__( 'Site password', 'feedback-collector' ),
+			$has_pw
+				? esc_html__( 'A password is set. Leave this blank to keep it; type a new one to change it (that signs every guest out).', 'feedback-collector' )
+				/* translators: %d: minimum length */
+				: esc_html( sprintf( __( 'At least %d characters. Share it with the people reviewing the site.', 'feedback-collector' ), GuestMode::MIN_PASSWORD ) ),
+			$has_pw ? '<p><label><input type="checkbox" name="guest_signout" value="1" /> ' . esc_html__( 'Sign out all guests (they’ll need the password again)', 'feedback-collector' ) . '</label></p>' : ''
+		);
+		echo '</table>';
+		Layout::card_close();
+	}
+
+	/**
+	 * Saves the guest-access card. Turning it on without a password leaves it off.
+	 */
+	private static function save_guest_settings(): void {
+		// Nonce and capability are checked by handle_settings().
+		// phpcs:disable WordPress.Security.NonceVerification.Missing
+		$password = isset( $_POST['guest_password'] ) && is_string( $_POST['guest_password'] ) ? trim( wp_unslash( $_POST['guest_password'] ) ) : ''; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- hashed, never output.
+		$want_on  = ! empty( $_POST['guest_mode'] );
+		$signout  = ! empty( $_POST['guest_signout'] );
+		// phpcs:enable
+
+		if ( '' !== $password ) {
+			if ( mb_strlen( $password ) < GuestMode::MIN_PASSWORD ) {
+				/* translators: %d: minimum length */
+				set_transient( 'fbcol_guest_settings_error', sprintf( __( 'The site password must be at least %d characters. It was not changed.', 'feedback-collector' ), GuestMode::MIN_PASSWORD ), 60 );
+			} else {
+				GuestMode::set_password( $password );
+			}
+		} elseif ( $signout ) {
+			GuestMode::rotate_key();
+		}
+		if ( $want_on && ! GuestMode::has_password() ) {
+			set_transient( 'fbcol_guest_settings_error', __( 'Password mode needs a site password. Set one to turn it on.', 'feedback-collector' ), 60 );
+			$want_on = false;
+		}
+		GuestMode::set_enabled( $want_on );
 	}
 
 	/**
@@ -925,8 +1001,8 @@ final class Admin {
 			$result = Items::query( $query_args );
 
 			foreach ( $result['items'] as $item ) {
-				$reporter      = get_userdata( (int) $item['reporter_id'] );
-				$reporter_name = $reporter ? $reporter->display_name : ( (string) ( $item['reporter_email'] ?? '' ) );
+				$reporter_name = Items::reporter_label( $item );
+				$reporter_name = '' !== $reporter_name ? $reporter_name : ( (string) ( $item['reporter_email'] ?? '' ) );
 				$assignee_name = Assignees::name( $item );
 				$tw_task_id    = (int) ( $item['tw_task_id'] ?? 0 );
 				$tw_url        = $tw_task_id > 0 ? (string) apply_filters( 'fbcol_teamwork_task_url', '', $tw_task_id ) : '';
@@ -971,6 +1047,10 @@ final class Admin {
 	 * since the plugin is removed before go-live.
 	 */
 	public static function plugin_row_warning(): void {
+		// Only meaningful when Teamwork is connected; sites without it keep their feedback here.
+		if ( ! \FeedbackCollector\Teamwork\Teamwork::client() ) {
+			return;
+		}
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		$pending = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE tw_task_id = 0 AND status != %s', Items::table(), 'resolved' ) );

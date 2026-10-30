@@ -3,7 +3,7 @@
  * Plugin Name:       Feedback Collector
  * Plugin URI:        https://github.com/Clockwork-Web-Dev-LLC/feedback-collector-wp
  * Description:       Visual QA feedback for staging sites. Pin bugs and change requests to any element, with a screenshot or a screen recording, and push them to Teamwork.
- * Version:           0.4.0
+ * Version:           0.5.0
  * Requires at least: 6.5
  * Requires PHP:      8.1
  * Author:            Aaron Reimann
@@ -20,8 +20,8 @@ namespace FeedbackCollector;
 
 defined( 'ABSPATH' ) || exit;
 
-const VERSION     = '0.4.0';
-const DB_VERSION  = '9';
+const VERSION     = '0.5.0';
+const DB_VERSION  = '10';
 const CAP         = 'fbcol_review';
 const PLUGIN_FILE = __FILE__;
 

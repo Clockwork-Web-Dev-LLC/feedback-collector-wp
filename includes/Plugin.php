@@ -21,6 +21,7 @@ final class Plugin {
 		// After Teamwork registers its cron intervals, so a migration can reschedule its jobs.
 		Teamwork\Teamwork::register();
 		Install::maybe_upgrade();
+		GuestMode::register();
 		Rest::register();
 		Frontend::register();
 		if ( is_admin() ) {
