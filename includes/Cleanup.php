@@ -33,6 +33,9 @@ final class Cleanup {
 		'fbcol_due_default',
 		'fbcol_due_days',
 		'fbcol_due_batch_hours',
+		'fbcol_guest_mode',
+		'fbcol_guest_pass_hash',
+		'fbcol_guest_key',
 	);
 
 	/** Every user-meta key the plugin writes. */

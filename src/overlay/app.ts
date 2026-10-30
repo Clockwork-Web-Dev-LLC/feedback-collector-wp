@@ -6,6 +6,7 @@ import { breakpoint, captureContext, currentPagePath, currentQuery } from './cap
 import { h, relativeTime, select } from './dom';
 import { chevronIcon, deviceIcon, shotIcon } from './icons';
 import { Recorder, canRecord, clock, mountPointerTrail } from './recorder';
+import { cleanGuestName, readGuestName, saveGuestName } from './guest';
 import type { Recording } from './recorder';
 import type { Config, Item, ItemStatus, ItemType, Priority } from './types';
 
@@ -106,6 +107,10 @@ export class App {
   private card: HTMLElement | null = null;
   private hintEl: HTMLElement | null = null;
   private bannerEl: HTMLElement | null = null;
+  /** Guest mode: the floating button that turns Feedback mode on (guests have no admin bar). */
+  private launcher: HTMLButtonElement | null = null;
+  /** A logged-out guest (guest mode): submit-only, no triage, asked for their name. */
+  private readonly guest: boolean;
 
   private mode = false;
   private pinMode: PinModeRequest | null = null;
@@ -140,6 +145,58 @@ export class App {
   constructor(private cfg: Config) {
     this.api = new Api(cfg);
     this.pagePath = cfg.pagePath ?? currentPagePath(cfg.homePath);
+    this.guest = !!cfg.guest;
+  }
+
+  /** The guest's remembered name ('' until they give one). */
+  private guestName(): string {
+    return readGuestName(this.cfg.guest);
+  }
+
+  /**
+   * For guests: a "Your name" field when no name is remembered yet, otherwise "Posting as
+   * Name · Change". value() returns what to send ('' = missing); remember() saves it.
+   */
+  private guestNameField(): { el: HTMLElement; input: () => HTMLInputElement | null; value: () => string; remember: () => void } {
+    const max = this.cfg.guest?.nameMax ?? 60;
+    let input: HTMLInputElement | null = null;
+    const wrap = h('div', { class: 'guest-name' });
+    const ask = (initial: string) => {
+      input = h('input', { type: 'text', name: 'guest_name', maxlength: max, required: true, autocomplete: 'name', placeholder: 'So the team knows who this is from', value: initial }) as HTMLInputElement;
+      wrap.replaceChildren(h('label', { class: 'field' }, h('span', { text: 'Your name' }), input));
+    };
+    const known = this.guestName();
+    if (known) {
+      wrap.replaceChildren(
+        h(
+          'div',
+          { class: 'meta posting-as' },
+          'Posting as ',
+          h('strong', { text: known }),
+          ' · ',
+          h('button', {
+            type: 'button',
+            class: 'btn link',
+            text: 'Change',
+            onclick: () => {
+              ask(known);
+              input?.focus();
+              input?.select();
+            },
+          })
+        )
+      );
+    } else {
+      ask('');
+    }
+    return {
+      el: wrap,
+      input: () => input,
+      value: () => cleanGuestName(input ? input.value : known, max),
+      remember: () => {
+        if (input) saveGuestName(this.cfg.guest, input.value);
+      },
+    };
   }
 
   /** Cleans up all listeners, observers, timers and DOM elements. */
@@ -186,7 +243,7 @@ export class App {
     // follows them to any browser. A choice made before that, in this browser, is adopted once.
     const prefs = this.cfg.prefs ?? {};
     this.corner = prefs.corner ?? localCorner ?? this.corner;
-    if (!this.inPreview) {
+    if (!this.inPreview && !this.guest) {
       const adopt: NonNullable<Config['prefs']> = {};
       if (!prefs.corner && localCorner) adopt.corner = localCorner;
       if (Object.keys(adopt).length) this.savePrefs(adopt);
@@ -203,7 +260,32 @@ export class App {
     }
     if (this.cfg.openItem || stored) {
       void this.setMode(true);
+    } else {
+      this.renderLauncher();
     }
+  }
+
+  /** Guests have no admin bar, so a small button turns Feedback mode on. */
+  private renderLauncher(): void {
+    if (!this.guest || this.inPreview || this.mode) {
+      this.launcher?.remove();
+      this.launcher = null;
+      return;
+    }
+    if (this.launcher) return;
+    this.launcher = h(
+      'button',
+      {
+        type: 'button',
+        class: 'launcher',
+        title: 'Leave feedback on this page (Alt+Shift+F)',
+        'aria-label': 'Leave feedback',
+        onclick: () => void this.setMode(true),
+      },
+      deviceIcon('note'),
+      h('span', { text: 'Feedback' })
+    ) as HTMLButtonElement;
+    this.root.append(this.launcher);
   }
 
   // ---------------------------------------------------------------- mounting
@@ -296,6 +378,7 @@ export class App {
       }
     }
     document.querySelector('#wp-admin-bar-fbcol-toggle')?.classList.toggle('fbc-on', on);
+    this.renderLauncher();
 
     if (!on) {
       this.exitPinMode();
@@ -813,6 +896,7 @@ export class App {
     });
     const error = h('div', { class: 'error', role: 'alert' });
     const submit = h('button', { class: 'btn primary', type: 'submit', text: 'Add' });
+    const who = this.guest ? this.guestNameField() : null;
 
     // Show it: nothing is attached until the reviewer asks for a screenshot or a video (one or
     // the other). Both leave the overlay out, so the open composer never appears in them.
@@ -974,21 +1058,31 @@ export class App {
         },
       },
       h('div', { class: 'head' }, h('span', { class: 'chip' }, h('span', { class: `dot ${type}` }), el ? `<${el.tagName.toLowerCase()}>` : 'Whole page'), h('button', { class: 'x', type: 'button', 'aria-label': 'Close', text: '×', onclick: () => this.closeCard() })),
+      who ? who.el : null,
       h('label', { class: 'field' }, h('span', { text: 'Title' }), title),
       error,
       h('label', { class: 'field' }, h('span', { text: 'Description' }), desc),
-      h('div', { class: 'row' }, h('label', { class: 'field' }, h('span', { text: 'Type' }), typeSelect), h('label', { class: 'field' }, h('span', { text: 'Priority' }), priority)),
-      h('label', { class: 'field' }, h('span', { text: this.assigneeLabel() }), assignee),
-      this.cfg.assignees.fallback
+      // Guests only submit: the team sets priority, assignee and due date.
+      this.guest
+        ? h('label', { class: 'field' }, h('span', { text: 'Type' }), typeSelect)
+        : h('div', { class: 'row' }, h('label', { class: 'field' }, h('span', { text: 'Type' }), typeSelect), h('label', { class: 'field' }, h('span', { text: 'Priority' }), priority)),
+      this.guest ? null : h('label', { class: 'field' }, h('span', { text: this.assigneeLabel() }), assignee),
+      !this.guest && this.cfg.assignees.fallback
         ? h('div', { class: 'meta hint', text: 'Showing WordPress users until Teamwork is connected (Feedback → Settings). Then this lists your Teamwork project members.' })
         : null,
-      h('div', { class: 'field due-field' }, h('label', { class: 'check' }, dueOn, ' Set date?'), dueInput),
+      this.guest ? null : h('div', { class: 'field due-field' }, h('label', { class: 'check' }, dueOn, ' Set date?'), dueInput),
       attachBox,
       h('div', { class: 'actions' }, h('button', { class: 'btn link', type: 'button', text: 'Cancel', onclick: () => this.closeCard() }), submit)
     );
 
     const save = async () => {
       error.textContent = '';
+      const guestName = who ? who.value() : '';
+      if (who && !guestName) {
+        error.textContent = 'Please add your name.';
+        who.input()?.focus();
+        return;
+      }
       if (!title.value.trim()) {
         error.textContent = 'Add a short title.';
         title.focus();
@@ -1017,12 +1111,14 @@ export class App {
             anchor,
             context: captureContext(this.cfg),
             recording: rec,
+            ...(who ? { guest_name: guestName } : {}),
           },
           current?.kind === 'shot' ? current.blob : null
         );
+        who?.remember();
         dropAttachment(false);
         this.cardGuard = null;
-        if (item.due_next) this.cfg.due = item.due_next; // keeps the batch date for the next item
+        if (item.due_next && !this.guest) this.cfg.due = item.due_next; // keeps the batch date for the next item
         this.closeCard();
         this.upsert(item);
         const s = this.states.get(item.id);
@@ -1043,7 +1139,8 @@ export class App {
     this.cardCleanup = () => {
       if (attach?.kind === 'shot') dropAttachment(false);
     };
-    title.focus();
+    if (who?.input()) who.input()?.focus();
+    else title.focus();
   }
 
   async openPopover(id: number, at?: { x: number; y: number }): Promise<void> {
@@ -1090,9 +1187,11 @@ export class App {
       onchange: () => void save({ due_date: dueInput.value || null }),
     }) as HTMLInputElement;
 
-    const reply = h('textarea', { placeholder: 'Reply… (type @ to mention)', rows: 2 }) as HTMLTextAreaElement;
+    const reply = h('textarea', { placeholder: this.guest ? 'Reply…' : 'Reply… (type @ to mention)', rows: 2 }) as HTMLTextAreaElement;
     const replyField = h('label', { class: 'field mention-container' }, reply);
-    const cleanupMentions = this.setupMentions(reply, replyField);
+    // Guests can't see the team list, so no @mentions; they reply under their own name.
+    const cleanupMentions = this.guest ? () => {} : this.setupMentions(reply, replyField);
+    const replyWho = this.guest ? this.guestNameField() : null;
 
     const thread = h(
       'ul',
@@ -1107,7 +1206,10 @@ export class App {
       item.breakpoint && item.breakpoint !== current
         ? h('div', { class: 'notice', text: `Logged at ${item.breakpoint} (${item.context?.viewport_w ?? '?'}px). You are on ${current} (${window.innerWidth}px).` })
         : null;
-    const orphan = s?.placement === 'orphan' ? h('div', { class: 'notice', text: 'The element this was pinned to can’t be found on the page anymore. Use “Pin again” in the list to place it.' }) : null;
+    const orphan =
+      s?.placement === 'orphan'
+        ? h('div', { class: 'notice', text: this.guest ? 'The element this was pinned to can’t be found on the page anymore.' : 'The element this was pinned to can’t be found on the page anymore. Use “Pin again” in the list to place it.' })
+        : null;
 
     const card = h(
       'div',
@@ -1184,9 +1286,13 @@ export class App {
           })()
         : null,
       item.video_url ? this.videoBlock(item) : null,
-      h('div', { class: 'row' }, h('label', { class: 'field' }, h('span', { text: 'Status' }), status), h('label', { class: 'field' }, h('span', { text: 'Priority' }), priority)),
-      h('label', { class: 'field' }, h('span', { text: item.overdue ? 'Due date · overdue' : 'Due date' }), dueInput),
-      item.assignee_locked
+      // Guests see the status but leave triage to the team.
+      this.guest ? h('div', { class: 'meta guest-status' }, 'Status: ', h('strong', { text: labels.status[item.status] ?? item.status })) : null,
+      this.guest ? null : h('div', { class: 'row' }, h('label', { class: 'field' }, h('span', { text: 'Status' }), status), h('label', { class: 'field' }, h('span', { text: 'Priority' }), priority)),
+      this.guest ? null : h('label', { class: 'field' }, h('span', { text: item.overdue ? 'Due date · overdue' : 'Due date' }), dueInput),
+      this.guest
+        ? null
+        : item.assignee_locked
         ? h(
             'div',
             { class: 'field' },
@@ -1196,11 +1302,12 @@ export class App {
           )
         : h('label', { class: 'field' }, h('span', { text: this.assigneeLabel() }), assignee),
       thread,
+      replyWho ? replyWho.el : null,
       replyField,
       h(
         'div',
         { class: 'actions' },
-        h('a', { class: 'btn link', href: `${this.cfg.adminUrl}&item=${item.id}`, target: '_blank', rel: 'noopener', text: 'Admin' }),
+        this.guest ? null : h('a', { class: 'btn link', href: `${this.cfg.adminUrl}&item=${item.id}`, target: '_blank', rel: 'noopener', text: 'Admin' }),
         item.can_delete ? h('button', { class: 'btn danger', type: 'button', text: 'Delete', onclick: () => void this.deleteItem(item.id) }) : null,
         h('button', {
           class: 'btn primary',
@@ -1208,8 +1315,15 @@ export class App {
           text: 'Reply',
           onclick: async () => {
             if (!reply.value.trim()) return;
+            const name = replyWho ? replyWho.value() : '';
+            if (replyWho && !name) {
+              this.toast('Please add your name', true);
+              replyWho.input()?.focus();
+              return;
+            }
             try {
-              await this.api.addComment(item.id, reply.value);
+              await this.api.addComment(item.id, reply.value, replyWho ? name : undefined);
+              replyWho?.remember();
               void this.openPopover(id, { x: parseFloat(card.style.left) - 8, y: parseFloat(card.style.top) - 8 });
             } catch (err) {
               this.toast((err as Error).message, true);
@@ -1752,6 +1866,7 @@ export class App {
   /** Saves preferences to the reviewer's account; the local copy keeps working if that fails. */
   private savePrefs(prefs: NonNullable<Config['prefs']>): void {
     this.cfg.prefs = { ...(this.cfg.prefs ?? {}), ...prefs };
+    if (this.guest) return; // no WordPress user to save on; this browser remembers it
     this.api.savePrefs(prefs).catch(() => {
       /* offline or no permission: this browser still remembers it */
     });
@@ -1907,7 +2022,7 @@ export class App {
         {},
         h('h2', {}, this.cfg.brand?.label ?? 'Feedback', h('button', { class: 'x', type: 'button', 'aria-label': 'Close list', text: '×', onclick: () => this.closeSidebar() })),
         scopeSwitch,
-        h('div', { class: 'filters' }, type, status, round, bp, h('label', {}, mine, 'Assigned to me'))
+        h('div', { class: 'filters' }, type, status, round, bp, this.guest ? null : h('label', {}, mine, 'Assigned to me'))
       ),
       h('div', { class: 'list' })
     );
@@ -2038,7 +2153,7 @@ export class App {
     for (const s of [...this.states.values()].sort((a, b) => a.item.id - b.item.id)) {
       if (!this.matches(s.item)) continue;
       const extra =
-        s.placement === 'orphan'
+        s.placement === 'orphan' && !this.guest
           ? h('span', {
               class: 'btn link reanchor',
               role: 'button',

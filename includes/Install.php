@@ -79,6 +79,8 @@ final class Install {
 				context longtext NULL,
 				breakpoint varchar(10) NOT NULL DEFAULT '',
 				reporter_id bigint(20) unsigned NOT NULL DEFAULT 0,
+				reporter_name varchar(100) NOT NULL DEFAULT '',
+				guest_id varchar(32) NOT NULL DEFAULT '',
 				assignee_id bigint(20) unsigned NOT NULL DEFAULT 0,
 				tw_task_id bigint(20) unsigned NOT NULL DEFAULT 0,
 				tw_project_id bigint(20) unsigned NOT NULL DEFAULT 0,
@@ -99,7 +101,8 @@ final class Install {
 				KEY status (status),
 				KEY assignee_id (assignee_id),
 				KEY round (round),
-				KEY due_date (due_date)
+				KEY due_date (due_date),
+				KEY guest_id (guest_id)
 			) {$charset};"
 		);
 
@@ -108,6 +111,7 @@ final class Install {
 				id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
 				item_id bigint(20) unsigned NOT NULL,
 				user_id bigint(20) unsigned NOT NULL DEFAULT 0,
+				author_name varchar(100) NOT NULL DEFAULT '',
 				kind varchar(20) NOT NULL DEFAULT 'comment',
 				body longtext NOT NULL,
 				tw_comment_id bigint(20) unsigned NOT NULL DEFAULT 0,

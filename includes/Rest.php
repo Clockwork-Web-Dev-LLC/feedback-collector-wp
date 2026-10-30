@@ -33,6 +33,8 @@ final class Rest {
 	 */
 	public static function routes(): void {
 		$can = array( self::class, 'can_review' );
+		// Routes an unlocked guest may use too (guest mode); each handler limits guests to their own items.
+		$guest = array( self::class, 'can_review_or_guest' );
 
 		register_rest_route(
 			self::NS,
@@ -41,12 +43,12 @@ final class Rest {
 				array(
 					'methods'             => WP_REST_Server::READABLE,
 					'callback'            => array( self::class, 'list_items' ),
-					'permission_callback' => $can,
+					'permission_callback' => $guest,
 				),
 				array(
 					'methods'             => WP_REST_Server::CREATABLE,
 					'callback'            => array( self::class, 'create_item' ),
-					'permission_callback' => $can,
+					'permission_callback' => $guest,
 				),
 			)
 		);
@@ -58,7 +60,7 @@ final class Rest {
 				array(
 					'methods'             => WP_REST_Server::READABLE,
 					'callback'            => array( self::class, 'get_item' ),
-					'permission_callback' => $can,
+					'permission_callback' => $guest,
 				),
 				array(
 					'methods'             => 'PATCH',
@@ -68,7 +70,7 @@ final class Rest {
 				array(
 					'methods'             => WP_REST_Server::DELETABLE,
 					'callback'            => array( self::class, 'delete_item' ),
-					'permission_callback' => $can,
+					'permission_callback' => $guest,
 				),
 			)
 		);
@@ -79,7 +81,7 @@ final class Rest {
 			array(
 				'methods'             => WP_REST_Server::CREATABLE,
 				'callback'            => array( self::class, 'create_comment' ),
-				'permission_callback' => $can,
+				'permission_callback' => $guest,
 			)
 		);
 
@@ -90,12 +92,12 @@ final class Rest {
 				array(
 					'methods'             => WP_REST_Server::CREATABLE,
 					'callback'            => array( self::class, 'upload_screenshot' ),
-					'permission_callback' => $can,
+					'permission_callback' => $guest,
 				),
 				array(
 					'methods'             => WP_REST_Server::DELETABLE,
 					'callback'            => array( self::class, 'delete_screenshot' ),
-					'permission_callback' => $can,
+					'permission_callback' => $guest,
 				),
 			)
 		);
@@ -106,7 +108,7 @@ final class Rest {
 			array(
 				'methods'             => WP_REST_Server::CREATABLE,
 				'callback'            => array( self::class, 'start_recording' ),
-				'permission_callback' => $can,
+				'permission_callback' => $guest,
 			)
 		);
 
@@ -117,12 +119,12 @@ final class Rest {
 				array(
 					'methods'             => WP_REST_Server::CREATABLE,
 					'callback'            => array( self::class, 'append_recording' ),
-					'permission_callback' => $can,
+					'permission_callback' => $guest,
 				),
 				array(
 					'methods'             => WP_REST_Server::DELETABLE,
 					'callback'            => array( self::class, 'discard_recording' ),
-					'permission_callback' => $can,
+					'permission_callback' => $guest,
 				),
 			)
 		);
@@ -170,6 +172,56 @@ final class Rest {
 	}
 
 	/**
+	 * Reviewers, or (guest mode) an unlocked logged-out guest with a valid REST nonce.
+	 * Logged-in users are never treated as guests, so their access is exactly can_review().
+	 */
+	public static function can_review_or_guest(): bool|WP_Error {
+		if ( current_user_can( CAP ) || GuestMode::rest_allowed() ) {
+			return true;
+		}
+		return self::can_review();
+	}
+
+	/**
+	 * True when this request is a guest's (not a reviewer's).
+	 */
+	private static function is_guest(): bool {
+		return ! current_user_can( CAP ) && GuestMode::active();
+	}
+
+	/**
+	 * Whose recording uploads these are: the user ID, or a guest's own key.
+	 */
+	private static function recording_owner(): int|string {
+		return self::is_guest() ? 'g' . GuestMode::guest_id() : get_current_user_id();
+	}
+
+	/**
+	 * Fetches an item the current requester may see: reviewers see all; guests only their own
+	 * (anyone else's reads as not found, so guests can't probe IDs).
+	 *
+	 * @param int $id Item ID.
+	 * @return array<string, mixed>|null
+	 */
+	private static function visible_item( int $id ): ?array {
+		$item = Items::get( $id );
+		if ( ! $item ) {
+			return null;
+		}
+		return self::is_guest() && ! GuestMode::owns( $item ) ? null : $item;
+	}
+
+	/**
+	 * The guest's name from a request payload, or a 400 when it's missing.
+	 *
+	 * @param array<string, mixed> $p Payload.
+	 */
+	private static function guest_name( array $p ): string|WP_Error {
+		$name = GuestMode::clean_name( $p['guest_name'] ?? '' );
+		return '' === $name ? self::invalid( 'guest_name', __( 'Please enter your name.', 'feedback-collector' ) ) : $name;
+	}
+
+	/**
 	 * GET /items
 	 *
 	 * @param WP_REST_Request $request Request.
@@ -201,6 +253,10 @@ final class Rest {
 			$args['breakpoint'] = sanitize_key( (string) $request->get_param( 'breakpoint' ) );
 		}
 
+		if ( self::is_guest() ) {
+			$args['guest_id'] = (string) GuestMode::guest_id();
+		}
+
 		$result = Items::query( $args );
 		return new WP_REST_Response(
 			array(
@@ -216,7 +272,7 @@ final class Rest {
 	 * @param WP_REST_Request $request Request.
 	 */
 	public static function get_item( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-		$item = Items::get( (int) $request['id'] );
+		$item = self::visible_item( (int) $request['id'] );
 		if ( ! $item ) {
 			return self::not_found();
 		}
@@ -240,6 +296,20 @@ final class Rest {
 		}
 		if ( ! in_array( $type, Items::TYPES, true ) ) {
 			return self::invalid( 'type', __( 'Unknown feedback type.', 'feedback-collector' ) );
+		}
+		$guest = self::is_guest();
+		$who   = array();
+		if ( $guest ) {
+			$name = self::guest_name( $p );
+			if ( is_wp_error( $name ) ) {
+				return $name;
+			}
+			$who = array(
+				'reporter_name' => $name,
+				'guest_id'      => (string) GuestMode::guest_id(),
+			);
+			// Guests only submit: triage fields are left for the team.
+			unset( $p['priority'], $p['assignee_id'], $p['assignee_source'], $p['due_date'] );
 		}
 		$priority = sanitize_key( (string) ( $p['priority'] ?? 'medium' ) );
 		if ( ! in_array( $priority, Items::PRIORITIES, true ) ) {
@@ -266,7 +336,7 @@ final class Rest {
 		$breakpoint = $context['breakpoint'] ?? '';
 
 		$id = Items::create(
-			$assignee + array(
+			$who + $assignee + array(
 				'type'        => $type,
 				'priority'    => $priority,
 				'title'       => mb_substr( $title, 0, 255 ),
@@ -303,7 +373,7 @@ final class Rest {
 		if ( $recording ) {
 			$saved = Videos::attach(
 				$id,
-				get_current_user_id(),
+				self::recording_owner(),
 				(string) ( $recording['token'] ?? '' ),
 				absint( $recording['duration'] ?? 0 ),
 				is_array( $recording['events'] ?? null ) ? $recording['events'] : array()
@@ -340,7 +410,7 @@ final class Rest {
 	 * @param WP_REST_Request $request Request.
 	 */
 	public static function upload_screenshot( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-		$item = Items::get( (int) $request['id'] );
+		$item = self::visible_item( (int) $request['id'] );
 		if ( ! $item ) {
 			return self::not_found();
 		}
@@ -364,7 +434,7 @@ final class Rest {
 	 * @param WP_REST_Request $request Request.
 	 */
 	public static function delete_screenshot( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-		$item = Items::get( (int) $request['id'] );
+		$item = self::visible_item( (int) $request['id'] );
 		if ( ! $item ) {
 			return self::not_found();
 		}
@@ -380,7 +450,7 @@ final class Rest {
 		if ( ! Videos::enabled() ) {
 			return new WP_Error( 'fbcol_disabled', __( 'Screen recording is turned off in Feedback → Settings.', 'feedback-collector' ), array( 'status' => 403 ) );
 		}
-		$token = Videos::start_session( get_current_user_id() );
+		$token = Videos::start_session( self::recording_owner() );
 		if ( is_wp_error( $token ) ) {
 			return $token;
 		}
@@ -400,7 +470,7 @@ final class Rest {
 	 * @param WP_REST_Request $request Request.
 	 */
 	public static function append_recording( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-		$size = Videos::append( get_current_user_id(), (string) $request['token'], absint( $request->get_param( 'offset' ) ), (string) $request->get_body() );
+		$size = Videos::append( self::recording_owner(), (string) $request['token'], absint( $request->get_param( 'offset' ) ), (string) $request->get_body() );
 		return is_wp_error( $size ) ? $size : new WP_REST_Response( array( 'size' => $size ) );
 	}
 
@@ -410,7 +480,7 @@ final class Rest {
 	 * @param WP_REST_Request $request Request.
 	 */
 	public static function discard_recording( WP_REST_Request $request ): WP_REST_Response {
-		Videos::discard( get_current_user_id(), (string) $request['token'] );
+		Videos::discard( self::recording_owner(), (string) $request['token'] );
 		return new WP_REST_Response( array( 'deleted' => true ) );
 	}
 
@@ -556,7 +626,7 @@ final class Rest {
 	 * @param WP_REST_Request $request Request.
 	 */
 	public static function delete_item( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-		$item = Items::get( (int) $request['id'] );
+		$item = self::visible_item( (int) $request['id'] );
 		if ( ! $item ) {
 			return self::not_found();
 		}
@@ -578,7 +648,7 @@ final class Rest {
 	 * @param WP_REST_Request $request Request.
 	 */
 	public static function create_comment( WP_REST_Request $request ): WP_REST_Response|WP_Error {
-		$item = Items::get( (int) $request['id'] );
+		$item = self::visible_item( (int) $request['id'] );
 		if ( ! $item ) {
 			return self::not_found();
 		}
@@ -587,7 +657,15 @@ final class Rest {
 		if ( '' === $body ) {
 			return self::invalid( 'body', __( 'Write something first.', 'feedback-collector' ) );
 		}
-		Items::add_comment( $item['id'], $body );
+		if ( self::is_guest() ) {
+			$name = self::guest_name( is_array( $p ) ? $p : array() );
+			if ( is_wp_error( $name ) ) {
+				return $name;
+			}
+			Items::add_comment( $item['id'], $body, 'comment', 0, 0, $name );
+		} else {
+			Items::add_comment( $item['id'], $body );
+		}
 		$response = new WP_REST_Response( array( 'comments' => Items::comments( $item['id'] ) ) );
 		$response->set_status( 201 );
 		return $response;
@@ -629,8 +707,7 @@ final class Rest {
 	 * @return array<string, mixed>
 	 */
 	public static function present( array $item ): array {
-		$reporter = get_userdata( $item['reporter_id'] );
-		$out      = array(
+		$out = array(
 			'id'              => $item['id'],
 			'type'            => $item['type'],
 			'status'          => $item['status'],
@@ -652,7 +729,8 @@ final class Rest {
 			'video_duration'  => (int) ( $item['video_duration'] ?? 0 ),
 			'video_events'    => $item['video_events'] ?? array(),
 			'reporter_id'     => $item['reporter_id'],
-			'reporter_name'   => $reporter ? $reporter->display_name : '',
+			'reporter_name'   => self::reporter_name( $item ),
+			'reporter_guest'  => 0 === (int) $item['reporter_id'] && '' !== (string) ( $item['reporter_name'] ?? '' ),
 			'assignee_id'     => Assignees::selected( $item ),
 			'assignee_name'   => Assignees::name( $item ),
 			'assignee_locked' => Assignees::locked( $item ),
@@ -671,7 +749,21 @@ final class Rest {
 	 * @param array<string, mixed> $item Item.
 	 */
 	public static function can_delete( array $item ): bool {
-		return current_user_can( 'manage_options' ) || get_current_user_id() === (int) $item['reporter_id'];
+		if ( self::is_guest() ) {
+			return GuestMode::owns( $item );
+		}
+		// A guest's item has reporter_id 0; only an administrator deletes those.
+		return current_user_can( 'manage_options' ) || ( get_current_user_id() > 0 && get_current_user_id() === (int) $item['reporter_id'] );
+	}
+
+	/**
+	 * The reporter's display name: the WordPress user, or the name a guest typed.
+	 *
+	 * @param array<string, mixed> $item Item.
+	 */
+	private static function reporter_name( array $item ): string {
+		$reporter = $item['reporter_id'] ? get_userdata( (int) $item['reporter_id'] ) : false;
+		return $reporter ? $reporter->display_name : (string) ( $item['reporter_name'] ?? '' );
 	}
 
 	/**

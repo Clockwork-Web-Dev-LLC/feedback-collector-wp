@@ -96,10 +96,13 @@ final class Videos {
 	/**
 	 * Opens an upload session for a user and sweeps abandoned ones.
 	 *
-	 * @param int $user_id Reviewer.
+	 * @param int|string $user_id Reviewer's user ID, or a guest's owner key ("g" + guest ID).
 	 * @return string|WP_Error Session token.
 	 */
-	public static function start_session( int $user_id ): string|WP_Error {
+	public static function start_session( int|string $user_id ): string|WP_Error {
+		if ( ! self::valid_owner( $user_id ) ) {
+			return self::no_session();
+		}
 		self::sweep();
 		$token = wp_generate_password( 32, false, false );
 		if ( false === file_put_contents( self::session_path( $user_id, $token ), '' ) ) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
@@ -113,13 +116,13 @@ final class Videos {
 	 * (the browser retries after a dropped connection); a gap is refused with the current size
 	 * so the browser knows where it stands.
 	 *
-	 * @param int    $user_id Reviewer.
-	 * @param string $token   Session token.
-	 * @param int    $offset  Where this piece starts.
+	 * @param int|string $user_id Reviewer (or guest owner key).
+	 * @param string     $token   Session token.
+	 * @param int        $offset  Where this piece starts.
 	 * @param string $bytes   The piece.
 	 * @return int|WP_Error Bytes stored so far.
 	 */
-	public static function append( int $user_id, string $token, int $offset, string $bytes ): int|WP_Error {
+	public static function append( int|string $user_id, string $token, int $offset, string $bytes ): int|WP_Error {
 		$path = self::session_file( $user_id, $token );
 		if ( '' === $path ) {
 			return self::no_session();
@@ -158,10 +161,10 @@ final class Videos {
 	/**
 	 * Throws a session away (the reviewer discarded the recording).
 	 *
-	 * @param int    $user_id Reviewer.
-	 * @param string $token   Session token.
+	 * @param int|string $user_id Reviewer (or guest owner key).
+	 * @param string     $token   Session token.
 	 */
-	public static function discard( int $user_id, string $token ): void {
+	public static function discard( int|string $user_id, string $token ): void {
 		$path = self::session_file( $user_id, $token );
 		if ( '' !== $path ) {
 			wp_delete_file( $path );
@@ -172,13 +175,13 @@ final class Videos {
 	 * Moves a finished session onto an item, replacing any recording it had.
 	 *
 	 * @param int                  $item_id  Item.
-	 * @param int                  $user_id  Reviewer who owns the session.
+	 * @param int|string           $user_id  Reviewer (or guest owner key) who owns the session.
 	 * @param string               $token    Session token.
 	 * @param int                  $duration Length in seconds.
 	 * @param array<int, mixed>    $events   What happened during the recording (see sanitize_events()).
 	 * @return string|WP_Error Stored filename.
 	 */
-	public static function attach( int $item_id, int $user_id, string $token, int $duration, array $events = array() ): string|WP_Error {
+	public static function attach( int $item_id, int|string $user_id, string $token, int $duration, array $events = array() ): string|WP_Error {
 		$item = Items::get( $item_id );
 		if ( ! $item ) {
 			return new WP_Error( 'fbcol_not_found', __( 'Feedback item not found.', 'feedback-collector' ), array( 'status' => 404 ) );
@@ -277,21 +280,33 @@ final class Videos {
 	/**
 	 * Where a session's file lives (it may not exist).
 	 *
-	 * @param int    $user_id Reviewer.
-	 * @param string $token   Session token.
+	 * @param int|string $user_id Reviewer (or guest owner key).
+	 * @param string     $token   Session token.
 	 */
-	private static function session_path( int $user_id, string $token ): string {
-		return self::dir() . sprintf( '/rec-%d-%s.part', $user_id, $token );
+	private static function session_path( int|string $user_id, string $token ): string {
+		return self::dir() . sprintf( '/rec-%s-%s.part', $user_id, $token );
+	}
+
+	/**
+	 * A session owner: a user ID of 1 or more, or "g" + a 32-hex guest ID (guest mode).
+	 *
+	 * @param int|string $owner Owner.
+	 */
+	private static function valid_owner( int|string $owner ): bool {
+		if ( is_int( $owner ) ) {
+			return $owner >= 1;
+		}
+		return 1 === preg_match( '/^g[a-f0-9]{32}$/', $owner );
 	}
 
 	/**
 	 * A session's file when the token is well-formed and belongs to this user, else ''.
 	 *
-	 * @param int    $user_id Reviewer.
-	 * @param string $token   Session token.
+	 * @param int|string $user_id Reviewer (or guest owner key).
+	 * @param string     $token   Session token.
 	 */
-	private static function session_file( int $user_id, string $token ): string {
-		if ( $user_id < 1 || ! preg_match( '/^[A-Za-z0-9]{32}$/', $token ) ) {
+	private static function session_file( int|string $user_id, string $token ): string {
+		if ( ! self::valid_owner( $user_id ) || ! preg_match( '/^[A-Za-z0-9]{32}$/', $token ) ) {
 			return '';
 		}
 		$path = self::session_path( $user_id, $token );

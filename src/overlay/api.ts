@@ -97,7 +97,8 @@ export class Api {
     return this.request('DELETE', `/items/${id}`);
   }
 
-  addComment(id: number, body: string): Promise<{ comments: Comment[] }> {
-    return this.request('POST', `/items/${id}/comments`, { body });
+  /** guestName: guest mode only; a reviewer's replies are attributed to their WordPress user. */
+  addComment(id: number, body: string, guestName?: string): Promise<{ comments: Comment[] }> {
+    return this.request('POST', `/items/${id}/comments`, guestName ? { body, guest_name: guestName } : { body });
   }
 }

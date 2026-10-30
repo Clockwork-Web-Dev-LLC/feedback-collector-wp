@@ -24,6 +24,18 @@ Internal QA for **staging** WordPress sites. A teammate turns on Feedback mode, 
   - Items whose element can't be found anymore are listed as **Orphaned**, with a “Pin again” link to place them on a new element.
 - **Feedback** in wp-admin holds the full list: filters, search, sorting, bulk status changes, a detail screen with all captured context, and **View on page**, which opens the page with the pin open.
 
+## Guest access (password mode)
+
+For client reviews where reviewers don't have WordPress accounts. Off by default; turn it on in **Feedback → Settings → Guest access** and set a site password.
+
+- **Logged-out visitors** see a password screen instead of the site. The right password unlocks this browser for 30 days (renewed while they keep visiting). Ten wrong tries from one IP lock the form for 15 minutes. A "Team member? Log in" link goes to wp-login.
+- **Unlocked guests** get a **Feedback** button (bottom right) that opens the usual toolbar. Their first item asks for **their name**; it's remembered in a cookie, and later items show "Posting as Name · Change".
+- Guests are **submit-only**: they add items (with screenshot or video), and see, reply to and delete **only their own** items. No status, priority, assignee or due-date changes, no team list, no @mentions, no "Pin again".
+- **Logged-in users** never see the password screen, and their feedback works exactly as before. Guest items show the name with "(guest)" in wp-admin, CSV and Teamwork; guest replies go to Teamwork the same way.
+- Changing the password (or **Sign out all guests**) invalidates every guest cookie.
+- Only the front end is gated; wp-admin, wp-login, REST, admin-ajax, cron and XML-RPC are untouched so logins and integrations keep working. Public REST content (e.g. `/wp-json/wp/v2/pages`) stays readable without the password.
+- Caching: the unlock cookie starts with `wp_` so Batcache-style page caches skip it, and gated/unlocked responses send no-cache headers. Purge page/edge caches right after turning it on, and keep a CDN edge cache off on the staging site.
+
 ## Screen recordings
 
 Any feedback can carry a recording of the page with your voice, like Loom: pinned to an element (right-click or **+**) or for the whole page (the **note** icon).

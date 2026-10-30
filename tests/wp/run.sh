@@ -44,7 +44,7 @@ if [ "$GOT" != "$SCRATCH" ]; then
 fi
 
 failed=0
-for suite in migrate rest teamwork assignees rounds screenshots videos api-key-storage branding due-dates cli; do
+for suite in migrate rest teamwork assignees rounds screenshots videos api-key-storage branding due-dates cli guest-mode; do
 	echo "== $suite"
 	out="$(FBC_DB_NAME="$SCRATCH" $WP eval-file "$DIR/$suite.php" 2>&1)"
 	echo "$out" | grep -E '^(FAIL|cleanup|Refusing)|passed|Fatal|Error' || true

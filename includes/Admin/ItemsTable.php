@@ -244,7 +244,7 @@ final class ItemsTable extends \WP_List_Table {
 	protected function column_title( array $item ): string {
 		$detail   = Admin::item_url( (int) $item['id'] );
 		$view     = Admin::view_on_page_url( $item );
-		$reporter = get_userdata( (int) $item['reporter_id'] );
+		$reporter = Items::reporter_label( $item );
 		$created  = strtotime( $item['created_at'] . ' UTC' );
 		$meta     = array_filter(
 			array(
@@ -252,7 +252,7 @@ final class ItemsTable extends \WP_List_Table {
 				esc_html( sprintf( __( 'Round %d', 'feedback-collector' ), (int) $item['round'] ) ),
 				esc_html( $item['page_path'] ),
 				esc_html( (string) $item['breakpoint'] ),
-				$reporter ? esc_html( $reporter->display_name ) : '',
+				'' !== $reporter ? esc_html( $reporter ) : '',
 				sprintf(
 					'<time datetime="%1$s" title="%2$s">%3$s</time>',
 					esc_attr( gmdate( 'c', $created ) ),
@@ -308,8 +308,8 @@ final class ItemsTable extends \WP_List_Table {
 			case 'page':
 				return sprintf( '<code>%s</code>%s', esc_html( $item['page_path'] ), $item['breakpoint'] ? ' <span class="fbc-bp">' . esc_html( $item['breakpoint'] ) . '</span>' : '' );
 			case 'reporter':
-				$u = get_userdata( (int) $item['reporter_id'] );
-				return $u ? esc_html( $u->display_name ) : '—';
+				$who = Items::reporter_label( $item );
+				return '' !== $who ? esc_html( $who ) : '—';
 			case 'created':
 				return esc_html( get_date_from_gmt( $item['created_at'], get_option( 'date_format' ) . ' ' . get_option( 'time_format' ) ) );
 			case 'teamwork':

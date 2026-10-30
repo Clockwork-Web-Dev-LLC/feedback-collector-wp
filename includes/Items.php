@@ -162,6 +162,11 @@ final class Items {
 			$where[]  = 'assignee_id = %d';
 			$params[] = (int) $args['assignee_id'];
 		}
+		if ( isset( $args['guest_id'] ) ) {
+			// A guest's own items only. An empty ID must match nothing, never everyone's.
+			$where[]  = "guest_id = %s AND guest_id <> ''";
+			$params[] = (string) $args['guest_id'];
+		}
 		if ( isset( $args['tw_assignee_id'] ) && '' !== $args['tw_assignee_id'] ) {
 			$where[]  = 'tw_assignee_id = %d';
 			$params[] = (int) $args['tw_assignee_id'];
@@ -255,6 +260,8 @@ final class Items {
 				'context'          => isset( $data['context'] ) ? wp_json_encode( $data['context'] ) : null,
 				'breakpoint'       => $data['breakpoint'] ?? '',
 				'reporter_id'      => get_current_user_id(),
+				'reporter_name'    => mb_substr( (string) ( $data['reporter_name'] ?? '' ), 0, 100 ),
+				'guest_id'         => (string) ( $data['guest_id'] ?? '' ),
 				'assignee_id'      => (int) ( $data['assignee_id'] ?? 0 ),
 				'tw_assignee_id'   => (int) ( $data['tw_assignee_id'] ?? 0 ),
 				'tw_assignee_name' => (string) ( $data['tw_assignee_name'] ?? '' ),
@@ -377,8 +384,9 @@ final class Items {
 	 * @param string   $kind          'comment' or 'activity'.
 	 * @param int|null $user_id       Author; null means the current user, 0 means Teamwork sync.
 	 * @param int      $tw_comment_id Teamwork comment ID when synced from Teamwork.
+	 * @param string   $author_name   A guest's name (guest mode); their user_id is 0.
 	 */
-	public static function add_comment( int $item_id, string $body, string $kind = 'comment', ?int $user_id = null, int $tw_comment_id = 0 ): int {
+	public static function add_comment( int $item_id, string $body, string $kind = 'comment', ?int $user_id = null, int $tw_comment_id = 0, string $author_name = '' ): int {
 		global $wpdb;
 		$author_id = $user_id ?? get_current_user_id();
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
@@ -387,6 +395,7 @@ final class Items {
 			array(
 				'item_id'       => $item_id,
 				'user_id'       => $author_id,
+				'author_name'   => $author_id ? '' : mb_substr( $author_name, 0, 100 ),
 				'kind'          => 'activity' === $kind ? 'activity' : 'comment',
 				'body'          => $body,
 				'tw_comment_id' => $tw_comment_id,
@@ -412,19 +421,44 @@ final class Items {
 		$rows = $wpdb->get_results( $wpdb->prepare( 'SELECT * FROM %i WHERE item_id = %d ORDER BY id ASC', self::comments_table(), $item_id ), ARRAY_A );
 		return array_map(
 			static function ( array $row ): array {
-				$user = get_userdata( (int) $row['user_id'] );
+				$user  = get_userdata( (int) $row['user_id'] );
+				$guest = 0 === (int) $row['user_id'] ? (string) ( $row['author_name'] ?? '' ) : '';
+				if ( $user ) {
+					$name = $user->display_name;
+				} elseif ( '' !== $guest ) {
+					$name = $guest;
+				} else {
+					$name = 0 === (int) $row['user_id'] ? 'Teamwork' : __( 'Unknown', 'feedback-collector' );
+				}
 				return array(
 					'id'            => (int) $row['id'],
 					'kind'          => $row['kind'],
 					'body'          => $row['body'],
 					'user_id'       => (int) $row['user_id'],
 					'tw_comment_id' => (int) ( $row['tw_comment_id'] ?? 0 ),
-					'user_name'     => $user ? $user->display_name : ( 0 === (int) $row['user_id'] ? 'Teamwork' : __( 'Unknown', 'feedback-collector' ) ),
+					'user_name'     => $name,
+					'guest'         => '' !== $guest,
 					'created_at'    => mysql_to_rfc3339( $row['created_at'] ),
 				);
 			},
 			$rows ?: array()
 		);
+	}
+
+	/**
+	 * Who filed an item, for people reading it: the WordPress user's name, or a guest's name
+	 * marked "(guest)" when it came in through guest mode.
+	 *
+	 * @param array<string, mixed> $item Item.
+	 */
+	public static function reporter_label( array $item ): string {
+		$user = ! empty( $item['reporter_id'] ) ? get_userdata( (int) $item['reporter_id'] ) : false;
+		if ( $user ) {
+			return $user->display_name;
+		}
+		$guest = (string) ( $item['reporter_name'] ?? '' );
+		/* translators: %s: name a guest typed in */
+		return '' !== $guest ? sprintf( __( '%s (guest)', 'feedback-collector' ), $guest ) : '';
 	}
 
 	/**

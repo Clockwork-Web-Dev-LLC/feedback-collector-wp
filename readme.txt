@@ -4,7 +4,7 @@ Tags: feedback, qa, bug tracking, screen recording, teamwork
 Requires at least: 6.5
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 0.4.0
+Stable tag: 0.5.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -102,6 +102,9 @@ No. Everything works on its own; Teamwork is an optional place to send the feedb
 **Feedback → Settings → Remove all data** deletes the plugin's tables, settings, screenshots and recordings, then deactivates it. Deleting the plugin always deletes every recording, and deletes everything else too if you tick "Delete all feedback data when the plugin is deleted".
 
 == Changelog ==
+
+= 0.5.0 =
+* New: **Guest access (password mode)** in Feedback → Settings. One password protects the whole site; anyone who enters it can leave feedback without a WordPress account. Their first item asks for their name, which the browser remembers (with a Change link). Guests see, reply to and delete only their own feedback and can't triage. Logged-in users are unaffected. Off by default.
 
 = 0.4.0 =
 * New: choose a **Screenshot** or a **Video** in the feedback form. Recordings can be pinned to an element and keep their type, priority and assignee. Nothing is captured automatically any more.
