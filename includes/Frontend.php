@@ -173,6 +173,9 @@ final class Frontend {
 			),
 			'brand'     => Branding::overlay(),
 			'openItem'  => $open,
+			// Password mode: reviewers get the same floating Feedback button as guests, so
+			// everyone reviewing the site starts feedback the same way (the admin bar toggle stays).
+			'launcher'  => GuestMode::enabled(),
 		);
 	}
 

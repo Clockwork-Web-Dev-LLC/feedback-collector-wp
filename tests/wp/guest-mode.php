@@ -178,6 +178,7 @@ $as_user( $editor );
 $_COOKIE[ GuestMode::COOKIE ] = GuestMode::sign( $g1, time() + 3600 );
 $check( 'logged-in editor with a guest cookie is not a guest', null === GuestMode::guest_id() );
 $check( 'editor still gets the overlay as a reviewer', Frontend::should_load() && ! isset( Frontend::config()['guest'] ) );
+$check( 'password mode on: reviewers get the floating Feedback button too', true === Frontend::config()['launcher'] );
 $as_user( $sub );
 $_COOKIE[ GuestMode::COOKIE ] = GuestMode::sign( $g1, time() + 3600 );
 $check( 'Anti: logged-in subscriber (no review cap) gets no overlay, even with a guest cookie', ! Frontend::should_load() );
@@ -329,5 +330,6 @@ $check( 'turned off: guests lose access at once', 401 === $st && ! Frontend::sho
 $as_user( $editor );
 [ $st ] = $call( 'GET', '/items/' . $g1_item );
 $check( 'turned off: reviewers still see guest items', 200 === $st );
+$check( 'turned off: reviewers have no floating button (admin bar only, as before)', false === Frontend::config()['launcher'] );
 
 echo "{$n[0]} passed, {$n[1]} failed\n";

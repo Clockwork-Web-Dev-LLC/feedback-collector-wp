@@ -147,6 +147,8 @@ export interface Config {
    * give their name once (remembered in this cookie) and can't triage.
    */
   guest?: GuestConfig;
+  /** Show the floating Feedback button (always for guests; for reviewers while password mode is on). */
+  launcher?: boolean;
 }
 
 export interface GuestConfig {

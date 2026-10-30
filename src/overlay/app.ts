@@ -265,9 +265,12 @@ export class App {
     }
   }
 
-  /** Guests have no admin bar, so a small button turns Feedback mode on. */
+  /**
+   * A small button that turns Feedback mode on: always for guests (no admin bar), and for
+   * reviewers too while password mode is on, so everyone starts feedback the same way.
+   */
   private renderLauncher(): void {
-    if (!this.guest || this.inPreview || this.mode) {
+    if (!(this.guest || this.cfg.launcher) || this.inPreview || this.mode) {
       this.launcher?.remove();
       this.launcher = null;
       return;
