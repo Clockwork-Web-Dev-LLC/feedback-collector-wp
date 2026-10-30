@@ -191,8 +191,13 @@ final class Items {
 			'created'  => 'created_at',
 			'priority' => "FIELD(priority,'critical','high','medium','low')",
 			'status'   => "FIELD(status,'open','in_progress','ready_for_review','resolved')",
-			'title'    => 'title',
-			'due'      => "COALESCE(due_date,'9999-12-31')",
+			'title'       => 'title',
+			'due'         => "COALESCE(due_date,'9999-12-31')",
+			'page'        => 'page_path',
+			'description' => 'description',
+			'type'        => "FIELD(type,'bug','tweak','change','comment')",
+			// By name: a guest's typed name, otherwise the WordPress user's display name.
+			'reporter'    => "COALESCE(NULLIF(reporter_name,''),(SELECT u.display_name FROM {$wpdb->users} u WHERE u.ID = reporter_id),'')",
 		);
 		$orderby     = $orderby_map[ $args['orderby'] ?? 'id' ] ?? 'id';
 		$order       = 'asc' === strtolower( (string) ( $args['order'] ?? 'desc' ) ) ? 'ASC' : 'DESC';

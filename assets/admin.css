@@ -190,6 +190,12 @@ body.wp-admin { overflow-x: hidden; }
 .fbc-admin .fbc-table .column-assignee { width: 140px; }
 .fbc-admin .fbc-table .column-teamwork { width: 130px; }
 .fbc-admin .fbc-table .column-title { white-space: normal; }
+.fbc-admin .fbc-table .column-description { width: 28%; }
+.fbc-admin .fbc-table .column-page { width: 16%; }
+.fbc-admin .fbc-table .column-reporter { width: 130px; }
+.fbc-desc { color: var(--fbc-text-muted); font-size: 12px; line-height: 1.45; white-space: pre-line; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.fbc-page-name { font-weight: 600; }
+.fbc-admin .fbc-table .column-page code { background: none; padding: 0; font-size: 11px; }
 .fbc-row-id { color: var(--fbc-text-soft); font: 12px ui-monospace, "SF Mono", Menlo, Consolas, monospace; margin-right: 8px; }
 .fbc-admin .fbc-table .column-title > strong { display: inline; }
 .fbc-admin .fbc-table .row-title { font-size: 14px; font-weight: 600; }
@@ -199,7 +205,7 @@ body.wp-admin { overflow-x: hidden; }
 .fbc-bp { color: var(--fbc-text-soft); font-size: 11px; }
 .fbc-admin__page-actions form { display: flex; align-items: center; gap: 10px; margin: 0 !important; }
 .fbc-admin__page-actions .description { color: var(--fbc-text-soft); font-size: 12px; font-style: normal; }
-@media (max-width: 960px) { .fbc-admin .fbc-table .column-assignee, .fbc-admin .fbc-table .column-priority { display: none; } }
+@media (max-width: 960px) { .fbc-admin .fbc-table .column-assignee, .fbc-admin .fbc-table .column-priority, .fbc-admin .fbc-table .column-reporter { display: none; } }
 
 /* Thread */
 .fbc-thread { list-style: none; margin: 0 0 16px; padding: 0; }

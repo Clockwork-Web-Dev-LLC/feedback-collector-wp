@@ -59,6 +59,16 @@ final class Admin {
 		add_submenu_page( self::SLUG, $name . ' — ' . __( 'Branding', 'feedback-collector' ), __( 'Branding', 'feedback-collector' ), 'manage_options', self::SLUG . '-branding', array( self::class, 'render_branding' ) );
 
 		add_action( 'load-' . $hook, array( self::class, 'process_bulk' ) );
+		// Screen Options → Columns: pick which columns show (saved per user).
+		add_filter( 'manage_' . $hook . '_columns', array( ItemsTable::class, 'columns' ) );
+		add_filter(
+			'default_hidden_columns',
+			static function ( array $hidden, \WP_Screen $screen ) use ( $hook ): array {
+				return $screen->id === $hook ? ItemsTable::default_hidden( $hidden ) : $hidden;
+			},
+			10,
+			2
+		);
 	}
 
 	/**
