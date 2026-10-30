@@ -1037,6 +1037,10 @@ final class Admin {
 	 * since the plugin is removed before go-live.
 	 */
 	public static function plugin_row_warning(): void {
+		// Only meaningful when Teamwork is connected; sites without it keep their feedback here.
+		if ( ! \FeedbackCollector\Teamwork\Teamwork::client() ) {
+			return;
+		}
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
 		$pending = (int) $wpdb->get_var( $wpdb->prepare( 'SELECT COUNT(*) FROM %i WHERE tw_task_id = 0 AND status != %s', Items::table(), 'resolved' ) );
