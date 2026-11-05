@@ -7,6 +7,7 @@
 
 namespace FeedbackCollector\Admin;
 
+use FeedbackCollector\Approvals;
 use FeedbackCollector\Assignees;
 use FeedbackCollector\DueDates;
 use FeedbackCollector\GuestMode;
@@ -54,6 +55,7 @@ final class ItemsTable extends \WP_List_Table {
 	public static function columns(): array {
 		return array(
 			'cb'          => '<input type="checkbox" />',
+			'approved'    => Approvals::label(),
 			'title'       => __( 'Feedback', 'feedback-collector' ),
 			'description' => __( 'Description', 'feedback-collector' ),
 			'page'        => __( 'Page', 'feedback-collector' ),
@@ -93,6 +95,7 @@ final class ItemsTable extends \WP_List_Table {
 	 */
 	protected function get_sortable_columns(): array {
 		return array(
+			'approved'    => array( 'approved', false ),
 			'title'       => array( 'title', false ),
 			'description' => array( 'description', false ),
 			'page'        => array( 'page', false ),
@@ -115,7 +118,11 @@ final class ItemsTable extends \WP_List_Table {
 			/* translators: %s: status label */
 			$actions[ 'status_' . $slug ] = sprintf( __( 'Mark %s', 'feedback-collector' ), $label );
 		}
-		$actions['delete'] = __( 'Delete', 'feedback-collector' );
+		/* translators: %s: approval name, e.g. "PIVI approved" */
+		$actions['approve'] = sprintf( __( 'Mark “%s”', 'feedback-collector' ), Approvals::label() );
+		/* translators: %s: approval name, e.g. "PIVI approved" */
+		$actions['unapprove'] = sprintf( __( 'Remove “%s”', 'feedback-collector' ), Approvals::label() );
+		$actions['delete']    = __( 'Delete', 'feedback-collector' );
 		return apply_filters( 'fbcol_bulk_actions', $actions );
 	}
 
@@ -143,6 +150,7 @@ final class ItemsTable extends \WP_List_Table {
 			'search'      => sanitize_text_field( $get( 's', 'search' ) ),
 			'round'       => absint( $get( 'fbcol_round', 'round' ) ) ? (string) absint( $get( 'fbcol_round', 'round' ) ) : '',
 			'breakpoint'  => sanitize_key( $get( 'fbcol_bp', 'breakpoint' ) ),
+			'approved'    => in_array( $get( 'fbcol_approved', 'approved' ), array( 'yes', 'no' ), true ) ? $get( 'fbcol_approved', 'approved' ) : '',
 		);
 		// phpcs:enable
 	}
@@ -200,6 +208,18 @@ final class ItemsTable extends \WP_List_Table {
 		echo '<div class="alignleft actions">';
 		$this->dropdown( 'fbcol_type', __( 'All types', 'feedback-collector' ), $labels['type'], $f['type'] );
 		$this->dropdown( 'fbcol_status', __( 'All statuses', 'feedback-collector' ), $labels['status'], $f['status'] );
+		$this->dropdown(
+			'fbcol_approved',
+			/* translators: %s: approval name, e.g. "PIVI approved" */
+			sprintf( __( '%s: any', 'feedback-collector' ), Approvals::label() ),
+			array(
+				/* translators: %s: approval name, e.g. "PIVI approved" */
+				'yes' => sprintf( __( '%s: yes', 'feedback-collector' ), Approvals::label() ),
+				/* translators: %s: approval name, e.g. "PIVI approved" */
+				'no'  => sprintf( __( '%s: not yet', 'feedback-collector' ), Approvals::label() ),
+			),
+			$f['approved']
+		);
 
 		$people = array( '0' => __( 'Unassigned', 'feedback-collector' ) );
 		foreach ( Assignees::options()['people'] as $r ) {
@@ -338,6 +358,18 @@ final class ItemsTable extends \WP_List_Table {
 			case 'assignee':
 				$name = Assignees::name( $item );
 				return '' !== $name ? esc_html( $name ) : '<span aria-hidden="true">—</span>';
+			case 'approved':
+				$on   = Approvals::is_approved( $item );
+				$by   = Approvals::approver_name( $item );
+				$name = Approvals::label();
+				return sprintf(
+					'<label class="fbc-approve"><input type="checkbox" class="fbc-approve-box" data-id="%1$d"%2$s aria-label="%3$s" /><span class="fbc-approve-by">%4$s</span></label>',
+					(int) $item['id'],
+					checked( $on, true, false ),
+					/* translators: 1: approval name, 2: item ID */
+					esc_attr( sprintf( __( '%1$s: #%2$d', 'feedback-collector' ), $name, (int) $item['id'] ) ),
+					$on && '' !== $by ? esc_html( $by ) : ''
+				);
 			case 'description':
 				$text = trim( (string) $item['description'] );
 				if ( '' === $text ) {

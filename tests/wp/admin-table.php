@@ -71,7 +71,7 @@ GuestMode::set_password( 'pass-1234' );
 GuestMode::set_enabled( true );
 $h = ItemsTable::default_hidden( array() );
 $check( 'password mode: Teamwork, Assignee and Due hidden by default', array( 'assignee', 'due', 'teamwork' ) === ( sort( $h ) ? $h : $h ) );
-$check( 'every column is offered in Screen Options', array( 'cb', 'title', 'description', 'page', 'reporter', 'type', 'status', 'priority', 'due', 'assignee', 'teamwork' ) === array_keys( ItemsTable::columns() ) );
+$check( 'every column is offered in Screen Options', array( 'cb', 'approved', 'title', 'description', 'page', 'reporter', 'type', 'status', 'priority', 'due', 'assignee', 'teamwork' ) === array_keys( ItemsTable::columns() ) );
 
 // Render the table.
 set_current_screen( 'toplevel_page_feedback-collector' );

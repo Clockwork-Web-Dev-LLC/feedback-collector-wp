@@ -81,6 +81,9 @@ export interface Item {
   created_at: string;
   updated_at: string;
   can_delete: boolean;
+  /** The client's sign-off ("PIVI approved"); reviewers only can change it. */
+  approved?: boolean;
+  approved_by?: string;
   comments?: Comment[];
 }
 
@@ -149,6 +152,10 @@ export interface Config {
   guest?: GuestConfig;
   /** Show the floating Feedback button (always for guests; for reviewers while password mode is on). */
   launcher?: boolean;
+  /** Show the first-run walkthrough (once per browser; the toolbar's ? replays it). */
+  tour?: boolean;
+  /** Reviewers only: the approval checkbox's name, e.g. "PIVI approved". */
+  approval?: { label: string };
 }
 
 export interface GuestConfig {

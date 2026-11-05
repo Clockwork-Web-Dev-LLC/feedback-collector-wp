@@ -36,6 +36,17 @@ For client reviews where reviewers don't have WordPress accounts. Off by default
 - Only the front end is gated; wp-admin, wp-login, REST, admin-ajax, cron and XML-RPC are untouched so logins and integrations keep working. Public REST content (e.g. `/wp-json/wp/v2/pages`) stays readable without the password.
 - Caching: the unlock cookie starts with `wp_` so Batcache-style page caches skip it, and gated/unlocked responses send no-cache headers. Purge page/edge caches right after turning it on, and keep a CDN edge cache off on the staging site.
 
+## Client approval
+
+A sign-off checkbox for each item, separate from its status: the client ticks the items that should be done. Name it under **Feedback → Settings → Approval checkbox** (e.g. "PIVI approved"; blank = "Approved").
+
+- Tick it in the **feedback list** (saves at once and shows who approved), on an item's **detail screen**, or in the pin's card on the page. Guests can't approve.
+- Bulk actions **Mark / Remove "…"**, a filter (yes / not yet), and sorting by it. Each change is noted in the item's thread, and the CSV export includes who approved.
+
+## Quick tour
+
+The first time someone opens Feedback in a browser, a short walkthrough points at the toolbar: adding feedback to an element, page notes, the form, device previews, the list and closing. It's the same for guests and logged-in users, and doesn't cover the admin list. The **?** button on the toolbar replays it. On by default in password mode; **Settings → Quick tour** turns it on or off for any site.
+
 ## Screen recordings
 
 Any feedback can carry a recording of the page with your voice, like Loom: pinned to an element (right-click or **+**) or for the whole page (the **note** icon).

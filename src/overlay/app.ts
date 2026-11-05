@@ -7,6 +7,8 @@ import { h, relativeTime, select } from './dom';
 import { chevronIcon, deviceIcon, shotIcon } from './icons';
 import { Recorder, canRecord, clock, mountPointerTrail } from './recorder';
 import { cleanGuestName, readGuestName, saveGuestName } from './guest';
+import { Tour, markTourSeen, tourSeen } from './tour';
+import type { TourStep } from './tour';
 import type { Recording } from './recorder';
 import type { Config, Item, ItemStatus, ItemType, Priority } from './types';
 
@@ -141,6 +143,8 @@ export class App {
   private stopTrail: (() => void) | null = null;
   /** Gets the finished recording (or null when it was discarded or never started). */
   private recDone: ((recording: Recording | null) => void) | null = null;
+  /** The first-run walkthrough, while it's showing. */
+  private tour: Tour | null = null;
 
   constructor(private cfg: Config) {
     this.api = new Api(cfg);
@@ -384,6 +388,8 @@ export class App {
     this.renderLauncher();
 
     if (!on) {
+      this.tour?.close(false);
+      this.tour = null;
       this.exitPinMode();
       this.closeCard();
       this.closeSidebar();
@@ -410,7 +416,72 @@ export class App {
       this.cfg.openItem = 0;
       this.stripDeepLinkParam();
       void this.openDeepLink(id);
+    } else if (this.cfg.tour && !this.inPreview && !tourSeen()) {
+      // First time in Feedback mode in this browser: show how it works.
+      window.requestAnimationFrame(() => this.startTour());
     }
+  }
+
+  // ---------------------------------------------------------------- tour
+
+  /** The walkthrough's stops: how to leave feedback (the admin list isn't part of it). */
+  private tourSteps(): TourStep[] {
+    const q = (selector: string) => () => {
+      const el = this.toolbar?.querySelector(selector) ?? null;
+      return el && (el as HTMLElement).offsetParent !== null ? el : null;
+    };
+    return [
+      {
+        title: 'Leave feedback right on the page',
+        body: 'This quick tour shows how. It takes about 30 seconds, and you can replay it any time with the ? button.',
+      },
+      {
+        title: 'This is your feedback toolbar',
+        body: 'It stays with you as you move from page to page. Drag it by the dots if it’s in the way.',
+        target: () => this.toolbar,
+      },
+      {
+        title: 'Comment on something specific',
+        body: 'Click +, then click the text, image or button you want to comment on. Shortcut: right-click anything on the page.',
+        target: q('[data-tour="add"]'),
+      },
+      {
+        title: 'Or comment on the whole page',
+        body: 'Use this for general notes about the page as a whole.',
+        target: q('[data-tour="note"]'),
+      },
+      {
+        title: 'Describe what should change',
+        body: 'A short form opens. Pick a type, write what you’d like changed, and add a screenshot or a short video if it helps. The first time, you’ll be asked for your name.',
+      },
+      {
+        title: 'Check other screen sizes',
+        body: 'See the page as it looks on a phone or tablet, and leave feedback there too.',
+        target: q('[data-tour="devices"]'),
+      },
+      {
+        title: 'See your feedback and replies',
+        body: 'Each comment shows as a numbered pin on the page. Open the List to see them all and read replies from the team.',
+        target: q('[data-tour="list"]'),
+      },
+      {
+        title: 'Done for now?',
+        body: 'Close the toolbar here. The Feedback button brings it back whenever you need it.',
+        target: q('[data-tour="close"]'),
+      },
+    ];
+  }
+
+  private startTour(): void {
+    if (!this.mode || !this.toolbar) return;
+    this.exitPinMode();
+    this.closeCard();
+    this.tour?.close(false);
+    this.tour = new Tour(this.root, () => {
+      markTourSeen();
+      this.tour = null;
+    });
+    this.tour.start(this.tourSteps());
   }
 
   private stripDeepLinkParam(): void {
@@ -1289,6 +1360,20 @@ export class App {
           })()
         : null,
       item.video_url ? this.videoBlock(item) : null,
+      !this.guest && this.cfg.approval
+        ? h(
+            'label',
+            { class: 'check approve-row' },
+            (() => {
+              const box = h('input', { type: 'checkbox', name: 'approved' }) as HTMLInputElement;
+              box.checked = !!item.approved;
+              box.addEventListener('change', () => void save({ approved: box.checked }));
+              return box;
+            })(),
+            ` ${this.cfg.approval.label}`,
+            item.approved && item.approved_by ? h('span', { class: 'meta', text: ` · ${item.approved_by}` }) : null
+          )
+        : null,
       // Guests see the status but leave triage to the team.
       this.guest ? h('div', { class: 'meta guest-status' }, 'Status: ', h('strong', { text: labels.status[item.status] ?? item.status })) : null,
       this.guest ? null : h('div', { class: 'row' }, h('label', { class: 'field' }, h('span', { text: 'Status' }), status), h('label', { class: 'field' }, h('span', { text: 'Priority' }), priority)),
@@ -1671,17 +1756,18 @@ export class App {
         class: this.pinMode ? 'icon-btn on' : 'icon-btn',
         'data-tip': 'Add feedback to an element',
         'aria-label': 'Add feedback to an element',
+        'data-tour': 'add',
         onclick: () =>
           this.pinMode
             ? this.exitPinMode()
             : this.enterPinMode({ hint: 'Click any element to add feedback', done: (el, x, y) => this.openTypeMenu(el, x, y) }),
       }, deviceIcon('add')),
-      h('button', { type: 'button', class: 'icon-btn', 'data-tip': 'Add a page note', 'aria-label': 'Add a note for the whole page', onclick: () => this.openComposer('comment', null, window.innerWidth / 2 - 170, 120) }, deviceIcon('note')),
+      h('button', { type: 'button', class: 'icon-btn', 'data-tip': 'Add a page note', 'aria-label': 'Add a note for the whole page', 'data-tour': 'note', onclick: () => this.openComposer('comment', null, window.innerWidth / 2 - 170, 120) }, deviceIcon('note')),
       this.inPreview
         ? null
         : h(
             'span',
-            { class: 'devices', role: 'group', 'aria-label': 'Preview at a device size' },
+            { class: 'devices', role: 'group', 'aria-label': 'Preview at a device size', 'data-tour': 'devices' },
             ...DEVICES.map((d) =>
               d.id === 'desktop'
                 ? // Desktop is the real page you're already on: shown as the active view.
@@ -1689,8 +1775,11 @@ export class App {
                 : h('button', { type: 'button', class: 'icon-btn', 'aria-pressed': 'false', 'data-tip': `Preview as ${d.label} (${d.w}px)`, 'aria-label': `Preview as ${d.label}, ${d.w} pixels wide`, onclick: () => this.openPreview(d.id) }, deviceIcon(d.id))
             )
           ),
-      h('button', { type: 'button', class: this.sidebar ? 'on' : '', onclick: () => (this.sidebar ? this.closeSidebar() : this.openSidebar()) }, h('span', { class: 'label', text: 'List' }), count ? h('span', { class: 'count', text: String(count) }) : null),
-      h('button', { type: 'button', 'data-tip': 'Exit Feedback mode (Alt+Shift+F)', 'aria-label': 'Exit Feedback mode', text: '×', onclick: () => void this.setMode(false) })
+      h('button', { type: 'button', class: this.sidebar ? 'on' : '', 'data-tour': 'list', onclick: () => (this.sidebar ? this.closeSidebar() : this.openSidebar()) }, h('span', { class: 'label', text: 'List' }), count ? h('span', { class: 'count', text: String(count) }) : null),
+      this.cfg.tour && !this.inPreview
+        ? h('button', { type: 'button', class: 'tour-help', 'data-tip': 'Quick tour', 'aria-label': 'Show the quick tour', text: '?', onclick: () => this.startTour() })
+        : null,
+      h('button', { type: 'button', 'data-tip': 'Exit Feedback mode (Alt+Shift+F)', 'aria-label': 'Exit Feedback mode', 'data-tour': 'close', text: '×', onclick: () => void this.setMode(false) })
     );
     const wasPlaced = !!this.toolbar;
     // Stays hidden while the device preview covers the page (re-renders must not unhide it).

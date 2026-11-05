@@ -92,6 +92,8 @@ final class Install {
 				video_duration smallint(5) unsigned NOT NULL DEFAULT 0,
 				video_events longtext NULL,
 				due_date date NULL DEFAULT NULL,
+				approved_at datetime NULL DEFAULT NULL,
+				approved_by bigint(20) unsigned NOT NULL DEFAULT 0,
 				tw_sync_state varchar(20) NOT NULL DEFAULT '',
 				tw_sync_error text NULL,
 				created_at datetime NOT NULL DEFAULT '0000-00-00 00:00:00',
@@ -102,7 +104,8 @@ final class Install {
 				KEY assignee_id (assignee_id),
 				KEY round (round),
 				KEY due_date (due_date),
-				KEY guest_id (guest_id)
+				KEY guest_id (guest_id),
+				KEY approved_at (approved_at)
 			) {$charset};"
 		);
 

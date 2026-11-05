@@ -167,6 +167,9 @@ final class Items {
 			$where[]  = "guest_id = %s AND guest_id <> ''";
 			$params[] = (string) $args['guest_id'];
 		}
+		if ( isset( $args['approved'] ) && in_array( $args['approved'], array( 'yes', 'no' ), true ) ) {
+			$where[] = 'yes' === $args['approved'] ? 'approved_at IS NOT NULL' : 'approved_at IS NULL';
+		}
 		if ( isset( $args['tw_assignee_id'] ) && '' !== $args['tw_assignee_id'] ) {
 			$where[]  = 'tw_assignee_id = %d';
 			$params[] = (int) $args['tw_assignee_id'];
@@ -196,6 +199,8 @@ final class Items {
 			'page'        => 'page_path',
 			'description' => 'description',
 			'type'        => "FIELD(type,'bug','tweak','change','comment')",
+			// Not approved first when ascending, then approved oldest to newest.
+			'approved'    => "COALESCE(approved_at,'0000-00-00 00:00:00')",
 			// By name: a guest's typed name, otherwise the WordPress user's display name.
 			'reporter'    => "COALESCE(NULLIF(reporter_name,''),(SELECT u.display_name FROM {$wpdb->users} u WHERE u.ID = reporter_id),'')",
 		);
@@ -292,7 +297,7 @@ final class Items {
 			return false;
 		}
 
-		$allowed = array( 'title', 'description', 'status', 'priority', 'assignee_id', 'tw_assignee_id', 'tw_assignee_name', 'type', 'anchor', 'tw_task_id', 'tw_project_id', 'tw_sync_state', 'tw_sync_error', 'screenshot', 'video', 'video_duration', 'video_events', 'due_date' );
+		$allowed = array( 'title', 'description', 'status', 'priority', 'assignee_id', 'tw_assignee_id', 'tw_assignee_name', 'type', 'anchor', 'tw_task_id', 'tw_project_id', 'tw_sync_state', 'tw_sync_error', 'screenshot', 'video', 'video_duration', 'video_events', 'due_date', 'approved_at', 'approved_by' );
 		$row     = array_intersect_key( $changes, array_flip( $allowed ) );
 		if ( array_key_exists( 'due_date', $row ) ) {
 			$row['due_date'] = DueDates::sanitize( $row['due_date'] );
@@ -473,7 +478,7 @@ final class Items {
 	 * @return array<string, mixed>
 	 */
 	public static function hydrate( array $row ): array {
-		foreach ( array( 'id', 'reporter_id', 'assignee_id', 'tw_assignee_id', 'tw_task_id', 'tw_project_id', 'round', 'video_duration' ) as $int_field ) {
+		foreach ( array( 'id', 'reporter_id', 'assignee_id', 'tw_assignee_id', 'tw_task_id', 'tw_project_id', 'round', 'video_duration', 'approved_by' ) as $int_field ) {
 			$row[ $int_field ] = (int) ( $row[ $int_field ] ?? 0 );
 		}
 		$row['video_events'] = ! empty( $row['video_events'] ) ? (array) json_decode( (string) $row['video_events'], true ) : array();

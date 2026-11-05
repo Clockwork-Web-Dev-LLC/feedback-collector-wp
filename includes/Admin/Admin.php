@@ -7,6 +7,7 @@
 
 namespace FeedbackCollector\Admin;
 
+use FeedbackCollector\Approvals;
 use FeedbackCollector\Assignees;
 use FeedbackCollector\DueDates;
 use FeedbackCollector\GuestMode;
@@ -119,6 +120,10 @@ final class Admin {
 					$done += Items::update( $id, array( 'status' => $status ) ) ? 1 : 0;
 				}
 			}
+		} elseif ( 'approve' === $action || 'unapprove' === $action ) {
+			foreach ( $ids as $id ) {
+				$done += Approvals::set( $id, 'approve' === $action ) ? 1 : 0;
+			}
 		} elseif ( 'delete' === $action ) {
 			foreach ( $ids as $id ) {
 				$item = Items::get( $id );
@@ -218,6 +223,7 @@ final class Admin {
 				$table->display();
 				echo '</form>';
 				Layout::card_close();
+				self::approve_script();
 			},
 			static function () use ( $current ): void {
 				do_action( 'fbcol_list_header_actions' );
@@ -371,6 +377,13 @@ final class Admin {
 				printf( '<form method="post" action="%s">', esc_url( admin_url( 'admin-post.php' ) ) );
 				wp_nonce_field( 'fbcol_update_' . $item['id'] );
 				printf( '<input type="hidden" name="action" value="fbcol_update" /><input type="hidden" name="id" value="%d" />', (int) $item['id'] );
+				$approver = Approvals::approver_name( $item );
+				printf(
+					'<p class="fbc-approve-row"><input type="hidden" name="approved_shown" value="1" /><label><input type="checkbox" name="approved" value="1"%1$s /> <strong>%2$s</strong></label>%3$s</p>',
+					checked( Approvals::is_approved( $item ), true, false ),
+					esc_html( Approvals::label() ),
+					'' !== $approver ? ' <span class="fbc-bp">' . esc_html( sprintf( /* translators: %s: name */ __( 'by %s', 'feedback-collector' ), $approver ) ) . '</span>' : ''
+				);
 				foreach ( array(
 					'status'   => array( __( 'Status', 'feedback-collector' ), $labels['status'], $item['status'] ),
 					'priority' => array( __( 'Priority', 'feedback-collector' ), $labels['priority'], $item['priority'] ),
@@ -473,6 +486,9 @@ final class Admin {
 			}
 		}
 		Items::update( $id, $changes );
+		if ( $item && ! empty( $_POST['approved_shown'] ) ) {
+			Approvals::set( $id, ! empty( $_POST['approved'] ) );
+		}
 		if ( $due_changed ) {
 			do_action( 'fbcol_item_due_changed', $id );
 		}
@@ -588,6 +604,21 @@ final class Admin {
 					esc_html__( 'Items a reviewer files in one sitting share a due date: the first starts a batch, everything within the window reuses its date, and changing the date mid-batch carries forward. Teamwork gets the date too.', 'feedback-collector' )
 				);
 				printf(
+					'<tr><th scope="row"><label for="fbcol-approval-label">%1$s</label></th><td><input type="text" id="fbcol-approval-label" name="approval_label" class="regular-text" maxlength="%2$d" value="%3$s" placeholder="%4$s" /><p class="description">%5$s</p></td></tr>',
+					esc_html__( 'Approval checkbox', 'feedback-collector' ),
+					(int) Approvals::LABEL_MAX,
+					esc_attr( (string) get_option( Approvals::OPT_LABEL, '' ) ),
+					esc_attr__( 'Approved', 'feedback-collector' ),
+					esc_html__( 'What the sign-off checkbox is called in the feedback list, e.g. “PIVI approved”. Reviewers tick it on items that should be done. Leave blank for “Approved”.', 'feedback-collector' )
+				);
+				printf(
+					'<tr><th scope="row">%1$s</th><td><label><input type="checkbox" name="tour" value="1"%2$s /> %3$s</label><p class="description">%4$s</p></td></tr>',
+					esc_html__( 'Quick tour', 'feedback-collector' ),
+					checked( \FeedbackCollector\Tour::enabled(), true, false ),
+					esc_html__( 'Show a short walkthrough the first time someone opens Feedback', 'feedback-collector' ),
+					esc_html__( 'It covers adding feedback, page notes, screenshots and the list. Shown once per browser; the ? button on the toolbar replays it. On by default in password mode.', 'feedback-collector' )
+				);
+				printf(
 					'<tr><th scope="row">%1$s</th><td><label><input type="checkbox" name="delete_on_uninstall" value="1"%2$s /> %3$s</label></td></tr>',
 					esc_html__( 'Uninstall', 'feedback-collector' ),
 					checked( $cleanup, true, false ),
@@ -648,11 +679,36 @@ final class Admin {
 		}
 
 		self::save_guest_settings();
+		if ( isset( $_POST['approval_label'] ) ) {
+			Approvals::set_label( sanitize_text_field( wp_unslash( $_POST['approval_label'] ) ) );
+		}
+		update_option( \FeedbackCollector\Tour::OPTION, empty( $_POST['tour'] ) ? '0' : '1', false );
 
 		do_action( 'fbcol_save_settings' );
 
 		wp_safe_redirect( add_query_arg( 'fbcol_saved', 1, admin_url( 'admin.php?page=' . self::SLUG . '-settings' ) ) );
 		exit;
+	}
+
+	/**
+	 * Saves a list-row approval checkbox the moment it changes (through the REST API), and
+	 * shows who approved it. Without JavaScript the bulk actions do the same.
+	 */
+	private static function approve_script(): void {
+		$config = array(
+			'url'   => esc_url_raw( rest_url( \FeedbackCollector\Rest::NS . '/items/' ) ),
+			'nonce' => wp_create_nonce( 'wp_rest' ),
+			'me'    => wp_get_current_user()->display_name,
+			'error' => __( 'Couldn’t save that. Reload the page and try again.', 'feedback-collector' ),
+		);
+		wp_print_inline_script_tag(
+			'(function(c){document.addEventListener("change",function(e){var b=e.target;if(!b.classList||!b.classList.contains("fbc-approve-box"))return;' .
+			'var by=b.parentNode.querySelector(".fbc-approve-by");b.disabled=true;' .
+			'fetch(c.url+b.dataset.id,{method:"PATCH",credentials:"same-origin",headers:{"Content-Type":"application/json","X-WP-Nonce":c.nonce},body:JSON.stringify({approved:b.checked})})' .
+			'.then(function(r){if(!r.ok)throw r;return r.json();}).then(function(d){b.checked=!!d.approved;if(by)by.textContent=d.approved?(d.approved_by||c.me):"";})' .
+			'.catch(function(){b.checked=!b.checked;window.alert(c.error);}).finally(function(){b.disabled=false;});});})(' . wp_json_encode( $config ) . ');',
+			array( 'id' => 'fbcol-approve' )
+		);
 	}
 
 	/**
@@ -959,6 +1015,8 @@ final class Admin {
 				'Round',
 				'Type',
 				'Status',
+				Approvals::label(),
+				'Approved By',
 				'Priority',
 				'Title',
 				'Description',
@@ -1014,6 +1072,8 @@ final class Admin {
 						(int) $item['round'],
 						(string) $item['type'],
 						(string) $item['status'],
+						Approvals::is_approved( $item ) ? 'Yes' : 'No',
+						$escape_csv( Approvals::approver_name( $item ) ),
 						(string) $item['priority'],
 						$escape_csv( $item['title'] ),
 						$escape_csv( $item['description'] ),

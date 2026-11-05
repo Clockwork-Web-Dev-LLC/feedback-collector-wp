@@ -593,6 +593,13 @@ final class Rest {
 		if ( array_key_exists( 'anchor', $p ) ) {
 			$changes['anchor'] = is_array( $p['anchor'] ) ? self::sanitize_anchor( $p['anchor'] ) : null;
 		}
+		$approval = null;
+		if ( array_key_exists( 'approved', $p ) ) {
+			if ( ! is_bool( $p['approved'] ) ) {
+				return self::invalid( 'approved', __( 'Approved must be true or false.', 'feedback-collector' ) );
+			}
+			$approval = $p['approved'];
+		}
 		$due_changed = false;
 		if ( array_key_exists( 'due_date', $p ) ) {
 			$due = null === $p['due_date'] || '' === $p['due_date'] ? null : DueDates::sanitize( $p['due_date'] );
@@ -607,6 +614,9 @@ final class Rest {
 
 		if ( ! Items::update( $id, $changes ) ) {
 			return new WP_Error( 'fbcol_db', __( 'Could not update feedback.', 'feedback-collector' ), array( 'status' => 500 ) );
+		}
+		if ( null !== $approval ) {
+			Approvals::set( $id, $approval );
 		}
 		if ( $due_changed ) {
 			// Mid-batch, a changed date carries forward to the reviewer's next items.
@@ -739,6 +749,8 @@ final class Rest {
 			'created_at'      => mysql_to_rfc3339( $item['created_at'] ),
 			'updated_at'      => mysql_to_rfc3339( $item['updated_at'] ),
 			'can_delete'      => self::can_delete( $item ),
+			'approved'        => Approvals::is_approved( $item ),
+			'approved_by'     => Approvals::approver_name( $item ),
 		);
 		return (array) apply_filters( 'fbcol_present_item', $out, $item );
 	}

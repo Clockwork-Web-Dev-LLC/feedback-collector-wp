@@ -36,6 +36,8 @@ final class Cleanup {
 		'fbcol_guest_mode',
 		'fbcol_guest_pass_hash',
 		'fbcol_guest_key',
+		'fbcol_approval_label',
+		'fbcol_tour',
 	);
 
 	/** Every user-meta key the plugin writes. */

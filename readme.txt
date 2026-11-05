@@ -4,7 +4,7 @@ Tags: feedback, qa, bug tracking, screen recording, teamwork
 Requires at least: 6.5
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 0.5.0
+Stable tag: 0.6.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -102,6 +102,11 @@ No. Everything works on its own; Teamwork is an optional place to send the feedb
 **Feedback → Settings → Remove all data** deletes the plugin's tables, settings, screenshots and recordings, then deactivates it. Deleting the plugin always deletes every recording, and deletes everything else too if you tick "Delete all feedback data when the plugin is deleted".
 
 == Changelog ==
+
+= 0.6.0 =
+* New: an **approval checkbox** for client sign-off (name it in Settings, e.g. "PIVI approved"). Tick it in the feedback list, on an item's page, or in the pin's card; filter and sort by it, bulk approve, and see who approved. Logged in the item's thread and in the CSV export.
+* New: a **quick tour** the first time someone opens Feedback (guests and logged-in users alike). It covers adding feedback, page notes, the form, device previews and the list; the toolbar's ? button replays it. On by default in password mode; a setting turns it on or off.
+* Fixed: on phones the toolbar no longer runs off the screen (the name and device-preview buttons are hidden below 560px).
 
 = 0.5.0 =
 * New: **Guest access (password mode)** in Feedback → Settings. One password protects the whole site; anyone who enters it can leave feedback without a WordPress account. Their first item asks for their name, which the browser remembers (with a Change link). Guests see, reply to and delete only their own feedback and can't triage. Logged-in users are unaffected. Off by default.
