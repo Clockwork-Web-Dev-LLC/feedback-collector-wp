@@ -55,7 +55,6 @@ final class ItemsTable extends \WP_List_Table {
 	public static function columns(): array {
 		return array(
 			'cb'          => '<input type="checkbox" />',
-			'approved'    => Approvals::label(),
 			'title'       => __( 'Feedback', 'feedback-collector' ),
 			'description' => __( 'Description', 'feedback-collector' ),
 			'page'        => __( 'Page', 'feedback-collector' ),
@@ -66,6 +65,8 @@ final class ItemsTable extends \WP_List_Table {
 			'due'      => __( 'Due', 'feedback-collector' ),
 			'assignee' => __( 'Assignee', 'feedback-collector' ),
 			'teamwork' => __( 'Teamwork', 'feedback-collector' ),
+			// Last, so it isn't confused with the row-select checkbox on the left.
+			'approved' => Approvals::label(),
 		);
 	}
 
@@ -363,7 +364,7 @@ final class ItemsTable extends \WP_List_Table {
 				$by   = Approvals::approver_name( $item );
 				$name = Approvals::label();
 				return sprintf(
-					'<label class="fbc-approve"><input type="checkbox" class="fbc-approve-box" data-id="%1$d"%2$s aria-label="%3$s" /><span class="fbc-approve-by">%4$s</span></label>',
+					'<label class="fbc-approve"><input type="checkbox" class="fbc-approve-box" data-id="%1$d"%2$s aria-label="%3$s" /><span class="fbc-approve-by" title="%4$s">%4$s</span></label>',
 					(int) $item['id'],
 					checked( $on, true, false ),
 					/* translators: 1: approval name, 2: item ID */
