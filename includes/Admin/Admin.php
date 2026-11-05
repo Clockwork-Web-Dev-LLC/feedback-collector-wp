@@ -691,6 +691,26 @@ final class Admin {
 	}
 
 	/**
+	 * An item's replies (or activity log) as one CSV cell: one entry per line,
+	 * "[date] Name: text", oldest first.
+	 *
+	 * @param int    $item_id Item.
+	 * @param string $kind    'comment' or 'activity'.
+	 */
+	public static function csv_thread( int $item_id, string $kind ): string {
+		$lines = array();
+		foreach ( Items::comments( $item_id ) as $c ) {
+			if ( $kind !== $c['kind'] ) {
+				continue;
+			}
+			$when    = get_date_from_gmt( gmdate( 'Y-m-d H:i:s', (int) strtotime( $c['created_at'] ) ), 'Y-m-d H:i' );
+			$name    = $c['user_name'] . ( ! empty( $c['guest'] ) ? ' (guest)' : '' );
+			$lines[] = sprintf( '[%s] %s: %s', $when, $name, $c['body'] );
+		}
+		return implode( "\n\n", $lines );
+	}
+
+	/**
 	 * Saves a list-row approval checkbox the moment it changes (through the REST API), and
 	 * shows who approved it. Without JavaScript the bulk actions do the same.
 	 */
@@ -1033,6 +1053,10 @@ final class Admin {
 				'Teamwork Task URL',
 				'Created At',
 				'Updated At',
+				'Screenshot URL',
+				'Video URL',
+				'Replies',
+				'Activity',
 			)
 		);
 
@@ -1090,6 +1114,10 @@ final class Admin {
 						$tw_url,
 						(string) $item['created_at'],
 						(string) $item['updated_at'],
+						\FeedbackCollector\Screenshots::url( $item ),
+						\FeedbackCollector\Videos::url( $item ),
+						$escape_csv( self::csv_thread( (int) $item['id'], 'comment' ) ),
+						$escape_csv( self::csv_thread( (int) $item['id'], 'activity' ) ),
 					)
 				);
 			}

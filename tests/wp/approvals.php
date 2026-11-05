@@ -146,6 +146,14 @@ unset( $_COOKIE[ GuestMode::COOKIE ], $_SERVER['HTTP_X_WP_NONCE'] );
 GuestMode::reset_request();
 wp_set_current_user( $editor );
 
+// CSV: replies and activity per item.
+Items::add_comment( $a, 'Use “immunization” here', 'comment', 0, 0, 'Jane Guest' );
+Items::add_comment( $a, 'Agreed, final wording: “immunization”.' );
+$replies  = FeedbackCollector\Admin\Admin::csv_thread( $a, 'comment' );
+$activity = FeedbackCollector\Admin\Admin::csv_thread( $a, 'activity' );
+$check( 'CSV replies: every reply, oldest first, guests marked', (bool) preg_match( '/Jane Guest \(guest\): Use “immunization” here\n\n\[[^\]]+\] Amanda Editor: Agreed/u', $replies ) );
+$check( 'CSV activity: approval history', str_contains( $activity, 'marked this “PIVI approved”' ) && ! str_contains( $activity, 'immunization' ) );
+
 // Tour setting.
 delete_option( Tour::OPTION );
 $check( 'tour follows password mode until set (on)', true === Tour::enabled() );
