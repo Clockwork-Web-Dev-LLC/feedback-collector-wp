@@ -262,7 +262,9 @@ export class App {
       void this.setMode(true);
       return;
     }
-    if (this.cfg.openItem || stored) {
+    // A first visit with the tour on opens Feedback mode straight away, so the tour greets them.
+    const firstVisit = !!this.cfg.tour && !tourSeen();
+    if (this.cfg.openItem || stored || firstVisit) {
       void this.setMode(true);
     } else {
       this.renderLauncher();
@@ -432,12 +434,9 @@ export class App {
     };
     return [
       {
+        kicker: 'Feedback mode activated',
         title: 'Leave feedback right on the page',
-        body: 'This quick tour shows how. It takes about 30 seconds, and you can replay it any time with the ? button.',
-      },
-      {
-        title: 'This is your feedback toolbar',
-        body: 'It stays with you as you move from page to page. Drag it by the dots if it’s in the way.',
+        body: 'We’re ready for your feedback. This toolbar stays at the bottom of the screen as you move from page to page. This quick tour shows how it works; the ? button replays it any time.',
         target: () => this.toolbar,
       },
       {

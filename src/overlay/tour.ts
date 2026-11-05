@@ -2,6 +2,8 @@ import { h } from './dom';
 
 /** One stop on the walkthrough. Without a target the card sits in the middle of the screen. */
 export interface TourStep {
+  /** A heading above the step count, e.g. "Feedback mode activated". */
+  kicker?: string;
   title: string;
   body: string;
   /** The element to spotlight; skipped when it returns null (e.g. hidden on this screen). */
@@ -120,6 +122,7 @@ export class Tour {
     const next = h('button', { type: 'button', class: 'btn primary tour-next', text: last ? 'Got it' : 'Next', onclick: () => this.go(1) });
     this.card.setAttribute('aria-label', step.title);
     this.card.replaceChildren(
+      ...(step.kicker ? [h('div', { class: 'tour-kicker', text: step.kicker })] : []),
       h('div', { class: 'tour-count', text: `${this.index + 1} of ${this.steps.length}` }),
       h('div', { class: 'tour-title', text: step.title }),
       h('p', { class: 'tour-body', text: step.body }),
