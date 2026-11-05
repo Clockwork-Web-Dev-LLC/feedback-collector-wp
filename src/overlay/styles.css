@@ -1382,12 +1382,12 @@ select {
   inset: 0;
 }
 .tour.dim .tour-blocker {
-  background: rgba(17, 20, 24, 0.55);
+  background: rgba(17, 20, 24, 0.72);
 }
 .tour-spot {
   position: fixed;
   border-radius: 12px;
-  box-shadow: 0 0 0 9999px rgba(17, 20, 24, 0.55);
+  box-shadow: 0 0 0 9999px rgba(17, 20, 24, 0.72);
   transition: left 220ms ease, top 220ms ease, width 220ms ease, height 220ms ease;
   pointer-events: none;
 }

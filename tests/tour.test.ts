@@ -95,3 +95,42 @@ describe('tour', () => {
     expect(t.open).toBe(false);
   });
 });
+
+describe('tour steps that open things', () => {
+  it('enter() runs when the step shows, leave() when it is left or the tour closes', () => {
+    const log: string[] = [];
+    let opened: HTMLElement | null = null;
+    const t = new Tour(mount);
+    t.start([
+      { title: 'A', body: '' },
+      {
+        title: 'Form',
+        body: '',
+        opens: true,
+        enter: () => {
+          log.push('enter');
+          opened = document.createElement('form');
+          document.body.append(opened);
+        },
+        leave: () => {
+          log.push('leave');
+          opened?.remove();
+          opened = null;
+        },
+        target: () => opened,
+      },
+      { title: 'C', body: '' },
+    ]);
+    expect(mount.querySelector('.tour-count')?.textContent).toBe('1 of 3'); // kept although not open yet
+    click('.tour-next');
+    expect(title()).toBe('Form');
+    expect(opened).not.toBeNull();
+    click('.tour-next');
+    expect(log).toEqual(['enter', 'leave']);
+    click('.tour-back');
+    expect(log).toEqual(['enter', 'leave', 'enter']);
+    t.close(true);
+    expect(log).toEqual(['enter', 'leave', 'enter', 'leave']);
+    expect(opened).toBeNull();
+  });
+});

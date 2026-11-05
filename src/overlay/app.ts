@@ -452,7 +452,12 @@ export class App {
       },
       {
         title: 'Describe what should change',
-        body: 'A short form opens. Pick a type, write what you’d like changed, and add a screenshot or a short video if it helps. The first time, you’ll be asked for your name.',
+        body: 'This form opens. Pick a type, write what you’d like changed, and add a screenshot or a short video if it helps. The first time, you’ll be asked for your name.',
+        // A real (empty) page-note form, shown and closed again; the tour blocks typing into it.
+        opens: true,
+        enter: () => this.openComposer('comment', null, Math.max(16, window.innerWidth / 2 - 170), 120),
+        leave: () => this.closeCard(),
+        target: () => this.card,
       },
       {
         title: 'Check other screen sizes',
@@ -461,8 +466,13 @@ export class App {
       },
       {
         title: 'See your feedback and replies',
-        body: 'Each comment shows as a numbered pin on the page. Open the List to see them all and read replies from the team.',
-        target: q('[data-tour="list"]'),
+        body: 'Each comment shows as a numbered pin on the page. The List shows them all, on this page or every page, with replies from the team.',
+        opens: true,
+        enter: () => {
+          if (!this.sidebar) this.openSidebar();
+        },
+        leave: () => this.closeSidebar(),
+        target: () => this.sidebar,
       },
       {
         title: 'Done for now?',

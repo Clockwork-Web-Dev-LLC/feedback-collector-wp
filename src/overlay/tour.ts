@@ -6,6 +6,11 @@ export interface TourStep {
   body: string;
   /** The element to spotlight; skipped when it returns null (e.g. hidden on this screen). */
   target?: () => Element | null;
+  /** Runs when the step shows (e.g. opens the form it describes); leave() undoes it. */
+  enter?: () => void;
+  leave?: () => void;
+  /** With enter(): the step is kept even though its element only exists once entered. */
+  opens?: boolean;
 }
 
 const SEEN_KEY = 'fbc:tour';
@@ -56,7 +61,7 @@ export class Tour {
 
   start(steps: TourStep[]): void {
     this.close(false);
-    this.steps = steps.filter((s) => !s.target || s.target());
+    this.steps = steps.filter((s) => s.opens || !s.target || s.target());
     if (!this.steps.length) return;
     this.index = 0;
     this.spot = h('div', { class: 'tour-spot' }) as HTMLDivElement;
@@ -71,6 +76,7 @@ export class Tour {
   /** Ends the tour. finished: true when the user reached the end or skipped (both count as seen). */
   close(finished = true): void {
     if (!this.layer) return;
+    this.steps[this.index]?.leave?.();
     this.layer.remove();
     this.layer = null;
     window.removeEventListener('keydown', this.onKey, true);
@@ -85,6 +91,7 @@ export class Tour {
       this.close(true);
       return;
     }
+    this.steps[this.index]?.leave?.();
     this.index = next;
     this.render();
   }
@@ -108,6 +115,7 @@ export class Tour {
 
   private render(): void {
     const step = this.steps[this.index];
+    step.enter?.();
     const last = this.index === this.steps.length - 1;
     const next = h('button', { type: 'button', class: 'btn primary tour-next', text: last ? 'Got it' : 'Next', onclick: () => this.go(1) });
     this.card.setAttribute('aria-label', step.title);
@@ -126,6 +134,11 @@ export class Tour {
     );
     this.place();
     next.focus();
+    // What enter() opened lays out over the next frames (and may animate in): place again.
+    if (step.enter) {
+      window.requestAnimationFrame(() => this.place());
+      window.setTimeout(() => this.place(), 260);
+    }
   }
 
   /** Puts the cut-out on the step's element and the card beside it, kept on screen. */
@@ -155,10 +168,27 @@ export class Tour {
       height: `${r.height + PAD * 2}px`,
     });
     const ch = this.card.offsetHeight;
-    const above = r.top - PAD - GAP - ch;
-    const below = r.bottom + PAD + GAP;
-    const top = above >= EDGE ? above : below + ch <= vh - EDGE ? below : Math.max(EDGE, vh - ch - EDGE);
-    const left = Math.min(Math.max(EDGE, r.left + r.width / 2 - cw / 2), vw - cw - EDGE);
+    const clampX = (x: number) => Math.min(Math.max(EDGE, x), vw - cw - EDGE);
+    const clampY = (y: number) => Math.min(Math.max(EDGE, y), vh - ch - EDGE);
+    const centerX = clampX(r.left + r.width / 2 - cw / 2);
+    const centerY = clampY(r.top + r.height / 2 - ch / 2);
+    // Prefer above, then below, then beside (tall things like the form or the list), then
+    // overlapping the bottom of the screen as a last resort (small phones).
+    let left = centerX;
+    let top: number;
+    if (r.top - PAD - GAP - ch >= EDGE) {
+      top = r.top - PAD - GAP - ch;
+    } else if (r.bottom + PAD + GAP + ch <= vh - EDGE) {
+      top = r.bottom + PAD + GAP;
+    } else if (r.left - PAD - GAP - cw >= EDGE) {
+      left = r.left - PAD - GAP - cw;
+      top = centerY;
+    } else if (r.right + PAD + GAP + cw <= vw - EDGE) {
+      left = r.right + PAD + GAP;
+      top = centerY;
+    } else {
+      top = vh - ch - EDGE;
+    }
     this.card.style.left = `${Math.round(left)}px`;
     this.card.style.top = `${Math.round(top)}px`;
   }
